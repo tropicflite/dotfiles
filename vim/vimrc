@@ -1,0 +1,887 @@
+
+" much thanks to https://github.com/sflip/dotfiles/blob/master/vim/vimrc
+" vim, not vi
+set nocompatible
+
+" execute external commands with zsh (fish makes problems with vundle)
+"set shell=/usr/bin/zsh
+let &shell=system('which zsh | tr -d "\n"')
+
+" edit runtimepath
+set runtimepath+=~/.vim/syntax
+
+" leader key {{{
+let mapleader=','
+let maplocalleader=','
+
+"Easy edit of vimrc
+nmap <leader>vv :e ~/.vimrc<cr>
+
+" automatically source vimrc on save {{{
+augroup reload_vimrc
+    autocmd!
+    autocmd BufWritePost .vimrc source ~/.vimrc
+    autocmd BufWritePost .vimrc AirlineRefresh
+augroup END
+
+" cursor to the last line when reopening a file {{{
+augroup line_jump_on_open
+    au!
+    au BufReadPost *
+        \ if line("'\"") > 0 && line("'\"") <= line("$") |
+        \     execute 'normal! g`"zvzz' |
+        \ endif
+augroup END
+
+filetype off
+
+" manage Plugins
+set rtp+=~/.vim/bundle/vundle/
+call vundle#begin()
+Plugin 'gmarik/vundle'
+" package control mappings from vundle itself
+nnoremap <leader>pl :PluginList<CR>
+nnoremap <leader>pi :PluginInstall<CR>
+nnoremap <leader>pc :PluginClean<CR>
+nnoremap <leader>pu :PluginUpdate<CR>
+nnoremap <leader>ps :PluginSearch<Space>
+
+" colorschemes
+Plugin 'flazz/vim-colorschemes'
+Plugin 'zenorocha/dracula-theme', {'rtp': 'vim/'}
+Plugin 'sjl/badwolf'
+Plugin 'edkolev/promptline.vim'
+" fancy vim status line
+Plugin 'bling/vim-airline'
+Plugin 'vim-airline/vim-airline-themes'
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#tab_nr_type = 1 " tab number
+let g:airline#extensions#tabline#show_tab_nr = 1
+let g:airline#extensions#tabline#formatter = 'default'
+let g:airline#extensions#tabline#buffer_nr_show = 1
+let g:airline#extensions#tabline#fnametruncate = 16
+let g:airline#extensions#tabline#fnamecollapse = 2
+let g:airline_detect_modified=1
+let g:airline_detect_paste=1
+let g:airline_powerline_fonts = 1
+if !exists('g:airline_symbols')
+    let g:airline_symbols = {}
+  endif
+let g:airline_symbols.space = "\ua0"
+let g:airline_theme='jellybeans'
+let g:airline#extensions#tabline#buffer_idx_mode = 1
+nmap <leader>1 <Plug>AirlineSelectTab1
+nmap <leader>2 <Plug>AirlineSelectTab2
+nmap <leader>3 <Plug>AirlineSelectTab3
+nmap <leader>4 <Plug>AirlineSelectTab4
+nmap <leader>5 <Plug>AirlineSelectTab5
+nmap <leader>6 <Plug>AirlineSelectTab6
+nmap <leader>7 <Plug>AirlineSelectTab7
+nmap <leader>8 <Plug>AirlineSelectTab8
+nmap <leader>9 <Plug>AirlineSelectTab9
+
+" do some git from within vim {{{
+Plugin 'tpope/vim-fugitive'
+
+nmap <leader>gg <leader>gs
+nnoremap <leader>gs :Gstatus<CR>
+nnoremap <leader>gd :Gdiff<CR>
+nnoremap <leader>gr :Gread<CR>
+nnoremap <leader>gw :Gwrite<CR>
+nnoremap <leader>ga :Gwrite<CR>
+nnoremap <leader>gc :Gcommit<CR>
+nnoremap <leader>gb :Gblame<CR>
+nnoremap <leader>gp :Gpull<CR>
+nnoremap <leader>gP :Gpush<CR>
+
+" show git status of lines on the left
+Plugin 'airblade/vim-gitgutter'
+let g:gitgutter_max_signs = 4000
+nnoremap <C-G>g :GitGutterToggle<CR>
+" commit messages are special
+augroup gitcommit
+    autocmd!
+    autocmd filetype gitcommit setlocal nonumber norelativenumber
+    autocmd filetype gitcommit setlocal textwidth=50
+    autocmd filetype gitcommit setlocal colorcolumn=""
+augroup END
+" }}}
+
+" move seamlessly across vim and tmux windows
+Plugin 'christoomey/vim-tmux-navigator'
+
+" vim airline themes for tmux
+Plugin 'edkolev/tmuxline.vim'
+autocmd BufNewFile,BufRead * :Tmuxline
+autocmd BufReadPost,FileReadPost,BufNewFile,BufEnter * call system("tmux rename-window 'vim > " . expand("%:t") . "'")
+autocmd VimLeave * call system("tmux rename-window 'zsh'")
+
+" syntax highlighting for vimperatorrc
+Plugin 'uemurax/vimperator.vim'
+
+" quick navigation of visible area
+Plugin 'easymotion/vim-easymotion'
+" prefix
+map <leader><leader>w  <Plug>(easymotion-w)
+map <leader><leader>b  <Plug>(easymotion-b)
+
+" smart searching
+Plugin 'haya14busa/incsearch.vim'
+map /  <Plug>(incsearch-forward)
+map ?  <Plug>(incsearch-backward)
+map g/ <Plug>(incsearch-stay)
+
+" % also matches HTML-tags/words etc
+Plugin 'edsono/vim-matchit'
+
+" Enable folding, but by default make it act like folding is off, because folding is annoying in anything but a few rare cases
+set foldenable " Turn on folding
+set foldmethod=indent " Make folding indent sensitive
+set foldlevel=100 " Don't autofold anything (but I can still fold manually)
+set foldopen-=search " don't open folds when you search into them
+set foldopen-=undo " don't open folds when you undo stuff
+set foldclose=all " Autoclose folds, when moving out of them
+
+" fuzzy finding
+Plugin 'kien/ctrlp.vim'
+ let g:ctrlp_working_path_mode = 0
+ let g:ctrlp_map = '<leader>f'
+ map <leader>f :CtrlP<cr>
+ map <leader>b :CtrlPBuffer<cr>
+ map <leader>m :CtrlPMRU<cr>
+ map <leader>x :CtrlPMixed<cr>
+ let g:ctrlp_show_hidden = 1
+
+" ignore some stuff
+let g:ctrlp_custom_ignore = {
+            \ 'dir':  '\v[\/]\.(git|hg|svn)$',
+            \ }
+
+" change appearance
+"let g:ctrlp_match_window = 'bottom,order:btt,min:1,max:10,results:10'
+let g:ctrlp_match_window = 'top,order:ttb,min:1,max:8,results:8'
+
+" custom key bindings when ctrlp prompt is open
+let g:ctrlp_prompt_mappings = {
+            \ 'PrtSelectMove("j")':   ['<c-j>', '<down>', '<tab>'],
+            \ 'PrtSelectMove("k")':   ['<c-k>', '<up>', '<s-tab>'],
+            \ 'PrtExpandDir()':       [],
+            \ 'AcceptSelection("v")': ['<Esc><Enter>', '<c-v>', '<RightMouse>'],
+            \ 'ToggleFocus()':        [],
+            \ 'ToggleRegex()':        ['<c-r>', '<esc>r'],
+            \ 'ToggleType(1)':        ['<c-l>', '<c-up>'],
+            \ 'ToggleType(-1)':       ['<c-h>', '<c-down>'],
+            \ 'PrtCurLeft()':         ['<c-b>', '<left>', '<c-^>'],
+            \ 'PrtCurRight()':        ['<c-f>', '<right>'],
+            \ }
+
+" also find hidden files
+let g:ctrlp_show_hidden = 1
+
+Plugin 'majutsushi/tagbar'
+" install 'ctags' package on the system
+" if I leave tagbar open but unfocused, q closes vim. that not what i want...
+" so i autoclose and autofocus tagbar, which is cooler anyway
+let g:tagbar_compact = 1
+let g:tagbar_autoclose = 1
+"let g:tagbar_map_close = 'Q'
+noremap <silent> <leader>tt :TagbarToggle<CR>
+
+"autocmd FileType vim nested :TagbarOpen()<CR>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" file browser {{{
+
+Plugin 'scrooloose/nerdtree'
+
+let NERDTreeWinSize = 50
+let NERDTreeQuitOnOpen = 1
+let NERDTreeWinPos = 'right'
+
+" show/hide nerdtree
+noremap <silent> <leader>tn :NERDTreeToggle<CR>
+" show nerdtree from current file
+noremap <silent> <leader>tN :call SetCwdToFilePath() <bar> :NERDTreeCWD<CR>
+
+" show/hide hidden files
+let NERDTreeMapToggleHidden='.'
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" static code analysis {{{
+
+Plugin 'scrooloose/syntastic'
+
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_auto_loc_list = 1
+let g:syntastic_check_on_open = 1
+let g:syntastic_check_on_wq = 0
+let g:syntastic_mode_map = {
+            \ "mode": "active",
+            \ "active_filetypes": ["ruby", "php"],
+            \ "passive_filetypes": ["python", "tex"] }
+
+nnoremap <silent> <leader>xc :SyntasticCheck<CR>
+nnoremap <silent> <leader>xr :SyntasticReset<CR>
+nnoremap <silent> <leader>xt :SyntasticToggleMode<CR>
+nnoremap <silent> <leader>xi :SyntasticInfo<CR>
+
+" install linters on the system:
+" - pylint
+" - jslint
+" - csslint (but phpcs also can do css)
+" - phpcs (https://github.com/squizlabs/PHP_CodeSniffer)
+let g:syntastic_php_checkers = ['phpcs', 'phplint', 'php']
+let g:syntastic_python_checkers = ['flake8']
+
+" ignore these errors/warnings
+let g:syntastic_quiet_messages = { "regex": [
+            \ '\mMissing file doc comment',
+            \ '\mLine indented incorrectly;.*'
+            \ ] }
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" text editing {{{
+
+" make the 0 register a stack (yank/delete multiple things without worrying)
+" lightweight alternative to yankring
+Plugin 'maxbrunsfeld/vim-yankstack'
+let g:yankstack_map_keys = 0
+nmap <C-p> <Plug>yankstack_substitute_older_paste
+nmap <C-n> <Plug>yankstack_substitute_newer_paste
+"call yankstack#setup()
+
+" add and toggle comments with <leader>c<space> etc
+Plugin 'scrooloose/nerdcommenter'
+" use leading space
+let g:NERDSpaceDelims = 1
+" duplicate a line and comment out the first one
+nmap <leader>cd yy<leader>ccp
+
+" automagically add closing braces etc
+Plugin 'Raimondi/delimitMate'
+
+" add/change/delete quotes/braces/... and more
+Plugin 'tpope/vim-surround'
+
+" this is an improved version of dragvisuals
+Plugin 'zirrostig/vim-schlepp'
+
+vmap <up>    <Plug>SchleppUp
+vmap <down>  <Plug>SchleppDown
+vmap <left>  <Plug>SchleppLeft
+vmap <right> <Plug>SchleppRight
+
+" duplicate selection
+vmap <Enter> <Plug>SchleppDup
+
+" }}}
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Snippets {{{
+Bundle 'ervandew/supertab'
+" snippet engine
+Plugin 'SirVer/ultisnips'
+" better key bindings for UltiSnipsExpandTrigger
+let g:UltiSnipsExpandTrigger = "<tab>"
+let g:UltiSnipsJumpForwardTrigger = "<tab>"
+let g:UltiSnipsJumpBackwardTrigger = "<s-tab>"
+let g:UltiSnipsListSnippets="<leader>ls"
+let g:UltiSnipsEditSplit="vertical"
+let g:UltiSnipsSnippetDirectories=["UltiSnips", "sflipsnippets"]
+map <leader>ue :UltiSnipsEdit<CR>
+
+" make YCM compatible with UltiSnips (using supertab)
+let g:ycm_key_list_select_completion = ['<C-n>', '<Down>']
+let g:ycm_key_list_previous_completion = ['<C-p>', '<Up>']
+let g:SuperTabDefaultCompletionType = '<C-n>'
+
+" snippet packs
+Plugin 'honza/vim-snippets'
+
+" make html snippets work in php
+" (this is a hack. but the 'ultisnips extends' approach does not work)
+" http://stackoverflow.com/questions/12471398/how-to-enable-snippet-for-html-in-php-files
+autocmd filetype php set filetype=php.html
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Plugin 'benmills/vimux'
+"Vimux bindings
+ " Run the current file with python
+ map <leader>vr :call VimuxRunCommand("clear; python " . bufname("%"))<CR>
+ map <leader>vc :call VimuxRunCommand("clear")<CR>
+ " Prompt for a command to run
+ map <leader>vp :VimuxPromptCommand<CR>
+ " Run last command executed by VimuxRunCommand
+ map <leader>vl :VimuxRunLastCommand<CR>
+ " Inspect runner pane
+ map <leader>vi :VimuxInspectRunner<CR>
+ " Close vim tmux runner opened by VimuxRunCommand
+ map <leader>vq :VimuxCloseRunner<CR>
+ " Interrupt any command running in the runner pane
+ map <leader>vx :VimuxInterruptRunner<CR>
+ " Zoom the runner pane (use <bind-key> z to restore runner pane)
+ map <leader>vz :call VimuxZoomRunner()<CR>
+
+Plugin 'PotatoesMaster/i3-vim-syntax'
+Plugin 'Valloric/YouCompleteMe'
+
+" handle trailing whitespace {{{
+Plugin 'vim-scripts/ShowTrailingWhiteSpace'
+Plugin 'vim-scripts/DeleteTrailingWhiteSpace'
+" check for trailing whitespace when writing file
+let g:DeleteTrailingWhitespace = 1
+" delete trailing whitespace for selected line
+vnoremap <silent> -dst :DeleteTrailingWhitespace<CR>
+" delete trailing whitespace for whole buffer
+nnoremap <silent> -dst :%DeleteTrailingWhitespace<CR>
+
+Plugin 'nhooyr/neoman.vim'
+nnoremap <leader>mv :Vnman
+" }}}
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" LaTeX stuff {{{
+
+Plugin 'lervag/vimtex'
+
+let g:vimtex_view_method='zathura'
+"let g:vimtex_viewer_general='zathura'
+
+" YouCompleteMe integration
+if !exists('g:ycm_semantic_triggers')
+    let g:ycm_semantic_triggers = {}
+endif
+let g:ycm_semantic_triggers.tex = [
+            \ 're!\\[A-Za-z]*(ref|cite)[A-Za-z]*([^]]*])?{([^}]*,?)*',
+            \ 're!\\includegraphics([^]]*])?{[^}]*',
+            \ 're!\\(include|input){[^}]*'
+            \ ]
+
+nnoremap <leader>bl :VimtexCompileToggle<CR>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Graphical undo tree {{{
+
+Plugin 'sjl/gundo.vim'
+
+let g:gundo_preview_height = 25
+let g:gundo_right = 1
+let g:gundo_preview_bottom = 1
+let g:gundo_return_on_revert = 0
+
+nnoremap <leader>ut :GundoToggle<CR>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+    " finish vundle
+    call vundle#end()
+    filetype plugin indent on
+
+    " fix compatibility issues with D mapping
+    " (must be executed before the D custom mapping
+    " but cannot be executed in the vundle block)
+    call yankstack#setup()
+
+" }}}
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"                                                                              "
+"  SETTINGS SECTION                                                            "
+"  (not plugin specific)                                                       "
+"                                                                              "
+"                                                                              "
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" {{{
+
+" options {{{
+
+" set timeout for escape sequences
+" (so that leaving insert mode does not last that long)
+set timeout ttimeoutlen=50
+" but mapping delay can be more
+set timeoutlen=900
+
+" don't draw everything (e.g. when playing macros)
+set lazyredraw
+
+" disable all bells
+set noerrorbells
+set novisualbell
+set t_vb=
+
+" encoding should be utf-8 on every OS
+set     encoding=utf-8
+set fileencoding=utf-8
+
+" reload files changed outside vim
+" (still have to change buffer or call :checktime)
+set autoread
+
+" command history size
+set history=9999
+
+" persistent undo over file close
+" (the undodir needs to exist!)
+if has ('persistent_undo')
+    set undofile
+    set undodir=~/.vim/undodir
+    set undolevels=1000
+    set undoreload=10000
+endif
+
+" Set the dictionary
+set dictionary=/usr/share/dict/words
+set complete-=k complete+=k
+noremap Y y$
+
+nnoremap ' `
+nnoremap ` '
+" syntax highlighting
+syntax enable
+
+" line numbers
+set number
+set relativenumber
+set numberwidth=6
+
+" highlight current cursor position
+let g:cursorposition = 1
+if g:cursorposition
+    set cursorline cursorcolumn
+endif
+" ... but not in insert mode or inactive windows
+augroup cursorposition
+    au!
+    au WinLeave,InsertEnter * set nocursorline nocursorcolumn
+    au WinEnter,InsertLeave * if g:cursorposition
+    au WinEnter,InsertLeave *     set cursorline cursorcolumn
+    au WinEnter,InsertLeave * endif
+augroup END
+
+" statusline
+set statusline="%f%m%r%h%w [%Y] [0x%02.2B]%< %F%=%4v,%4l %3p%% of %L"
+
+set showcmd
+set ruler
+set laststatus=2
+
+" completions behaviour
+set wildmode=longest,full
+set wildmenu
+
+" ignore some files
+set wildignore+=*.o,*.obj
+set wildignore+=*.pyc
+set wildignore+=*.swp
+set wildignore+=*/.git/*,*/.hg/*,*/.svn/*
+
+" scrolling
+" start scrolling when we're 8 lines away from margins
+set scrolloff=8
+set sidescrolloff=15
+set sidescroll=1
+
+" search preferences
+set incsearch
+set ignorecase
+set smartcase
+" never have to append 'g' to a search/substitute again
+set gdefault
+
+" allow the cursor to move where there is no character
+set virtualedit=all
+set startofline
+
+" characters to show in list mode (like whitespace)
+" and wrap symbols that are always shown
+set listchars=space:·,tab:--,extends:❯,precedes:❮
+set showbreak=↪
+" use 4 spaces instead of tabs
+set expandtab
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
+
+" indent after open braces etc
+set autoindent
+set smartindent
+set smarttab
+
+" allow to :edit multiple files in buffers without writing changes
+set hidden
+
+" puts new split windows to the bottom of the current
+set splitbelow
+" puts new vsplit windows to the right of the current
+set splitright
+
+" colorscheme {{{
+set t_Co=256
+set background=dark
+colorscheme dracula
+highlight Normal ctermbg=none
+highlight NonText ctermbg=none
+highlight SpecialKey ctermbg=none
+highlight LineNr ctermbg=none
+" }}}
+
+" set cwd to filepath {{{
+function! SetCwdToFilePath()
+    execute "cd " . expand('%:p:h')
+endfunction
+" }}}
+
+" toggle syntax highlighting {{{
+function! ToggleSyntax()
+   if exists("g:syntax_on")
+      syntax off
+   else
+      syntax enable
+   endif
+endfunction
+" }}}
+
+" get a list of buffers {{{
+function! GetBufferList()
+  redir =>buflist
+  silent! ls!
+  redir END
+  return buflist
+endfunction
+" }}}
+
+" toggle quickfix or location list {{{
+function! ToggleList(bufname, pfx)
+  let buflist = GetBufferList()
+  for bufnum in map(filter(split(buflist, '\n'), 'v:val =~ "'.a:bufname.'"'), 'str2nr(matchstr(v:val, "\\d\\+"))')
+    if bufwinnr(bufnum) != -1
+      exec(a:pfx.'close')
+      return
+    endif
+  endfor
+  if a:pfx == 'l' && len(getloclist(0)) == 0
+      echohl ErrorMsg
+      echo "Location List is Empty."
+      return
+  endif
+  let winnr = winnr()
+  exec(a:pfx.'open')
+  if winnr() != winnr
+    wincmd p
+  endif
+endfunction
+" }}}
+
+" comment the current line / visual selection with html syntax {{{
+function! ToggleHTMLComment(mode)
+
+    " visual mode
+    if a:mode == "v"
+        let lineFrom = getpos("'<")[1]
+        let lineTo   = getpos("'>")[1]
+        let range    = lineFrom . "," . lineTo
+        let text     = join(getline(lineFrom, lineTo))
+
+    " normal mode
+    elseif a:mode == "n"
+        let range = "."
+        let text = getline(".")
+
+    endif
+
+    " do the toggle
+    if matchstr(text, '\V<!--') == ""
+        " comment
+        " .substitute:\v^(\s*)(.*)$:\1<!-- \2 -->:
+        " execute range . escape("substitute:\v^(\s*)(.*)$:\1<!-- \2 -->:", '\')
+        execute range . "substitute:\\v^(\\s*)(.*)$:\\1<!-- \\2 -->:"
+    else
+        " uncomment
+        " .substitute:\v\<!--\s*(.*\S)\s*--\>:\1:
+        " execute range . escape("substitute:\v\<!--\s*(.*\S)\s*--\>:\1:", '\')
+        execute range . "substitute:\\v\\<!--\\s*(.*\\S)\\s*--\\>:\\1:"
+    endif
+
+endfunction
+" }}}
+
+" {{{
+
+let mapleader=','
+" Use Unix as the standard file type
+set ffs=unix,dos,mac
+set shortmess=atI " shortens messages to avoid 'press a key' prompt
+
+" leave visual mode quickly
+vnoremap v <C-c>
+
+" copy to clipboard in visual mode
+vnoremap <C-c> "+y
+nnoremap <C-c> gg0VG"+y
+" paste from clipboard
+noremap  <C-v><C-v> "+p
+inoremap <C-v><C-v> <Esc>"+p
+
+" record macro ('complex repeat')
+nnoremap <leader>M q
+" replay macro ('complex repeat')
+nnoremap <leader>m @
+
+set backspace=indent,eol,start
+set whichwrap=<,>,h,l,[,]
+set cpoptions=cesB$
+set pdev=HL2270DW
+set printoptions=paper:letter,duplex:off,header:0
+" Add ignorance of whitespace to diff
+set diffopt+=iwhite
+autocmd filetype md nnoremap <F2> :!pandoc -s % -o %.pdf <CR>
+map <F5> :set number! number?<cr>
+map <leader><space> :set relativenumber! number?<cr>
+map <F8> :set spell!<cr>
+map <F9> :set hlsearch!<cr>
+set mousehide
+set shellslash
+" Make the current file executable
+nmap ,x :w<cr>:!chmod 755 %<cr>:e<cr>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" MAKE THE COMMAND MODE A LITTLE NICER {{{
+" (there may be other command mode things elsewhere that are more general)
+
+" open help in vertical window
+cnoreabbrev <expr> h ((getcmdtype() is# ':' && getcmdline() is# 'h')
+            \ ?('vertical help'):('h'))
+
+" write changes with root permissions
+cnoremap w!! w !sudo tee % >/dev/null
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" CHANGE VISUAL THINGS {{{
+
+" toggle syntax highlighting
+nmap <silent> <C-G>y :call ToggleSyntax()<CR>
+
+" toggle word wrap
+nnoremap <silent> <C-G>w :set wrap! <CR>
+
+" toggle vertical ruler
+nnoremap <silent> <C-G>r :call ToggleColorColumn()<CR>
+nnoremap <silent> <C-G>R :highlight ColorColumn ctermbg=234<CR>
+
+" toggle highlight current cursor position
+" (switch to insert mode to apply changes)
+nnoremap <silent> <C-G>h :let g:cursorposition = 1 - g:cursorposition <CR>
+
+" toggle show listchars (like whitespace)
+nnoremap <silent> <C-G>a :set list!<CR>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" MOVEMENT {{{
+
+" move intuitively when text is wrapped
+nnoremap j gj
+nnoremap k gk
+
+" move faster
+nnoremap gj 10j
+nnoremap gk 10k
+vnoremap gj 10j
+vnoremap gk 10k
+map gm :call cursor(0, virtcol('$')/2)<CR>
+
+" goto last edit
+nnoremap <leader>. '.zz
+
+" provide left and right single space movements in Insert mode
+inoremap ü <C-o>h
+inoremap ö <C-o>l
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" SEARCHING AND FINDING {{{
+
+" search for visual selection
+vnoremap * y/<C-R>"<CR>
+
+" find next and previous occurence like usual when we searched backwards
+nnoremap <expr> n  'Nn'[v:searchforward]
+nnoremap <expr> N  'nN'[v:searchforward]
+
+" keep search matches in the middle of the window
+" TODO decide if i really want that and combine with the thing above
+"nnoremap n nzzzv
+"nnoremap N Nzzzv
+
+" find trailing whitespace
+nnoremap <leader>fst /\v\s+$<CR>
+
+" find matching element (brackets/braces/parentheses)
+nnoremap <leader>fb %
+" extended find matching element (e.g. HTML-tags with matchit plugin)
+nmap <leader>fm %
+nmap <leader>ff %
+
+" find all lines with keyword under cursor and ask which one to jump to
+nmap <leader>fj [I:let nr = input("Which one: ")
+            \   <Bar> exe "normal " . nr ."[\t"<CR>
+
+" find git merge conflict markers
+nnoremap <leader>fc /\v^[<\|=>]{7}( .*\|$)<CR>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" TEXT EDITING {{{
+
+" text edit leader is minus ('-')
+
+" increment/decrement number
+nnoremap +  <C-A>
+nnoremap -- <C-X>
+
+" indent lines
+nnoremap < <<
+vnoremap < <gv
+nnoremap > >>
+vnoremap > >gv
+
+" move line up or down
+nnoremap <silent> -k :m .-2<CR>==
+nnoremap <silent> -j :m .+1<CR>==
+vnoremap <silent> -j :m '>+1<CR>gv=gv
+vnoremap <silent> -k :m '<-2<CR>gv=gv
+
+" split line (opposite of 'J'oin lines)
+" (regular 'S' can be done with 'cc' instead)
+nnoremap S i<cr><esc>^mwgk:silent! s/\v +$//<cr>:noh<cr>`w
+
+" substitute occurences of selection in this buffer with confirmation
+" (to change only this occurence, use c. by default they are the same)
+vnoremap s y:%s/<C-R>"//c<Left><Left>
+vmap -s s
+
+" substitute (last) search
+nnoremap -ss :%s:<C-R>/:
+
+" enter substitution mode quickly
+nnoremap -sl :s:
+nnoremap <C-S> :%s:
+
+" replace word under cursor with yank
+nnoremap -rw viwp
+nnoremap -rW viWp
+" replace line with yank
+"nnoremap -rl Vp
+nnoremap -rl v$p
+
+" sort lines
+nnoremap -o vip:sort<CR>
+vnoremap -o :sort<CR>
+
+" delete leading whitespace (can be prefixed with a count)
+nnoremap <silent> -dsl :s:^\s\+::<CR>
+" replace '  ' (double space) with ' ' (one space)
+nnoremap <silent> -dsd :.s:\v(\S)  (\S):\1 \2:<CR>
+nnoremap <silent> -dsD :%s:\v(\S)  (\S):\1 \2:<CR>
+
+" add/remove an html comment
+" (this is useful when syntax is set to php and nerdcommenter fucks up)
+nnoremap <silent> <leader>ch :call ToggleHTMLComment("n")<CR>
+vnoremap <silent> <leader>ch :call ToggleHTMLComment("v")<CR>
+
+" undo and redo
+" (in difference to :undo and :redo, :earlier and :later also make changes
+" reachable if we branch, i.e. go back in history and make other changes)
+noremap <M-u>  :earlier<CR>
+noremap <Esc>u :earlier<CR>
+noremap <M-U>  :later<CR>
+noremap <Esc>U :later<CR>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" DIFF AND MERGE {{{
+
+" jump to next/previous change
+nnoremap dn ]c
+nnoremap dN [c
+
+" remember do and dp
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" BUILDING AND DEBUGGING {{{
+
+" make
+nnoremap <leader>bm :make<CR>
+
+" jump to (syntastic) errors
+nnoremap <leader>xf :lfirst<CR>
+nnoremap <leader>xn :lnext<CR>
+nnoremap <leader>xN :lprevious<CR>
+
+" jump through lists
+nnoremap <left>  :cprev<cr>
+nnoremap <right> :cnext<cr>
+nnoremap <up>    :lprev<cr>
+nnoremap <down>  :lnext<cr>
+
+" close location list (which contains syntastic errors) and quickfix window
+nnoremap <silent> <leader>xl :lclose<bar>:cclose<CR>
+" reopen location list (which contains syntastic errors)
+nnoremap <silent> <leader>xL :lopen<CR>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" BUFFERS AND WINDOWS {{{
+
+" change to LRU buffer
+nnoremap <Space><Space> :buffer #<CR>
+
+" Easy buffer switching
+noremap <leader>s :bn<CR>
+noremap <leader>a :bp<CR>
+
+" move buffer to a new window
+nnoremap <silent> <leader><C-l> :vsplit<CR><C-W>w<CR>:bprevious<CR><C-W>w<CR>
+nnoremap <silent> <leader><C-j>  :split<CR><C-W>w<CR>:bprevious<CR><C-W>w<CR>
+
+" clear windows (close quickfix and location list)
+nnoremap <silent> <BS> :lclose <Bar> :cclose <CR>
+
+" toggle quickfix or location list
+nnoremap <silent> <leader>tf :call ToggleList("Quickfix List", 'c')<CR>
+nnoremap <silent> <leader>tl :call ToggleList("Location List", 'l')<CR>
+
+" }}}
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" SAVING AND CLOSING {{{
+
+" Close the current buffer
+map <leader>d :bd<cr>
+map <leader>D :bd!<cr>
+map <leader>q :qa<cr>
+map <leader>Q :qa!<cr>
+
+" write changes
+nnoremap <leader>w :update<CR>
+nnoremap <leader>WW :update!<CR>
+
+" Show a selectable list of buffers
+map <leader>b :buffers<CR>:buffer<Space>
+
+" quit all buffers (not vim)
+nnoremap <leader>qa :bufdo bdelete<CR>
+
+" }}}
+
+" vim:tw=80:sw=4:fdm=marker:
