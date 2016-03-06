@@ -1,0 +1,163 @@
+# ~/.bashrc: executed by bash(1) for non-login shells.
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+# for examples
+
+# If not running interactively, don't do anything
+[ -z "$PS1" ] && return
+
+alias ls='ls --color=auto'
+
+# don't put duplicate lines in the history. See bash(1) for more options
+# don't overwrite GNU Midnight Commander's setting of `ignorespace'.
+export HISTCONTROL=$HISTCONTROL${HISTCONTROL+,}ignoredups
+# ... or force ignoredups and ignorespace
+export HISTCONTROL=ignoreboth
+# export PAGER="vim -"
+# export MANPAGER="vim -c '%!col -b' -c 'set ft=man nomod nolist nonumber norelativenumber' -c 'set nomodifiable' -"
+export MC_SKIN=$HOME/.config/mc/solarized.ini
+export EDITOR='vim'
+
+# append to the history file, don't overwrite it
+shopt -s histappend
+
+alias dt='date "+%F %T"'
+PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND ; }"'echo `dt` `pwd` $$ $USER \
+                         "$(history 1)" >> ~/.bash_eternal_history'
+
+# check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
+shopt -s checkwinsize
+
+# make less more friendly for non-text input files, see lesspipe(1)
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# ~/.bash_aliases, instead of adding them here directly.
+
+# enable color support of ls and also add handy aliases
+
+# some more ls aliases
+# change the window title of X terminals
+case ${TERM} in
+    xterm*|*rxvt*|Eterm|aterm|kterm|gnome*|interix)
+        PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\007"'
+        ;;
+    screen)
+        PROMPT_COMMAND='echo -ne "\033_${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\033\\"'
+        ;;
+esac
+shopt -s extglob
+set -o vi
+# ^l clear screen
+bind -m vi-insert "\C-l":clear-screen
+# ^p check for partial match in history 
+bind -m vi-insert "\C-p":dynamic-complete-history 
+# ^n cycle through the list of partial matches
+bind -m vi-insert "\C-n":menu-complete
+
+# some nice shell options
+shopt -s checkwinsize cdspell dotglob histappend nocaseglob no_empty_cmd_completion
+ 
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+alias l="ls --group-directories-first"
+alias ll="ls -aF --group-directories-first"
+alias lll="ls -aFl --group-directories-first"
+alias myip="lynx -dump -hiddenlinks=ignore -nolist http://checkip.dyndns.org:8245/ | awk '{ print \$4 }' | sed '/^$/d; s/^[ ]*//g; s/[ ]*$//g'"
+alias scp="rsync --rsh=ssh --archive --append --human-readable --progress --times"
+alias make="grc -es make"
+alias re="sudo reboot"
+alias po="sudo poweroff"
+alias wx="wxmatt.sh cyyz && echo ."
+alias v3="vim ~/.i3/config"
+alias vv="vim ~/.vimrc"
+alias vb="vim ~/.bashrc"
+alias vm="vim ~/.muttrc"
+alias vx="vim ~/.Xdefaults"
+alias sudo="sudo "
+alias s="sudo "
+alias v="vim"
+alias sv="sudo vim"
+alias saga="sudo apt-get autoremove"
+alias sagi="sudo apt-get install"
+alias sagp="sudo apt-get purge"
+alias sagr="sudo apt-get remove"
+alias sagu="sudo apt-get update"
+alias saguu="sudo apt-get update && sudo apt-get upgrade"
+alias acs="apt-cache search"
+alias q="exit"
+alias p="pianobar"
+alias wq="exit"
+alias :wq="exit"
+# alias tm="tmx 0 1"
+# alias tmx="tmx matt"
+alias tm="tmux new-session -A -s matt"
+alias u="uname -a"
+alias c="c.sh"
+alias pf="pkill firefox && firefox &"
+alias ml="sshfs matt@laptop:/home/matt/ ~/mnt/laptop"
+alias ding="paplay /usr/share/sounds/freedesktop/stereo/complete.oga"
+alias beep="paplay /usr/share/sounds/freedesktop/stereo/message-new-instant.oga"
+alias zathura="NO_AT_BRIDGE=1 zathura"
+
+function pygmentize_cat {
+  for arg in "$@"; do
+    pygmentize -g "${arg}" 2> /dev/null || /bin/cat "${arg}"
+  done
+}
+command -v pygmentize > /dev/null && alias cat=pygmentize_cat
+
+# do an ls after every successful cd
+function cd {
+    builtin cd "$@" && ll
+}
+
+extract() {
+    local c e i
+
+    (($#)) || return
+
+    for i; do
+        c=''
+        e=1
+
+        if [[ ! -r $i ]]; then
+            echo "$0: file is unreadable: \`$i'" >&2
+            continue
+        fi
+
+        case $i in
+            *.t@(gz|lz|xz|b@(2|z?(2))|a@(z|r?(.@(Z|bz?(2)|gz|lzma|xz)))))
+                   c='bsdtar xvf';;
+            *.7z)  c='7z x';;
+            *.Z)   c='uncompress';;
+            *.bz2) c='bunzip2';;
+            *.exe) c='cabextract';;
+            *.gz)  c='gunzip';;
+            *.rar) c='unrar x';;
+            *.xz)  c='unxz';;
+            *.zip) c='unzip';;
+            *)     echo "$0: unrecognized file extension: \`$i'" >&2
+                   continue;;
+        esac
+
+        command $c "$i"
+        e=$?
+    done
+
+    return $e
+}
+
+# recursive mkdir and cd if successful
+function mkcd {
+    mkdir -p "$@" && builtin cd "$@"
+}
+# PS1='[\u@\h:$(p=${PWD/#"$HOME"/~};((${#p}>30))&&echo "${p::10}…${p:(-19)}"||echo "\w")]\$ '
+if [[ ${EUID} == 0 ]] ; then
+    PS1='\[\033[01m\][ \[\033[01;31m\]\u@\h \[\033[00m\]\[\033[01m\]] \[\033[01;32m\]\w\[\033[00m\]\n\[\033[01;31m\]$\[\033[00m\]> '
+else
+    PS1='\[\033[01m\][ \[\033[01;34m\]\u@\h \[\033[00m\]\[\033[01m\]] \[\033[01;32m\]\w\[\033[00m\]\n\[\033[01;34m\]$\[\033[00m\]> '
+fi
+
