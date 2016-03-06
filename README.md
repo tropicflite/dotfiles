@@ -1,4 +1,4 @@
-tropicflite's Configuration Files
+tropicflite's config files
 ===========================
 
 These are some configuration files ("dotfiles", "rc files", ...).
