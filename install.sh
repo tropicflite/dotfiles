@@ -28,7 +28,7 @@ function create_link_for_target() {
     case "$TARGET" in
 
         bash)
-            grep "$sourcestring" $HOME/.bashrc > /dev/null || echo "$sourcestring" >> $HOME/.bashrc
+            create_link $PWD/bash/bashrc $HOME/.bashrc
             ;;
 
         git)
@@ -39,12 +39,7 @@ function create_link_for_target() {
         i3)
             mkdir -p $HOME/.i3
             create_link $PWD/i3/config $HOME/.i3/config
-            ;;
-
-        mplayer)
-            mkdir -p $HOME/.mplayer
-            create_link $PWD/mplayer/config $HOME/.mplayer/config
-            create_link $PWD/mplayer/input.conf $HOME/.mplayer/input.conf
+            create_link $PWD/i3/background.jpg $HOME/.i3/background.jpg
             ;;
 
         mutt)
@@ -61,11 +56,7 @@ function create_link_for_target() {
             ;;
 
         tmux)
-            create_link $PWD/tmux/tmux $HOME/.tmux
             create_link $PWD/tmux/tmux.conf $HOME/.tmux.conf
-            if [ -d "$HOME/bin" ] ; then
-                create_link $PWD/tmux/tmux-project-session.sh $HOME/bin/tmux-project-session
-            fi
             ;;
 
         urlview)
@@ -165,7 +156,6 @@ else
         create_link_for_target bash
         create_link_for_target git
         create_link_for_target i3
-        create_link_for_target mplayer
         create_link_for_target mutt
         create_link_for_target ranger
         create_link_for_target tmux
