@@ -14,11 +14,8 @@ Usage: install.sh [OPTIONS] TARGET
     -i | --interactive      if file(s) exist(s), ask what to do
     -f | --force            if file(s) exist(s), overwrite it/them
 
-    TARGET := { all | bash | cmus | dactyl | elinks | fish | ghci | git | i3 |
-                konsole | lesskey | luakit | mpd | mplayer | mutt | muttator |
-                pentadactyl | ranger | sublime-text-3 | telegram-cli | tig |
-                tmux | turses | urlview | vim | vimpc | vimperator | vimus |
-                vlc | xfce4 | xkb | xmonad | zathura }
+    TARGET := { all | bash | git | i3 | mutt | ranger
+                tmux | vim | vimperator | zathura }
 EOF
 }
 
@@ -59,10 +56,6 @@ function create_link_for_target() {
             create_link $PWD/tmux/tmux.conf $HOME/.tmux.conf
             ;;
 
-        urlview)
-            create_link $PWD/urlview/urlview $HOME/.urlview
-            ;;
-
         vim)
             create_link $PWD/vim/vimrc $HOME/.vimrc
             mkdir -p $HOME/.vim
@@ -71,11 +64,6 @@ function create_link_for_target() {
 
         vimperator)
             create_link $PWD/vimperator/vimperatorrc $HOME/.vimperatorrc
-            ;;
-
-        vlc)
-            mkdir -p $HOME/.config
-            create_link $PWD/vlc $HOME/.config/vlc
             ;;
 
         zathura)
@@ -159,10 +147,8 @@ else
         create_link_for_target mutt
         create_link_for_target ranger
         create_link_for_target tmux
-        create_link_for_target urlview
         create_link_for_target vim
         create_link_for_target vimperator
-        create_link_for_target vlc
         create_link_for_target zathura
     else
         create_link_for_target $1
