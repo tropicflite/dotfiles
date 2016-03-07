@@ -1,10 +1,15 @@
 tropicflite's config files
 ===========================
 
-These are some configuration files ("dotfiles", "rc files", ...).
+I'm currently using Ubuntu but these should work with any distro with minor modifications.
 
-I use git to version control and github to sync them. Feel free to have a look!
+These are some config files ("dotfiles", "rc files", ...).
 
+I use git to version control and github to sync them with a couple of helper scripts.
+
+Check the individual directories for additional READ.ME files for more instructions.
+
+Use whatever you like!
 
 ## Usage
 
