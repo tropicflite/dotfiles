@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Author: Philipp Moers <soziflip@gmail.com>
-
-
 function print_help_msg() {
     cat <<-EOF
 Create symbolic links to these files where applications want them.
@@ -23,10 +20,6 @@ EOF
 function create_link_for_target() {
     local TARGET="$1"
     case "$TARGET" in
-
-        bash)
-            create_link $PWD/bash/bashrc $HOME/.bashrc
-            ;;
 
         git)
             create_link $PWD/git/gitconfig $HOME/.gitconfig
@@ -141,7 +134,6 @@ else
     if [[ $1 = dactyl ]]; then
         create_link_for_target pentadactyl
     elif [[ $1 = all ]]; then
-        create_link_for_target bash
         create_link_for_target git
         create_link_for_target i3
         create_link_for_target mutt
