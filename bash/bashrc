@@ -51,14 +51,14 @@ shopt -s extglob
 set -o vi
 # ^l clear screen
 bind -m vi-insert "\C-l":clear-screen
-# ^p check for partial match in history 
-bind -m vi-insert "\C-p":dynamic-complete-history 
+# ^p check for partial match in history
+bind -m vi-insert "\C-p":dynamic-complete-history
 # ^n cycle through the list of partial matches
 bind -m vi-insert "\C-n":menu-complete
 
 # some nice shell options
 shopt -s checkwinsize cdspell dotglob histappend nocaseglob no_empty_cmd_completion
- 
+
 alias ..="cd .."
 alias ...="cd ../.."
 alias ....="cd ../../.."
@@ -160,4 +160,4 @@ if [[ ${EUID} == 0 ]] ; then
 else
     PS1='\[\033[01m\][ \[\033[01;34m\]\u@\h \[\033[00m\]\[\033[01m\]] \[\033[01;32m\]\w\[\033[00m\]\n\[\033[01;34m\]$\[\033[00m\]> '
 fi
-
+[ -n "$XTERM_VERSION" ] && transset-df -a >/dev/null
