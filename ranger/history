@@ -1,0 +1,60 @@
+searc
+search term
+search vimp
+rename .bashrc
+rename fonts
+vim fonts.conf
+search msm
+search ms
+search med
+search nord
+search down
+rename certs
+search oh
+rename www.png
+open_with 
+open_with feh
+rename vim.png
+rename z.png
+search wee
+search bash
+copy ~/.i3/* .
+copy
+wq
+open_w
+delete all
+delete %t
+copy %s
+paste
+copy %t
+rename  was 12config
+search config
+open_with cat
+shell touch .zprofile
+rename exit.sh
+search bin
+search
+search zsh
+search dotf
+w
+shell extract
+shell extract %s
+rename ranger.old
+search conf
+rename .i3.old
+rename i3
+search i3
+rename .i3
+search dot
+open_with hh
+open_with vim
+delete
+
+find j
+search boo
+search Pic
+fing comp
+find compt
+search 
+H
+history_go 1

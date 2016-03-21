@@ -13,7 +13,7 @@ First clone this project via
 
         cd ./dotfiles
 
-        Finally, install one or more of my configs with the installation script
+        and install one or more of my configs with the installation script
 
             ./install.sh [OPTIONS] TARGET
 
@@ -28,6 +28,8 @@ First clone this project via
 
 * `git` global git configuration
 * `i3` tiling window manager
+* `i3blocks` nice bar for i3
+* `fonts` some nice fonts for airline/powerline and also icons
 * `mutt` mail
 * `ranger` file manager
 * `tmux` I'm not currently using this but here just in case..
