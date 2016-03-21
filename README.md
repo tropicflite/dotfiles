@@ -1,4 +1,4 @@
-tropicflite's config files
+tropicflite's dotfiles
 ===========================
 
 Help yourself!
