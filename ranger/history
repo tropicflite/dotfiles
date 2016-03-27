@@ -28,7 +28,6 @@ copy %s
 paste
 copy %t
 rename  was 12config
-search config
 open_with cat
 shell touch .zprofile
 rename exit.sh
@@ -45,10 +44,7 @@ rename .i3.old
 rename i3
 search i3
 rename .i3
-search dot
 open_with hh
-open_with vim
-delete
 
 find j
 search boo
@@ -60,3 +56,29 @@ H
 history_go 1
 search medi
 search iw
+search dot
+search vimr
+rename 
+rename vimperatorrc
+rename compton.conf
+rename vimrc
+rename muttrc
+rename dircolors
+rename i3blocks.conf
+rename i3status.conf
+search dirc
+rename .dircolors
+search comp
+rename .compton.conf
+search 50
+search mut
+search config
+search tmux
+search tmu
+rename .tmux.conf
+open_with vim
+rename .i3status.conf
+rename .vimperatorrc
+delete
+rename zshrc
+rename .zshrc
