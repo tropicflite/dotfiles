@@ -1,4 +1,3 @@
-
 " much thanks to https://github.com/sflip/dotfiles/blob/master/vim/vimrc
 " vim, not vi
 set nocompatible
@@ -48,9 +47,7 @@ nnoremap <leader>ps :PluginSearch<Space>
 
 " colorschemes
 Plugin 'flazz/vim-colorschemes'
-Plugin 'zenorocha/dracula-theme', {'rtp': 'vim/'}
 Plugin 'sjl/badwolf'
-Plugin 'edkolev/promptline.vim'
 " fancy vim status line
 Plugin 'bling/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
@@ -68,7 +65,7 @@ if !exists('g:airline_symbols')
     let g:airline_symbols = {}
   endif
 let g:airline_symbols.space = "\ua0"
-let g:airline_theme='jellybeans'
+let g:airline_theme='dark'
 let g:airline#extensions#tabline#buffer_idx_mode = 1
 nmap <leader>1 <Plug>AirlineSelectTab1
 nmap <leader>2 <Plug>AirlineSelectTab2
@@ -107,18 +104,13 @@ augroup gitcommit
 augroup END
 " }}}
 
-" move seamlessly across vim and tmux windows
-Plugin 'christoomey/vim-tmux-navigator'
-
-" vim airline themes for tmux
-Plugin 'edkolev/tmuxline.vim'
-autocmd BufNewFile,BufRead * :Tmuxline
-autocmd BufReadPost,FileReadPost,BufNewFile,BufEnter * call system("tmux rename-window 'vim > " . expand("%:t") . "'")
-autocmd VimLeave * call system("tmux rename-window 'zsh'")
-
 " syntax highlighting for vimperatorrc
 Plugin 'uemurax/vimperator.vim'
 
+" toggle boolean values
+Plugin 'vim-scripts/toggle_words.vim'
+map <leader>i :ToggleWord<cr>
+'
 " quick navigation of visible area
 Plugin 'easymotion/vim-easymotion'
 " prefix
@@ -309,23 +301,25 @@ autocmd filetype php set filetype=php.html
 " }}}
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-Plugin 'benmills/vimux'
-"Vimux bindings
- " Run the current file with python
- map <leader>vr :call VimuxRunCommand("clear; python " . bufname("%"))<CR>
- map <leader>vc :call VimuxRunCommand("clear")<CR>
- " Prompt for a command to run
- map <leader>vp :VimuxPromptCommand<CR>
- " Run last command executed by VimuxRunCommand
- map <leader>vl :VimuxRunLastCommand<CR>
- " Inspect runner pane
- map <leader>vi :VimuxInspectRunner<CR>
- " Close vim tmux runner opened by VimuxRunCommand
- map <leader>vq :VimuxCloseRunner<CR>
- " Interrupt any command running in the runner pane
- map <leader>vx :VimuxInterruptRunner<CR>
- " Zoom the runner pane (use <bind-key> z to restore runner pane)
- map <leader>vz :call VimuxZoomRunner()<CR>
+" Plugin 'benmills/vimux'
+" "Vimux bindings
+"  " Run the current file with python
+"  map <leader>vr :call VimuxRunCommand("clear; python " . bufname("%"))<CR>
+"  map <leader>vc :call VimuxRunCommand("clear")<CR>
+"  " Prompt for a command to run
+"  map <leader>vp :VimuxPromptCommand<CR>
+"  " Run last command executed by VimuxRunCommand
+"  map <leader>vl :VimuxRunLastCommand<CR>
+"  " Inspect runner pane
+"  map <leader>vi :VimuxInspectRunner<CR>
+"  " Close vim tmux runner opened by VimuxRunCommand
+"  map <leader>vq :VimuxCloseRunner<CR>
+"  " Interrupt any command running in the runner pane
+"  map <leader>vx :VimuxInterruptRunner<CR>
+"  " Zoom the runner pane (use <bind-key> z to restore runner pane)
+"  map <leader>vz :call VimuxZoomRunner()<CR>
+
+  nnoremap E w:<CR>:!python % <CR>
 
 Plugin 'PotatoesMaster/i3-vim-syntax'
 Plugin 'Valloric/YouCompleteMe'
@@ -437,6 +431,12 @@ if has ('persistent_undo')
     set undoreload=10000
 endif
 
+
+" swap files are just a pain
+set nobackup
+set nowb
+set noswapfile
+
 " Set the dictionary
 set dictionary=/usr/share/dict/words
 set complete-=k complete+=k
@@ -526,7 +526,7 @@ set splitright
 " colorscheme {{{
 set t_Co=256
 set background=dark
-colorscheme dracula
+colorscheme badwolf
 highlight Normal ctermbg=none
 highlight NonText ctermbg=none
 highlight SpecialKey ctermbg=none
@@ -629,6 +629,17 @@ nnoremap <C-c> gg0VG"+y
 " paste from clipboard
 noremap  <C-v><C-v> "+p
 inoremap <C-v><C-v> <Esc>"+p
+
+" smarter pasting
+let &t_SI .= "\<Esc>[?2004h"
+let &t_EI .= "\<Esc>[?2004l"
+inoremap <special> <expr> <Esc>[200~ XTermPasteBegin()
+
+function! XTermPasteBegin()
+  set pastetoggle=<Esc>[201~
+  set paste
+  return ""
+endfunction
 
 " record macro ('complex repeat')
 nnoremap <leader>M q
