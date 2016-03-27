@@ -503,7 +503,7 @@ set startofline
 " characters to show in list mode (like whitespace)
 " and wrap symbols that are always shown
 set listchars=space:·,tab:--,extends:❯,precedes:❮
-set showbreak=↪
+let &showbreak = '↳ '
 " use 4 spaces instead of tabs
 set expandtab
 set tabstop=4
