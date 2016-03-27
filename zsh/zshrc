@@ -114,7 +114,7 @@ alias s="sudo "
 alias scp="rsync --rsh=ssh --archive --append --human-readable --progress --times"
 alias sudo="sudo "
 alias taf="curl http://weather.noaa.gov/pub/data/observations/metar/stations/CYYZ.TXT"
-alias sl="find . -type l -ls" # finds all the symlinks in a directory
+alias sl="find . -type l -ls" # finds the symlinks in a directory
 alias sv="sudo vim"
 alias u="uname -a"
 alias usb="sudo mount -o gid=users,fmask=113,dmask=002 /dev/sdb1 ~/media/usb"
