@@ -82,3 +82,5 @@ rename .vimperatorrc
 delete
 rename zshrc
 rename .zshrc
+search vim
+search fug
