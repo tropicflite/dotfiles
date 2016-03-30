@@ -1,5 +1,9 @@
 " much thanks to https://github.com/sflip/dotfiles/blob/master/vim/vimrc
-" vim, not vi
+" to set up vim on a new machine, run the install script and then
+" git clone https://github.com/gmarik/vundle.git ~/.vim/bundle/vundle
+" then from inside vim run :PluginInstall
+" you'll still have to compile YCM
+
 set nocompatible
 
 " execute external commands with zsh (fish makes problems with vundle)
