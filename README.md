@@ -1,10 +1,12 @@
-tropicflite's dotfiles
-======================
+# tropicflite's dotfiles
 
-Help yourself!
+Configuration files for my Linux setup.
 
-Soon I'll have an install script here to help you symlink everything. For now, have a look around and take whatever you like!
+## Contents
+
+- `zsh/` — zshrc (oh-my-zsh, vi-mode, syntax highlighting)
+- `nvim/` — init.lua (lazy.nvim, tokyonight, telescope, fugitive)
 
 ## Contact
 
-siminstructor@gmail.com
+nichols_matt@pm.me
