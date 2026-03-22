@@ -68,6 +68,8 @@ alias sz="source ~/.zshrc"
 # Network
 alias myip='curl -s -4 ifconfig.me && echo'
 alias ports='ss -tulanp'
+alias tsstatus='tailscale status &>/dev/null && echo "Tailscale: up" || echo "Tailscale: down"'
+alias tspeers='tailscale status'
 
 ################################################################################
 # KEY BINDINGS
