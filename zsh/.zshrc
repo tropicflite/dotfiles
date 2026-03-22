@@ -126,4 +126,13 @@ extract() {
 
     return $e
 }
+################################################################################
+# DOTFILES
+################################################################################
+function dots {
+  cd ~/dotfiles && git add -u && git commit -m "${1:-update dotfiles}" && git push
+}
+function dotl {
+  cd ~/dotfiles && git pull
+}
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
