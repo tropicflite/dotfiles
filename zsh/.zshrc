@@ -64,28 +64,9 @@ alias vv="nvim ~/.config/nvim/init.lua"
 alias vz="nvim ~/.zshrc"
 alias sz="source ~/.zshrc"
 
-# ProtonVPN
-alias vpnon='protonvpn connect'
-alias vpnoff='protonvpn disconnect'
-alias vpnstatus='ip link show proton0 &>/dev/null && echo "ProtonVPN: connected" || echo "ProtonVPN: disconnected"'
-
-# Tailscale
-alias tson='sudo service tailscaled start && sudo tailscale up'
-alias tsoff='sudo tailscale down && sudo service tailscaled stop'
-alias tsstatus='tailscale status &>/dev/null && echo "Tailscale: up" || echo "Tailscale: down"'
-
-# Trackpad on/off
-alias tpon='xinput enable 15 && echo "Touchpad enabled"'
-alias tpoff='xinput disable 15 && echo "Touchpad disabled"'
-
 # Network
-alias netstatus='vpnstatus && tsstatus'
 alias myip='curl -s -4 ifconfig.me && echo'
 alias ports='ss -tulanp'
-
-# Remote
-alias server='TERM=xterm-256color ssh -p 28901 matt@100.83.216.18'
-alias fb='xdg-open https://debian.tailc9871d.ts.net'
 
 ################################################################################
 # KEY BINDINGS
@@ -145,6 +126,4 @@ extract() {
 
     return $e
 }
-
-export PATH="$HOME/.local/kitty.app/bin:$PATH"
-export PATH="$HOME/.npm-global/bin:$PATH"
+[ -f ~/.zshrc.local ] && source ~/.zshrc.local
