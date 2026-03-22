@@ -62,6 +62,7 @@ alias vim=nvim
 alias sv="sudo nvim"
 alias vv="nvim ~/.config/nvim/init.lua"
 alias vz="nvim ~/.zshrc"
+alias vzl="nvim ~/.zshrc.local"
 alias sz="source ~/.zshrc"
 
 # Network
