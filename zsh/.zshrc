@@ -54,7 +54,7 @@ alias acs="apt-cache search"
 alias saa="sudo apt autoremove"
 alias sai="sudo apt install"
 alias sar="sudo apt remove"
-alias sauu="sudo apt update && sudo apt upgrade"
+alias sauu="sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y"
 
 # Neovim
 alias v=nvim
