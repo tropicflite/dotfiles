@@ -1,0 +1,17 @@
+            # Phone-specific config
+MACHINE_NAME="phone"
+PROMPT="%{$fg[$NCOLOR]%}%Bmatt@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+# Package management (Termux)
+alias pks="pkg search"
+alias pki="pkg install"
+alias pku="pkg upgrade"
+# Tailscale
+alias tson='sudo tailscale up'
+alias tsoff='sudo tailscale down'
+# Network
+alias netstatus='tsstatus'
+# Connections
+alias laptop='TERM=xterm-256color ssh matt@laptop'
+alias server='TERM=xterm-256color ssh -p 28901 matt@server'
+# Reload
+alias szl='source ~/.zshrc.local'
