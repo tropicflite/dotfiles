@@ -1,0 +1,18 @@
+                             # Server-specific config
+MACHINE_NAME="server"
+PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+# Tailscale
+alias tson='sudo tailscale up --hostname=server'
+alias tsoff='sudo tailscale down'
+# Network
+alias netstatus='tsstatus'
+# Connections
+alias laptop='TERM=xterm-256color ssh matt@laptop'
+alias phone='ssh -p 8022 matt@phone'
+alias fb='xdg-open https://server'
+# FileBrowser / Caddy
+alias fbstart='sudo systemctl start filebrowser'
+alias fbstatus='sudo systemctl status filebrowser'
+alias caddyreload='sudo systemctl reload caddy'
+# Reload
+alias szl='source ~/.zshrc.local'
