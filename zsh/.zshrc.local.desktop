@@ -1,0 +1,20 @@
+# Desktop-specific config
+MACHINE_NAME="desktop"
+PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+
+# Tailscale
+alias tson='sudo service tailscaled start && sudo tailscale up'
+alias tsoff='sudo tailscale down && sudo service tailscaled stop'
+alias tsstatus='tailscale status &>/dev/null && echo "Tailscale: up" || echo "Tailscale: down"'
+
+# Connections
+alias laptop='TERM=xterm-256color ssh matt@laptop'
+alias server='TERM=xterm-256color ssh -p 28901 matt@server'
+alias phone='ssh -p 8022 matt@phone'
+alias fb='xdg-open https://server'
+
+# PATH
+export PATH="$HOME/.npm-global/bin:$PATH"
+
+# Reload
+alias szl='source ~/.zshrc.local'
