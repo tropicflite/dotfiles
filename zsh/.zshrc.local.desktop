@@ -8,7 +8,7 @@ alias tsoff='sudo tailscale down && sudo service tailscaled stop'
 alias tsstatus='tailscale status &>/dev/null && echo "Tailscale: up" || echo "Tailscale: down"'
 
 # Connections
-alias desktop='"ssh simin@desktop"'
+alias desktop='ssh simin@desktop'
 alias fb='xdg-open https://server'
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias phone='ssh -p 8022 matt@phone'
