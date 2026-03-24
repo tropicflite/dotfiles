@@ -137,4 +137,6 @@ function dotp {
 function dotl {
   cd ~/dotfiles && git pull
 }
+# Git pull on login
+(dotl > /dev/null 2>&1 &)
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
