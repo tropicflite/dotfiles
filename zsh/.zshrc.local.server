@@ -7,12 +7,16 @@ alias tsoff='sudo tailscale down'
 # Network
 alias netstatus='tsstatus'
 # Connections
+alias desktop='ssh simin@desktop'
+alias fb='xdg-open https://server'
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias phone='ssh -p 8022 matt@phone'
-alias fb='xdg-open https://server'
+alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 # FileBrowser / Caddy
 alias fbstart='sudo systemctl start filebrowser'
 alias fbstatus='sudo systemctl status filebrowser'
 alias caddyreload='sudo systemctl reload caddy'
 # Reload
 alias szl='source ~/.zshrc.local'
+
+alias desktop='ssh simin@desktop'
