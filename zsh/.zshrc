@@ -44,7 +44,6 @@ alias l="ls --color=auto --group-directories-first"
 alias ll="ls -aF --color=auto --group-directories-first"
 alias lll="ls -aFl --color=auto --group-directories-first"
 alias sl="find . -type l -ls"
-alias scp="rsync --rsh=ssh --archive --append --human-readable --progress --times"
 alias rm="rm"
 alias df='df -h'
 alias du='du -h --max-depth=1'
