@@ -133,9 +133,11 @@ extract() {
 ################################################################################
 function dotp {
   cd ~/dotfiles && git add -u && git commit -m "${1:-update dotfiles}" && git push
+  cd ~/
 }
 function dotl {
   cd ~/dotfiles && git pull
+  cd ~/
 }
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
