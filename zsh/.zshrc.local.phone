@@ -11,7 +11,10 @@ alias tsoff='sudo tailscale down'
 # Network
 alias netstatus='tsstatus'
 # Connections
+alias desktop='ssh simin@desktop'
+alias fb='xdg-open https://server'
 alias laptop='TERM=xterm-256color ssh matt@laptop'
+alias phone='ssh -p 8022 matt@phone'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 # Reload
 alias szl='source ~/.zshrc.local'
