@@ -14,7 +14,6 @@ alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 # FileBrowser / Caddy
 alias fbstart='sudo systemctl start filebrowser'
 alias fbstatus='sudo systemctl status filebrowser'
-alias caddyreload='sudo systemctl reload caddy'
 # Reload
 alias szl='source ~/.zshrc.local'
 
