@@ -24,6 +24,7 @@ alias ...="cd ../.."
 alias ....="cd ../../.."
 
 # Shortcuts
+alias bat="batcat"
 alias c="clear"
 alias cdc="cd && clear"
 alias h="history"
