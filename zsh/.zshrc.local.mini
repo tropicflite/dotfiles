@@ -1,0 +1,25 @@
+            # Mini-specific config
+MACHINE_NAME="mini"
+PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+# ProtonVPN
+alias vpnon='protonvpn connect'
+alias vpnoff='protonvpn disconnect'
+alias vpnstatus='ip link show proton0 &>/dev/null && echo "ProtonVPN: connected" || echo "ProtonVPN: disconnected"'
+# Tailscale
+alias tson='sudo service tailscaled start && sudo tailscale up'
+alias tsoff='sudo tailscale down && sudo service tailscaled stop'
+# Trackpad
+alias tpon='xinput enable 15 && echo "Touchpad enabled"'
+alias tpoff='xinput disable 15 && echo "Touchpad disabled"'
+# Network
+alias netstatus='vpnstatus && tsstatus'
+# Connections
+alias desktop='ssh simin@desktop'
+alias laptop='TERM=xterm-256color ssh matt@laptop'
+alias phone='ssh -p 8022 matt@phone'
+alias server='TERM=xterm-256color ssh -p 28901 matt@server'
+# PATH
+export PATH="$HOME/.local/kitty.app/bin:$PATH"
+export PATH="$HOME/.npm-global/bin:$PATH"
+# Reload
+alias szl='source ~/.zshrc.local'
