@@ -1,6 +1,6 @@
                              # Server-specific config
 MACHINE_NAME="server"
-PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%59(!.#.$) "
 # Tailscale
 alias tson='sudo tailscale up --hostname=server'
 alias tsoff='sudo tailscale down'
@@ -8,9 +8,10 @@ alias tsoff='sudo tailscale down'
 alias netstatus='tsstatus'
 # Connections
 alias desktop='ssh simin@desktop'
-alias laptop='TERM=xterm-256color ssh matt@laptop'
-alias phone='ssh -p 8022 matt@phone'
+alias mini='TERM=xterm-256color ssh matt@100.73.76.59'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
+alias laptop='TERM=xterm-256color ssh matt@100.120.69.120'
+alias phone='ssh -p 8022 matt@100.104.57.1'
 # FileBrowser / Caddy
 alias fbstart='sudo systemctl start filebrowser'
 alias fbstatus='sudo systemctl status filebrowser'
@@ -18,3 +19,4 @@ alias fbstatus='sudo systemctl status filebrowser'
 alias szl='source ~/.zshrc.local'
 
 alias desktop='ssh simin@desktop'
+echo "=== LOADING .ZSHRC.LOCAL.SERVER ==="
