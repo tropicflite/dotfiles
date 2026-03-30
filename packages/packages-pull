@@ -6,9 +6,12 @@ REMOVED_FILE="$DOTFILES_DIR/packages/packages-removed.txt"
 
 echo "==> Syncing packages..."
 
-# Install missing packages
+# Install missing packages (skip anything in removed list)
 while IFS= read -r pkg || [[ -n "$pkg" ]]; do
   [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+  if grep -qx "$pkg" "$REMOVED_FILE" 2>/dev/null; then
+    continue
+  fi
   if ! dpkg -s "$pkg" &>/dev/null; then
     echo "Installing: $pkg"
     sudo apt install -y "$pkg"
