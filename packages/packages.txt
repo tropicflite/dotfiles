@@ -8,7 +8,6 @@ gcc
 git
 htop
 jq
-kitty
 lzma
 make
 mc
