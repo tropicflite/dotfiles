@@ -1,0 +1,11 @@
+# Phone (Termux) specific ignores
+feh
+solaar
+adb
+proton-vpn-cli
+build-essential
+gcc
+make
+sshfs
+xclip
+btop
