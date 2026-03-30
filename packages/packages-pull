@@ -1,0 +1,27 @@
+#!/bin/bash
+
+DOTFILES_DIR="$HOME/dotfiles"
+PACKAGES_FILE="$DOTFILES_DIR/packages/packages.txt"
+REMOVED_FILE="$DOTFILES_DIR/packages/packages-removed.txt"
+
+echo "==> Syncing packages..."
+
+# Install missing packages
+while IFS= read -r pkg || [[ -n "$pkg" ]]; do
+  [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+  if ! dpkg -s "$pkg" &>/dev/null; then
+    echo "Installing: $pkg"
+    sudo apt install -y "$pkg"
+  fi
+done < "$PACKAGES_FILE"
+
+# Remove blacklisted packages
+while IFS= read -r pkg || [[ -n "$pkg" ]]; do
+  [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+  if dpkg -s "$pkg" &>/dev/null; then
+    echo "Removing: $pkg"
+    sudo apt remove -y "$pkg"
+  fi
+done < "$REMOVED_FILE"
+
+echo "==> Done."

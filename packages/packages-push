@@ -1,0 +1,38 @@
+#!/bin/bash
+
+DOTFILES_DIR="$HOME/dotfiles"
+PACKAGES_FILE="$DOTFILES_DIR/packages/packages.txt"
+
+echo "==> Checking for locally installed packages not in master list..."
+
+NEW_PKGS=()
+while IFS= read -r pkg || [[ -n "$pkg" ]]; do
+  [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+  if ! grep -qx "$pkg" "$PACKAGES_FILE"; then
+    NEW_PKGS+=("$pkg")
+  fi
+done < <(apt-mark showmanual)
+
+if [[ ${#NEW_PKGS[@]} -eq 0 ]]; then
+  echo "==> Nothing new to add."
+  exit 0
+fi
+
+echo ""
+echo "The following packages are installed locally but not in the master list:"
+for pkg in "${NEW_PKGS[@]}"; do
+  echo "  $pkg"
+done
+
+echo ""
+read -rp "Add all of these to the master list? [y/N] " confirm
+if [[ "$confirm" =~ ^[Yy]$ ]]; then
+  for pkg in "${NEW_PKGS[@]}"; do
+    echo "$pkg" >> "$PACKAGES_FILE"
+  done
+  sort -u "$PACKAGES_FILE" -o "$PACKAGES_FILE"
+  cd "$DOTFILES_DIR" && git add -A && git commit -m "packages-push: add new packages from $(hostname)" && git push
+  echo "==> Master list updated and pushed."
+else
+  echo "==> No changes made."
+fi

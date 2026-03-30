@@ -1,0 +1,27 @@
+#!/bin/bash
+
+DOTFILES_DIR="$HOME/dotfiles"
+PACKAGES_FILE="$DOTFILES_DIR/packages/packages.txt"
+REMOVED_FILE="$DOTFILES_DIR/packages/packages-removed.txt"
+
+if [[ -z "$1" ]]; then
+  echo "Usage: packages-remove <packagename>"
+  exit 1
+fi
+
+PKG="$1"
+
+# Remove from packages.txt if present
+sed -i "/^${PKG}$/d" "$PACKAGES_FILE"
+
+# Add to packages-removed.txt if not already there
+if ! grep -qx "$PKG" "$REMOVED_FILE"; then
+  echo "$PKG" >> "$REMOVED_FILE"
+  sort -u "$REMOVED_FILE" -o "$REMOVED_FILE"
+fi
+
+# Uninstall locally
+sudo apt remove -y "$PKG"
+
+cd "$DOTFILES_DIR" && git add -A && git commit -m "packages-remove: remove ${PKG}" && git push
+echo "==> $PKG removed locally and added to removed list."
