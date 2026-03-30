@@ -19,4 +19,3 @@ alias fbstatus='sudo systemctl status filebrowser'
 alias szl='source ~/.zshrc.local'
 
 alias desktop='ssh simin@desktop'
-echo "=== LOADING .ZSHRC.LOCAL.SERVER ==="
