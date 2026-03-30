@@ -133,7 +133,7 @@ extract() {
 # DOTFILES
 ################################################################################
 function dotp {
-  cd ~/dotfiles && git add -u && git commit -m "${1:-update dotfiles}" && git push
+  cd ~/dotfiles && git add -A && git commit -m "${1:-update dotfiles}" && git push
   cd ~/
 }
 function dotl {
