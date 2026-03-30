@@ -19,3 +19,4 @@ export PATH="$HOME/.npm-global/bin:$PATH"
 
 # Reload
 alias szl='source ~/.zshrc.local'
+source /etc/default/locale
