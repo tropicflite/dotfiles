@@ -3,13 +3,17 @@
 DOTFILES_DIR="$HOME/dotfiles"
 PACKAGES_FILE="$DOTFILES_DIR/packages/packages.txt"
 REMOVED_FILE="$DOTFILES_DIR/packages/packages-removed.txt"
+IGNORE_FILE="$DOTFILES_DIR/packages/packages-ignore.$(hostname)"
 
 echo "==> Syncing packages..."
 
-# Install missing packages (skip anything in removed list)
+# Install missing packages
 while IFS= read -r pkg || [[ -n "$pkg" ]]; do
   [[ -z "$pkg" || "$pkg" == \#* ]] && continue
   if grep -qx "$pkg" "$REMOVED_FILE" 2>/dev/null; then
+    continue
+  fi
+  if [[ -f "$IGNORE_FILE" ]] && grep -qx "$pkg" "$IGNORE_FILE" 2>/dev/null; then
     continue
   fi
   if ! dpkg -s "$pkg" &>/dev/null; then
