@@ -18,6 +18,7 @@ neovim-runtime
 openssh-client
 openssh-server
 proton-vpn-cli
+ranger
 rsync
 sshfs
 tailscale

@@ -1,38 +1,31 @@
 #!/bin/bash
-
 DOTFILES_DIR="$HOME/dotfiles"
 PACKAGES_FILE="$DOTFILES_DIR/packages/packages.txt"
 
-echo "==> Checking for locally installed packages not in master list..."
+if [[ -z "$1" ]]; then
+  echo "Usage: packages-push <packagename>"
+  exit 1
+fi
 
-NEW_PKGS=()
-while IFS= read -r pkg || [[ -n "$pkg" ]]; do
-  [[ -z "$pkg" || "$pkg" == \#* ]] && continue
-  if ! grep -qx "$pkg" "$PACKAGES_FILE"; then
-    NEW_PKGS+=("$pkg")
-  fi
-done < <(apt-mark showmanual)
+PKG="$1"
 
-if [[ ${#NEW_PKGS[@]} -eq 0 ]]; then
-  echo "==> Nothing new to add."
+# Check if actually installed
+if ! dpkg -s "$PKG" &>/dev/null; then
+  echo "==> Error: $PKG is not installed locally."
+  exit 1
+fi
+
+# Check if already in master list
+if grep -qx "$PKG" "$PACKAGES_FILE"; then
+  echo "==> $PKG is already in the master list."
   exit 0
 fi
 
-echo ""
-echo "The following packages are installed locally but not in the master list:"
-for pkg in "${NEW_PKGS[@]}"; do
-  echo "  $pkg"
-done
+# Remove from removed list if present
+sed -i "/^${PKG}$/d" "$DOTFILES_DIR/packages/packages-removed.txt"
 
-echo ""
-read -rp "Add all of these to the master list? [y/N] " confirm
-if [[ "$confirm" =~ ^[Yy]$ ]]; then
-  for pkg in "${NEW_PKGS[@]}"; do
-    echo "$pkg" >> "$PACKAGES_FILE"
-  done
-  sort -u "$PACKAGES_FILE" -o "$PACKAGES_FILE"
-  cd "$DOTFILES_DIR" && git add -A && git commit -m "packages-push: add new packages from $(hostname)" && git push
-  echo "==> Master list updated and pushed."
-else
-  echo "==> No changes made."
-fi
+echo "$PKG" >> "$PACKAGES_FILE"
+sort -u "$PACKAGES_FILE" -o "$PACKAGES_FILE"
+
+cd "$DOTFILES_DIR" && git add -A && git commit -m "packages-push: add ${PKG} from $(hostname)" && git push
+echo "==> $PKG added to master list and pushed."
