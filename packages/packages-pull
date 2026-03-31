@@ -1,11 +1,25 @@
 #!/bin/bash
-
 DOTFILES_DIR="$HOME/dotfiles"
 PACKAGES_FILE="$DOTFILES_DIR/packages/packages.txt"
 REMOVED_FILE="$DOTFILES_DIR/packages/packages-removed.txt"
-IGNORE_FILE="$DOTFILES_DIR/packages/packages-ignore.$(hostname)"
 
-echo "==> Syncing packages..."
+# Detect Termux
+if [[ -n "$PREFIX" && "$PREFIX" == *termux* ]]; then
+  MACHINE="phone"
+  SUDO=""
+  PKG_CHECK="dpkg -s"
+  PKG_INSTALL="apt install -y"
+  PKG_REMOVE="apt remove -y"
+else
+  MACHINE="$(hostname)"
+  SUDO="sudo"
+  PKG_CHECK="dpkg -s"
+  PKG_INSTALL="sudo apt install -y"
+  PKG_REMOVE="sudo apt remove -y"
+fi
+
+IGNORE_FILE="$DOTFILES_DIR/packages/packages-ignore.$MACHINE"
+echo "==> Syncing packages on $MACHINE..."
 
 # Install missing packages
 while IFS= read -r pkg || [[ -n "$pkg" ]]; do
@@ -16,18 +30,18 @@ while IFS= read -r pkg || [[ -n "$pkg" ]]; do
   if [[ -f "$IGNORE_FILE" ]] && grep -qx "$pkg" "$IGNORE_FILE" 2>/dev/null; then
     continue
   fi
-  if ! dpkg -s "$pkg" &>/dev/null; then
+  if ! $PKG_CHECK "$pkg" &>/dev/null; then
     echo "Installing: $pkg"
-    sudo apt install -y "$pkg"
+    $PKG_INSTALL "$pkg"
   fi
 done < "$PACKAGES_FILE"
 
 # Remove blacklisted packages
 while IFS= read -r pkg || [[ -n "$pkg" ]]; do
   [[ -z "$pkg" || "$pkg" == \#* ]] && continue
-  if dpkg -s "$pkg" &>/dev/null; then
+  if $PKG_CHECK "$pkg" &>/dev/null; then
     echo "Removing: $pkg"
-    sudo apt remove -y "$pkg"
+    $PKG_REMOVE "$pkg"
   fi
 done < "$REMOVED_FILE"
 
