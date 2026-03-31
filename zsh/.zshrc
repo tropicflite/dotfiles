@@ -145,8 +145,3 @@ function dotl {
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
-# Load Xmodmap for Caps Lock remapping
-# In ~/.bashrc or ~/.zshrc
-if [ -n "$DISPLAY" ]; then
-    xmodmap ~/.Xmodmap
-fi

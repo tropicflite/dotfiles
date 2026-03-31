@@ -9,8 +9,8 @@ alias vpnstatus='ip link show proton0 &>/dev/null && echo "ProtonVPN: connected"
 alias tson='sudo service tailscaled start && sudo tailscale up'
 alias tsoff='sudo tailscale down && sudo service tailscaled stop'
 # Trackpad
-alias tpon='xinput enable 15 && echo "Touchpad enabled"'
-alias tpoff='xinput disable 15 && echo "Touchpad disabled"'
+alias tpoff='xinput disable "SYNA7501:00 06CB:1359" && xinput disable "SynPS/2 Synaptics TouchPad" && echo "Touchpad disabled"'
+alias tpon='xinput enable "SYNA7501:00 06CB:1359" && xinput enable "SynPS/2 Synaptics TouchPad" && echo "Touchpad enabled"'
 # Network
 alias netstatus='vpnstatus && tsstatus'
 # Connections
