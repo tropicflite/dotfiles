@@ -1,3 +1,10 @@
 # Server-specific package ignores
 ranger
 kitty
+feh
+xclip
+proton-vpn-cli
+solaar
+adb
+nala
+sshfs
