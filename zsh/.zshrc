@@ -146,4 +146,7 @@ function dotl {
 (dotl > /dev/null 2>&1 &)
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 # Load Xmodmap for Caps Lock remapping
-xmodmap ~/.Xmodmap
+# In ~/.bashrc or ~/.zshrc
+if [ -n "$DISPLAY" ]; then
+    xmodmap ~/.Xmodmap
+fi
