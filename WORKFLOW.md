@@ -55,3 +55,10 @@ These are not tracked by apt and must be handled separately in the init script:
 | desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale |
 | phone | GrapheneOS (Termux) | — | Pending setup |
 | server | Debian 13 trixie | matt | Excluded from package sync |
+
+## Termux (Phone) Notes
+
+- Termux hostname is `localhost` — the sync scripts detect Termux via `$PREFIX` and use `phone` as the machine name instead
+- Termux does not use `sudo` — scripts handle this automatically
+- Termux has its own package repo; many packages from the master list are in `packages-ignore.phone`
+- Package manager is `apt` but packages are Termux-specific builds, not Debian/Ubuntu packages
