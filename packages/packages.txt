@@ -28,4 +28,5 @@ unzip
 wget
 xclip
 xz-utils
+zathura
 zsh
