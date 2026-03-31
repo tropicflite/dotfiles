@@ -24,3 +24,4 @@ export PATH="$HOME/.local/kitty.app/bin:$PATH"
 export PATH="$HOME/.npm-global/bin:$PATH"
 # Reload
 alias szl='source ~/.zshrc.local'
+export PATH="$HOME/.local/kitty.app/bin:$PATH"
