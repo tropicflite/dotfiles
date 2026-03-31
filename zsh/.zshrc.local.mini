@@ -25,3 +25,4 @@ export PATH="$HOME/.npm-global/bin:$PATH"
 alias szl='source ~/.zshrc.local'
 
 export LANG=en_CA.UTF-8
+export PATH="$HOME/.local/kitty.app/bin:$PATH"
