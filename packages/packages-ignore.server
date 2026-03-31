@@ -8,3 +8,5 @@ solaar
 adb
 nala
 sshfs
+build-essential
+gcc
