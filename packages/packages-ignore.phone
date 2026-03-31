@@ -26,3 +26,5 @@ tree-sitter-lua-src
 wget
 xclip
 xz-utils
+zathura
+mpv

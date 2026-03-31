@@ -10,3 +10,5 @@ nala
 sshfs
 build-essential
 gcc
+zathura
+mpv
