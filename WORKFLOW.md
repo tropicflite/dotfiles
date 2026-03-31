@@ -1,0 +1,57 @@
+# Dotfiles & Package Sync Workflow
+
+## Installing a New Program
+
+1. `sudo apt install <package>` on laptop
+2. `cd ~/dotfiles/packages && ./packages-push <package>` to add to master list and push
+3. Configure the program how you like on laptop
+4. Copy the config file into the dotfiles repo (e.g. `cp ~/.config/ranger/rc.conf ~/dotfiles/ranger/`)
+5. Replace the original with a symlink (e.g. `ln -sf ~/dotfiles/ranger/rc.conf ~/.config/ranger/rc.conf`)
+6. `dotp` to commit and push
+7. On each other machine: `dotl` then `cd ~/dotfiles/packages && ./packages-pull`
+8. Create the config symlink manually on each machine (first time only)
+9. If a machine shouldn't have the package, add it to `packages/packages-ignore.<machine>` and commit/push
+
+## Removing a Program Globally
+
+1. `cd ~/dotfiles/packages && ./packages-remove <package>`
+2. This removes it locally, adds it to `packages-removed.txt`, and pushes
+3. On each other machine: `dotl` then `./packages-pull` to uninstall it
+
+## Syncing a Machine
+```bash
+dotl && cd ~/dotfiles/packages && ./packages-pull
+```
+
+## Package Files Reference
+
+| File | Purpose |
+|------|---------|
+| `packages/packages.txt` | Master list of packages for all machines |
+| `packages/packages-removed.txt` | Packages to be removed from all machines |
+| `packages/packages-ignore.<machine>` | Per-machine exclusions |
+| `packages/packages-push` | Add a package to the master list |
+| `packages/packages-pull` | Sync this machine to the master list |
+| `packages/packages-remove` | Remove a package globally |
+
+## Non-apt Installs (manual/curl)
+
+These are not tracked by apt and must be handled separately in the init script:
+
+- **oh-my-zsh** — curl install script
+- **zsh-autosuggestions / zsh-syntax-highlighting** — cloned into oh-my-zsh custom plugins
+- **Neovim AppImage** (mini only) — downloaded from GitHub releases
+- **Nerd Fonts** — downloaded and installed to `~/.local/share/fonts`
+- **Tailscale** (non-MX machines) — `curl -fsSL https://tailscale.com/install.sh | sh`
+- **fastfetch** (Ubuntu/desktop) — PPA: `sudo add-apt-repository ppa:zhangsongcui3371/fastfetch`
+- **Kitty** (laptop/mini) — downloaded from GitHub releases
+
+## Machine Reference
+
+| Hostname | OS | Username | Notes |
+|----------|----|----------|-------|
+| laptop | MX Linux 25.1 | matt | Reference machine |
+| mini | MX Linux 25.1 | matt | No AVX, SysVinit, Bay Trail |
+| desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale |
+| phone | GrapheneOS (Termux) | — | Pending setup |
+| server | Debian 13 trixie | matt | Excluded from package sync |
