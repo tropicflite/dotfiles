@@ -12,6 +12,7 @@ kitty
 lzma
 make
 mc
+mpv
 nala
 neovim
 neovim-runtime
