@@ -31,7 +31,7 @@ alias h="history"
 alias q="exit"
 alias :q="exit"
 alias wq="exit"
-alias :wq="exit"
+alias :wq='kitty @ close-window'
 alias u="uname -a"
 alias s="sudo "
 alias sudo="sudo "
@@ -144,3 +144,5 @@ function dotl {
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
+# Load Xmodmap for Caps Lock remapping
+xmodmap ~/.Xmodmap
