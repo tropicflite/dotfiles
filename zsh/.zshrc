@@ -32,7 +32,6 @@ alias h="history"
 alias q="exit"
 alias :q="exit"
 alias wq="exit"
-alias :wq='kitty @ close-window'
 alias u="uname -a"
 alias s="sudo "
 alias sudo="sudo "
