@@ -1,2 +1,11 @@
 clear lock
 keycode 66 = Escape
+
+! Remove right Alt from the Alt (mod1) group
+remove mod1 = Alt_R
+
+! Remap the keycode for right Alt to Super_R
+keycode 108 = Super_R
+
+! Add Super_R to the Super (mod4) group
+add mod4 = Super_R
