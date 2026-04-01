@@ -206,3 +206,13 @@ bar {
 
 # Screenshot
 bindsym Print exec flameshot gui
+
+# Gaps configuration
+gaps inner 10
+gaps outer 5
+smart_gaps on
+
+# Adjust gaps with keyboard
+bindsym $mod+Shift+minus gaps inner current minus 5
+bindsym $mod+Shift+equal gaps inner current plus 5
+bindsym $mod+Shift+0 gaps inner current set 0
