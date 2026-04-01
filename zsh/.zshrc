@@ -22,6 +22,7 @@ export EDITOR='nvim'
 alias ..="cd .."
 alias ...="cd ../.."
 alias ....="cd ../../.."
+alias cdd="cd ~/dotfiles"
 
 # Shortcuts
 command -v batcat &>/dev/null && alias bat=batcat
@@ -59,12 +60,17 @@ alias sauu="sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y"
 # Neovim
 alias v=nvim
 alias v3="nvim ~/.config/i3/config"
+alias b3="bat ~/.config/i3/config"
 alias vk="nvim ~/.config/kitty/kitty.conf"
+alias bk="bat ~/.config/kitty/kitty.conf"
 alias vim=nvim
 alias sv="sudo nvim"
 alias vv="nvim ~/.config/nvim/init.lua"
+alias bv="bat ~/.config/nvim/init.lua"
 alias vz="nvim ~/.zshrc"
+alias bz="bat ~/.zshrc"
 alias vzl="nvim ~/.zshrc.local"
+alias bzl="bat ~/.zshrc.local"
 alias sz="source ~/.zshrc"
 
 # Network

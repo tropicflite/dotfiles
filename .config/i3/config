@@ -23,7 +23,7 @@ font pango:monospace 10
 # https://wiki.archlinux.org/index.php/XDG_Autostart
 exec --no-startup-id dex --autostart --environment i3
 exec_always --no-startup-id picom
-exec_always --no-startup-id unclutter --timeout 3 --fork
+exec_always --no-startup-id unclutter --timeout 2 --jitter 5 --show-on-keypress --fork
 
 # The combination of xss-lock, nm-applet and pactl is a popular choice, so
 # they are included here as an example. Modify as you see fit.
