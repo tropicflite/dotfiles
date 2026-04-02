@@ -16,6 +16,5 @@ alias netstatus='vpnstatus && tsstatus'
 # Reload local file
 alias szl='source ~/.zshrc.local'
 
-# PATH (machine-specific)
-export PATH="$HOME/.local/kitty.app/bin:$PATH"
-export PATH="$HOME/.npm-global/bin:$PATH"
+# npm (only if installed locally)
+[ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"

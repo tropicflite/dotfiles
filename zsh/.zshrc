@@ -7,6 +7,12 @@ ZSH_THEME="clean"
 # Plugins
 plugins=(vi-mode web-search zsh-syntax-highlighting zsh-autosuggestions)
 
+# Base PATH
+export PATH=$HOME/bin:$HOME/dotfiles/packages:/usr/local/bin:$PATH
+
+# Kitty (if installed)
+[ -d "$HOME/.local/kitty.app/bin" ] && export PATH="$HOME/.local/kitty.app/bin:$PATH"
+
 source $ZSH/oh-my-zsh.sh
 
 # Editor
@@ -82,10 +88,12 @@ if command -v tailscale &>/dev/null; then
     alias tsstatus='tailscale status &>/dev/null && echo "Tailscale: up" || echo "Tailscale: down"'
     alias tspeers='tailscale status'
 fi
-# ProtonVPN
-alias vpnon='protonvpn connect'
-alias vpnoff='protonvpn disconnect'
-alias vpnstatus='ip link show proton0 &>/dev/null && echo "ProtonVPN: connected" || echo "ProtonVPN: disconnected"'
+# ProtonVPN (if installed)
+if command -v protonvpn &>/dev/null; then
+    alias vpnon='protonvpn connect'
+    alias vpnoff='protonvpn disconnect'
+    alias vpnstatus='ip link show proton0 &>/dev/null && echo "ProtonVPN: connected" || echo "ProtonVPN: disconnected"'
+fi
 
 # Connections (SSH aliases)
 alias desktop='ssh simin@desktop'
@@ -166,8 +174,3 @@ function dotl {
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
-# Base PATH
-export PATH=$HOME/bin:$HOME/dotfiles/packages:/usr/local/bin:$PATH
-
-# Kitty (if installed)
-[ -d "$HOME/.local/kitty.app/bin" ] && export PATH="$HOME/.local/kitty.app/bin:$PATH"
