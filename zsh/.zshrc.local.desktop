@@ -1,22 +1,15 @@
-# Desktop-specific config
+# Desktop-specific config (WSL2)
 MACHINE_NAME="desktop"
 PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
 
-# Tailscale
-alias tson='sudo service tailscaled start && sudo tailscale up'
-alias tsoff='sudo tailscale down && sudo service tailscaled stop'
-alias tsstatus='tailscale status &>/dev/null && echo "Tailscale: up" || echo "Tailscale: down"'
+# Tailscale (runs on Windows, not in WSL2)
+alias tsstatus='echo "Tailscale: check Windows system tray"'
 
-# Connections
-alias mini="TERM=xterm-256color ssh matt@mini"
-alias desktop='ssh simin@desktop'
-alias laptop='TERM=xterm-256color ssh matt@laptop'
-alias phone='ssh -p 8022 matt@phone'
-alias server='TERM=xterm-256color ssh -p 28901 matt@server'
+# PATH (machine-specific)
+[ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"
 
-# PATH
-export PATH="$HOME/.npm-global/bin:$PATH"
-
-# Reload
+# Reload local file
 alias szl='source ~/.zshrc.local'
+
+# Desktop-specific locale
 source /etc/default/locale
