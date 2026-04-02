@@ -7,12 +7,13 @@ ZSH_THEME="clean"
 # Plugins
 plugins=(vi-mode web-search zsh-syntax-highlighting zsh-autosuggestions)
 
-export PATH=$HOME/bin:$HOME/dotfiles/packages:/usr/local/bin:$PATH
-
 source $ZSH/oh-my-zsh.sh
 
 # Editor
 export EDITOR='nvim'
+
+# Locale
+export LANG=en_CA.UTF-8
 
 ################################################################################
 # ALIASES
@@ -78,6 +79,17 @@ alias ports='ss -tulanp'
 alias tsstatus='tailscale status &>/dev/null && echo "Tailscale: up" || echo "Tailscale: down"'
 alias tspeers='tailscale status'
 
+# ProtonVPN
+alias vpnon='protonvpn connect'
+alias vpnoff='protonvpn disconnect'
+alias vpnstatus='ip link show proton0 &>/dev/null && echo "ProtonVPN: connected" || echo "ProtonVPN: disconnected"'
+
+# Connections (SSH aliases)
+alias desktop='ssh simin@desktop'
+alias laptop='TERM=xterm-256color ssh matt@laptop'
+alias phone='ssh -p 8022 matt@phone'
+alias server='TERM=xterm-256color ssh -p 28901 matt@server'
+
 ################################################################################
 # KEY BINDINGS
 ################################################################################
@@ -136,6 +148,7 @@ extract() {
 
     return $e
 }
+
 ################################################################################
 # DOTFILES
 ################################################################################
@@ -150,3 +163,8 @@ function dotl {
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
+# Base PATH
+export PATH=$HOME/bin:$HOME/dotfiles/packages:/usr/local/bin:$PATH
+
+# Kitty (if installed)
+[ -d "$HOME/.local/kitty.app/bin" ] && export PATH="$HOME/.local/kitty.app/bin:$PATH"
