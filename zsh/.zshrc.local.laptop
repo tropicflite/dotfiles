@@ -1,27 +1,17 @@
-            # Laptop-specific config
+                                            # Laptop-specific config
 MACHINE_NAME="laptop"
 PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
-# ProtonVPN
-alias vpnon='protonvpn connect'
-alias vpnoff='protonvpn disconnect'
-alias vpnstatus='ip link show proton0 &>/dev/null && echo "ProtonVPN: connected" || echo "ProtonVPN: disconnected"'
-# Tailscale
-alias tson='sudo service tailscaled start && sudo tailscale up'
-alias tsoff='sudo tailscale down && sudo service tailscaled stop'
+
 # Trackpad
 alias tpoff='xinput disable "SYNA7501:00 06CB:1359" && xinput disable "SynPS/2 Synaptics TouchPad" && echo "Touchpad disabled"'
 alias tpon='xinput enable "SYNA7501:00 06CB:1359" && xinput enable "SynPS/2 Synaptics TouchPad" && echo "Touchpad enabled"'
-# Network
-alias netstatus='vpnstatus && tsstatus'
-# Connections
-alias desktop='ssh simin@desktop'
-alias laptop='TERM=xterm-256color ssh matt@laptop'
-alias mini='TERM=xterm-256color ssh matt@mini'
-alias phone='ssh -p 8022 matt@phone'
-alias server='TERM=xterm-256color ssh -p 28901 matt@server'
-# PATH
-export PATH="$HOME/.local/kitty.app/bin:$PATH"
-export PATH="$HOME/.npm-global/bin:$PATH"
-# Reload
+
+# Tailscale (SysVinit)
+alias tson='sudo service tailscaled start && sudo tailscale up'
+alias tsoff='sudo tailscale down && sudo service tailscaled stop'
+
+# Reload local file
 alias szl='source ~/.zshrc.local'
-export PATH="$HOME/.local/kitty.app/bin:$PATH"
+
+# npm (only if installed locally)
+[ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"
