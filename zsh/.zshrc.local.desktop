@@ -12,4 +12,4 @@ alias tsstatus='echo "Tailscale: check Windows system tray"'
 alias szl='source ~/.zshrc.local'
 
 # Desktop-specific locale
-source /etc/default/locale
+[ -f /etc/default/locale ] && source /etc/default/locale
