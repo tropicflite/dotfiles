@@ -1,17 +1,14 @@
-# Mini-specific config
-MACHINE_NAME="mini"
+                                            # Laptop-specific config
+MACHINE_NAME="laptop"
 PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
 
 # Trackpad
-alias tpoff='xinput disable "Synaptics s3203" && echo "Touchpad disabled"'
-alias tpon='xinput enable "Synaptics s3203" && echo "Touchpad enabled"'
+alias tpoff='xinput disable "SYNA7501:00 06CB:1359" && xinput disable "SynPS/2 Synaptics TouchPad" && echo "Touchpad disabled"'
+alias tpon='xinput enable "SYNA7501:00 06CB:1359" && xinput enable "SynPS/2 Synaptics TouchPad" && echo "Touchpad enabled"'
 
-# Tailscale (SysVinit specific to mini)
+# Tailscale (SysVinit)
 alias tson='sudo service tailscaled start && sudo tailscale up'
 alias tsoff='sudo tailscale down && sudo service tailscaled stop'
-
-# Network status (combines ProtonVPN + Tailscale)
-alias netstatus='vpnstatus && tsstatus'
 
 # Reload local file
 alias szl='source ~/.zshrc.local'
