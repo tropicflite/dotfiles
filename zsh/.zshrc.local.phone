@@ -1,20 +1,15 @@
-            # Phone-specific config
+                                    # Phone-specific config
 MACHINE_NAME="phone"
 PROMPT="%{$fg[$NCOLOR]%}%Bmatt@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+
 # Package management (Termux)
 alias pks="pkg search"
 alias pki="pkg install"
 alias pku="pkg upgrade"
-# Tailscale
-alias tson='sudo tailscale up'
-alias tsoff='sudo tailscale down'
-# Network
-alias netstatus='tsstatus'
-# Connections
-alias desktop='ssh simin@desktop'
-alias laptop='TERM=xterm-256color ssh matt@laptop'
-alias mini='TERM=xterm-256color ssh matt@mini'
-alias phone='ssh -p 8022 matt@phone'
-alias server='TERM=xterm-256color ssh -p 28901 matt@server'
-# Reload
+
+# Tailscale (Termux — no tailscale command in PATH)
+alias tsstatus='echo "Tailscale: check Android app (Settings → Tailscale)"'
+alias netstatus='tsstatus && echo "ProtonVPN: check Android app"'
+
+# Reload local file
 alias szl='source ~/.zshrc.local'
