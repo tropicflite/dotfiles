@@ -75,8 +75,8 @@ alias vv="nvim ~/.config/nvim/init.lua"
 alias bv="bat ~/.config/nvim/init.lua"
 alias vz="nvim ~/.zshrc"
 alias bz="bat ~/.zshrc"
-alias vzl="nvim ~/.zshrc.local"
-alias bzl="bat ~/.zshrc.local"
+alias vzl="nvim ~/.zshrc.local.$_MACHINE"
+alias bzl="bat ~/.zshrc.local.$_MACHINE"
 alias sz="source ~/.zshrc"
 
 # Network
@@ -178,4 +178,5 @@ function dotstatus {
 }
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
-[ -f ~/.zshrc.local ] && source ~/.zshrc.local
+_MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
+[ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
