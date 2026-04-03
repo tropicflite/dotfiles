@@ -100,6 +100,7 @@ alias desktop='ssh simin@desktop'
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias phone='ssh -p 8022 matt@phone'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
+alias mini='TERM=xterm-256color ssh matt@mini'
 
 ################################################################################
 # KEY BINDINGS
