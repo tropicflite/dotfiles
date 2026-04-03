@@ -10,7 +10,7 @@ alias netstatus="tsstatus; vpnstatus"
 alias fbstart='sudo systemctl start filebrowser'
 alias fbstatus='sudo systemctl status filebrowser'
 # Reload local file
-alias szl='source ~/.zshrc.local'
+alias szl='source ~/.zshrc.local.server'
 
 vpnstatus() {
   local wg_out
