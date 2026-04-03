@@ -5,7 +5,7 @@ PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%
 alias tson='sudo tailscale up --hostname=server'
 alias tsoff='sudo tailscale down'
 # Network (no ProtonVPN on server)
-alias netstatus='tsstatus'
+alias netstatus="tsstatus; vpnstatus"
 # FileBrowser / Caddy
 alias fbstart='sudo systemctl start filebrowser'
 alias fbstatus='sudo systemctl status filebrowser'
