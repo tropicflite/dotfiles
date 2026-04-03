@@ -1,17 +1,29 @@
 # Server-specific config
 MACHINE_NAME="server"
 PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
-
 # Tailscale (server-specific with hostname flag)
 alias tson='sudo tailscale up --hostname=server'
 alias tsoff='sudo tailscale down'
-
 # Network (no ProtonVPN on server)
 alias netstatus='tsstatus'
-
 # FileBrowser / Caddy
 alias fbstart='sudo systemctl start filebrowser'
 alias fbstatus='sudo systemctl status filebrowser'
-
 # Reload local file
 alias szl='source ~/.zshrc.local'
+
+vpnstatus() {
+  local wg_out
+  wg_out=$(sudo wg show wg0 2>/dev/null)
+  if [[ -z "$wg_out" ]]; then
+    echo "WireGuard: DOWN (interface missing)"
+    return
+  fi
+  local handshake
+  handshake=$(echo "$wg_out" | grep "latest handshake" | awk '{print $3, $4, $5, $6}')
+  local transfer
+  transfer=$(echo "$wg_out" | grep "transfer" | awk '{print $2, $3, $4, $5, $6, $7}')
+  echo "WireGuard: UP"
+  [[ -n "$handshake" ]] && echo "  Last handshake: $handshake"
+  [[ -n "$transfer" ]] && echo "  Transfer: $transfer"
+}
