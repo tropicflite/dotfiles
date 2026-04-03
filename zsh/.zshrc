@@ -171,6 +171,10 @@ function dotl {
   cd ~/dotfiles && git pull
   cd ~/
 }
+function dotstatus {
+  cd ~/dotfiles && git fetch && git status
+  cd ~/
+}
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
