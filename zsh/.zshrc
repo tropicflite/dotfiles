@@ -84,7 +84,7 @@ alias myip='curl -s -4 ifconfig.me && echo'
 alias ports='ss -tulanp'
 
 # Ranger connect and disconnect
-alias rpcon='mkdir -p ~/mnt/phone && sshfs -p 8022 u0_a243@phone: ~/mnt/phone && ranger ~/mnt/phone'
+alias rpcon='mkdir -p ~/mnt/phone && fusermount -u ~/mnt/phone 2>/dev/null; sshfs -p 8022 u0_a243@phone: ~/mnt/phone && ranger ~/mnt/phone'
 alias rpdis='fusermount -u ~/mnt/phone'
 
 # Tailscale (if installed)
