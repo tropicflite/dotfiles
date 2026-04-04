@@ -83,6 +83,10 @@ alias sz="source ~/.zshrc"
 alias myip='curl -s -4 ifconfig.me && echo'
 alias ports='ss -tulanp'
 
+# Ranger connect and disconnect
+alias rpcon='mkdir -p ~/mnt/phone && sshfs -p 8022 u0_a243@phone: ~/mnt/phone && ranger ~/mnt/phone'
+alias rpdis='fusermount -u ~/mnt/phone'
+
 # Tailscale (if installed)
 if command -v tailscale &>/dev/null; then
     alias tsstatus='tailscale status &>/dev/null && echo "Tailscale: up" || echo "Tailscale: down"'
