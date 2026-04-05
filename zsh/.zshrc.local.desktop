@@ -9,7 +9,7 @@ alias tsstatus='echo "Tailscale: check Windows system tray"'
 [ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"
 
 # Reload local file
-alias szl='source ~/.zshrc.local'
+alias szl='source ~/.zshrc.local.desktop'
 
 # Desktop-specific locale
 [ -f /etc/default/locale ] && source /etc/default/locale
