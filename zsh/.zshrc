@@ -173,7 +173,7 @@ function dotp {
   cd ~/
 }
 function dotl {
-  cd ~/dotfiles && git pull
+  cd ~/dotfiles && git pull || echo "⚠ dotl: pull failed — check ~/dotfiles for conflicts"
   cd ~/
 }
 function dotstatus {
