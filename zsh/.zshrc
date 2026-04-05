@@ -32,13 +32,13 @@ alias ....="cd ../../.."
 alias cdd="cd ~/dotfiles"
 
 # Shortcuts
-command -v batcat &>/dev/null && alias bat=batcat
+command -v batcat &>/dev/null && alias bat="batcat -pp"
 alias c="clear"
 alias cdc="cd && clear"
 alias h="history"
 alias q="exit"
-alias :q="exit"
-alias wq="exit"
+alias x="exit"
+alias :wq="exit"
 alias u="uname -a"
 alias s="sudo "
 alias sudo="sudo "

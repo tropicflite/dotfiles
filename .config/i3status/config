@@ -11,13 +11,13 @@ general {
         interval = 5
 }
 
-order += "ipv6"
+# order += "ipv6"
 order += "wireless _first_"
-order += "ethernet _first_"
+# order += "ethernet _first_"
 order += "battery all"
-order += "disk /"
-order += "load"
-order += "memory"
+# order += "disk /"
+# order += "load"
+# order += "memory"
 order += "tztime local"
 
 wireless _first_ {
@@ -50,5 +50,6 @@ memory {
 
 tztime local {
 #        format = "%Y-%m-%d %H:%M:%S"
-        format = "%Y-%m-%d %I:%M:%P"
+        format = "%a %b %d %Y %I:%M:%P"
+#        format = "%m-%d-%Y %I:%M:%P"
 }
