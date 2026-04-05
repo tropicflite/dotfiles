@@ -13,3 +13,4 @@ alias szl='source ~/.zshrc.local.desktop'
 
 # Desktop-specific locale
 [ -f /etc/default/locale ] && source /etc/default/locale
+cd ~

@@ -119,11 +119,6 @@ bindkey "^R" history-incremental-pattern-search-backward
 # FUNCTIONS
 ################################################################################
 
-# Auto ls after cd
-function cd {
-    builtin cd "$@" && ll
-}
-
 # Recursive mkdir and cd
 function mkcd {
     mkdir -p "$@" && builtin cd "$@"
