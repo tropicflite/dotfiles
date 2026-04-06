@@ -185,7 +185,7 @@ fdotl() {
       ssh -p 28901 matt@$host "zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
     elif [[ "$host" == "desktop" ]]; then
       echo "==> $host"
-      ssh simin@$host "zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
+      ssh simin@$host "wsl zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
     else
       echo "==> $host"
       ssh matt@$host "zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
