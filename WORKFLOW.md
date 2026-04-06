@@ -62,3 +62,36 @@ These are not tracked by apt and must be handled separately in the init script:
 - Termux does not use `sudo` — scripts handle this automatically
 - Termux has its own package repo; many packages from the master list are in `packages-ignore.phone`
 - Package manager is `apt` but packages are Termux-specific builds, not Debian/Ubuntu packages
+
+## Fleet Management
+The dotfiles repo is synced across all machines using two core functions defined in `.zshrc`:
+
+- `dotl` — pulls latest dotfiles on the current machine (`git fetch --prune --force origin && git pull`)
+- `dotp [message]` — adds, commits, and pushes all changes (`git add -A && git commit -m "..." ; git push`)
+- `fdotl` — runs `dotl` on all machines via SSH; detects if running locally to avoid self-SSHing; reminds to run `dotl` manually on phone
+
+### fdotl behavior
+- Runs `dotl` locally if hostname matches
+- SSHes to mini/laptop as `matt@<host>`
+- SSHes to server as `matt@server -p 28901`
+- SSHes to desktop as `simin@desktop` and runs `wsl zsh -i -c dotl`
+- Phone is excluded — run `dotl` manually in Termux
+
+### Typical workflow
+1. Make changes to dotfiles on any machine
+2. `dotp "description"` to commit and push
+3. `fdotl` to propagate to all machines
+
+## Scripts Directory Structure
+Scripts live in `~/dotfiles/scripts/` with per-machine subdirectories:
+
+| Directory | Purpose |
+|-----------|---------|
+| `scripts/fleet/` | Scripts that run on all machines |
+| `scripts/laptop/` | Laptop-specific scripts |
+| `scripts/desktop/` | Desktop-specific scripts |
+| `scripts/mini/` | Mini-specific scripts |
+| `scripts/server/` | Server-specific scripts |
+| `scripts/phone/` | Phone/Termux-specific scripts |
+
+Scripts are symlinked into PATH using `scripts-link` (in `scripts/fleet/`). Run `scripts-link` after adding a new script to make it executable from anywhere.
