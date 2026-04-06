@@ -24,7 +24,6 @@ font pango:monospace 11
 exec --no-startup-id dex --autostart --environment i3
 exec_always --no-startup-id picom --config ~/.config/picom/picom.conf
 exec --no-startup-id bash -c "sleep 5 && unclutter --timeout 2 --jitter 5 --fork"
-exec --no-startup-id touch /tmp/i3_exec_test
 # The combination of xss-lock, nm-applet and pactl is a popular choice, so
 # they are included here as an example. Modify as you see fit.
 
@@ -216,3 +215,7 @@ smart_gaps on
 bindsym $mod+Shift+minus gaps inner current minus 5
 bindsym $mod+Shift+equal gaps inner current plus 5
 bindsym $mod+Shift+g gaps inner current set 0
+
+# Brightness controls
+bindsym XF86MonBrightnessUp exec brightnessctl set 10%+
+bindsym XF86MonBrightnessDown exec brightnessctl set 10%-
