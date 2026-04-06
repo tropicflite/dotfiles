@@ -11,6 +11,6 @@ alias tson='sudo service tailscaled start && sudo tailscale up'
 alias tsoff='sudo tailscale down && sudo service tailscaled stop'
 
 # Reload local file
-alias szl='source ~/.zshrc.local'
+alias szl='source ~/.zshrc.local.laptop'
 
 # npm (only if installed locally)
