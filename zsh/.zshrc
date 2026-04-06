@@ -192,8 +192,8 @@ fdotl() {
   done
   echo "==> phone: run dotl manually"
 }
-
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
 _MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
+
