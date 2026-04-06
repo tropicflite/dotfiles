@@ -14,4 +14,3 @@ alias tsoff='sudo tailscale down && sudo service tailscaled stop'
 alias szl='source ~/.zshrc.local'
 
 # npm (only if installed locally)
-[ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"

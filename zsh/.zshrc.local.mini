@@ -17,4 +17,3 @@ alias netstatus='vpnstatus && tsstatus'
 alias szl='source ~/.zshrc.local.mini'
 
 # npm (only if installed locally)
-[ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"
