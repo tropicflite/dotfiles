@@ -173,6 +173,7 @@ function dotp {
   cd ~/
 }
 function dotl {
+  rm -f ~/dotfiles/.git/packed-refs
   cd ~/dotfiles && git fetch --prune --force origin && git pull || echo "⚠ dotl: pull failed — check ~/dotfiles for conflicts"
   cd ~/
 }
