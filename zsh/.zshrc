@@ -169,10 +169,9 @@ function dotp {
   cd ~/
 }
 function dotl {
-  cd ~/dotfiles && git remote prune origin && git pull || echo "⚠ dotl: pull failed — check ~/dotfiles for conflicts"
+  cd ~/dotfiles && git fetch --prune --force origin && git pull || echo "⚠ dotl: pull failed — check ~/dotfiles for conflicts"
   cd ~/
 }
-
 # Fleet-wide dotfiles pull
 fdotl() {
   local me=$(hostname)
