@@ -172,6 +172,22 @@ function dotl {
   cd ~/dotfiles && git pull || echo "⚠ dotl: pull failed — check ~/dotfiles for conflicts"
   cd ~/
 }
+
+# Fleet-wide dotfiles pull
+fdotl() {
+  local me=$(hostname)
+  for host in mini server laptop desktop; do
+    if [[ "$host" == "$me" ]]; then
+      echo "==> $host (self, running locally)"
+      dotl
+    else
+      echo "==> $host"
+      ssh $host "dotl" || echo "⚠️  $host failed or unreachable"
+    fi
+  done
+  echo "==> phone: run dotl manually"
+}
+
 function dotstatus {
   cd ~/dotfiles && git fetch && git status
   cd ~/
