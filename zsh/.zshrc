@@ -32,7 +32,11 @@ alias ....="cd ../../.."
 alias cdd="cd ~/dotfiles"
 
 # Shortcuts
-command -v batcat &>/dev/null && alias bat="batcat -pp" || command -v bat &>/dev/null && alias bat="bat -pp"
+if command -v batcat &>/dev/null; then
+  alias bat="batcat -pp"
+elif command -v bat &>/dev/null; then
+  alias bat="bat -pp"
+fi
 alias c="clear"
 alias cdc="cd && clear"
 alias h="history"
@@ -101,7 +105,7 @@ if command -v protonvpn &>/dev/null; then
 fi
 
 # Connections (SSH aliases)
-alias desktop='ssh simin@desktop'
+alias desktop='ssh -t simin@desktop "wsl zsh -l"'
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias phone='ssh -p 8022 matt@phone'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
