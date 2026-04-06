@@ -180,18 +180,17 @@ fdotl() {
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
       dotl
+    elif [[ "$host" == "server" ]]; then
+      echo "==> $host"
+      ssh -p 28901 matt@$host "dotl" || echo "⚠️  $host failed or unreachable"
     else
       echo "==> $host"
-      ssh $host "dotl" || echo "⚠️  $host failed or unreachable"
+      ssh matt@$host "dotl" || echo "⚠️  $host failed or unreachable"
     fi
   done
   echo "==> phone: run dotl manually"
 }
 
-function dotstatus {
-  cd ~/dotfiles && git fetch && git status
-  cd ~/
-}
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
 _MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
