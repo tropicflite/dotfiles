@@ -1,0 +1,19 @@
+#!/usr/bin/env zsh
+# Symlink fleet and machine-specific scripts into ~/bin
+setopt nullglob
+
+SCRIPTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+BIN_DIR="$HOME/bin"
+MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
+
+mkdir -p "$BIN_DIR"
+
+for dir in "$SCRIPTS_DIR/fleet" "$SCRIPTS_DIR/$MACHINE"; do
+  [ -d "$dir" ] || continue
+  for script in "$dir"/*; do
+    [ -f "$script" ] || continue
+    chmod +x "$script"
+    ln -sf "$script" "$BIN_DIR/$(basename "$script")"
+    echo "linked: $(basename "$script")"
+  done
+done
