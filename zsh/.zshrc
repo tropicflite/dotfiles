@@ -179,13 +179,13 @@ fdotl() {
   for host in mini server laptop desktop; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
-      dotl
+      zsh -i -c dotl
     elif [[ "$host" == "server" ]]; then
       echo "==> $host"
-      ssh -p 28901 matt@$host "dotl" || echo "⚠️  $host failed or unreachable"
+      ssh -p 28901 matt@$host "zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
     else
       echo "==> $host"
-      ssh matt@$host "dotl" || echo "⚠️  $host failed or unreachable"
+      ssh matt@$host "zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
     fi
   done
   echo "==> phone: run dotl manually"
