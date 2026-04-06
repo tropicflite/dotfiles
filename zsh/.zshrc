@@ -32,7 +32,7 @@ alias ....="cd ../../.."
 alias cdd="cd ~/dotfiles"
 
 # Shortcuts
-command -v batcat &>/dev/null && alias bat="batcat -pp"
+command -v batcat &>/dev/null && alias bat="batcat -pp" || command -v bat &>/dev/null && alias bat="bat -pp"
 alias c="clear"
 alias cdc="cd && clear"
 alias h="history"
