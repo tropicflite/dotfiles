@@ -18,7 +18,6 @@ order += "battery all"
 # order += "disk /"
 # order += "load"
 # order += "memory"
-order += "volume master"
 order += "tztime local"
 
 wireless _first_ {
