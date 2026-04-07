@@ -52,7 +52,7 @@ alias po="sudo poweroff"
 alias re="sudo reboot"
 
 # Files/directories
-alias l="ls --color=auto --group-directories-first"
+alias l="ls -F --color=auto --group-directories-first"
 alias ll="ls -aF --color=auto --group-directories-first"
 alias lll="ls -aFl --color=auto --group-directories-first"
 alias sl="find . -type l -ls"
