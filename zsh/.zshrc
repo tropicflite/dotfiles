@@ -29,6 +29,7 @@ export LANG=en_CA.UTF-8
 alias ..="cd .."
 alias ...="cd ../.."
 alias ....="cd ../../.."
+alias cdc="cd ~/.config"
 alias cdd="cd ~/dotfiles"
 
 # Shortcuts
@@ -38,7 +39,6 @@ elif command -v bat &>/dev/null; then
   alias bat="bat -pp"
 fi
 alias c="clear"
-alias cdc="cd && clear"
 alias h="history"
 alias q="exit"
 alias x="exit"
