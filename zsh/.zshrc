@@ -70,7 +70,9 @@ alias sauu="sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y"
 # Neovim
 alias v=nvim
 alias v3="nvim ~/.config/i3/config"
+alias v3s="nvim ~/.config/i3status/config"
 alias b3="bat ~/.config/i3/config"
+alias b3s="bat ~/.config/i3status/config"
 alias vk="nvim ~/.config/kitty/kitty.conf"
 alias bk="bat ~/.config/kitty/kitty.conf"
 alias vim=nvim
