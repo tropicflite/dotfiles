@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+# Remove stale git ref lock files from dotfiles repo
+rm -f ~/dotfiles/.git/packed-refs
+rm -f ~/dotfiles/.git/refs/remotes/origin/master
+echo "🧹 stale refs cleared"
