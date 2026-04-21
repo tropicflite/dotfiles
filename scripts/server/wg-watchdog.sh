@@ -9,7 +9,7 @@ while true; do
     # Check if wg0 exists
     if ! ip link show "$WG_IFACE" &>/dev/null; then
         logger -t "$LOG_TAG" "wg0 missing, restarting wg0.service"
-        systemctl restart wg0.service
+	ip link delete wg0 2>/dev/null; systemctl restart wg0.service
         sleep 15
         continue
     fi
@@ -17,7 +17,7 @@ while true; do
     # Check if endpoint is reachable through the tunnel
     if ! ping -c 2 -W 5 -I "$WG_IFACE" "$ENDPOINT_IP" &>/dev/null; then
         logger -t "$LOG_TAG" "Endpoint unreachable, restarting wg0.service"
-        systemctl restart wg0.service
+	ip link delete wg0 2>/dev/null; systemctl restart wg0.service
         sleep 15
         continue
     fi
