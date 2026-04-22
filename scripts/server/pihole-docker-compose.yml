@@ -1,0 +1,36 @@
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    ports:
+      - "192.168.50.192:53:53/tcp"
+      - "192.168.50.192:53:53/udp"
+      - "0.0.0.0:8091:80/tcp"
+    environment:
+      TZ: 'America/Toronto'
+      WEBPASSWORD: '${WEBPASSWORD}'
+      PIHOLE_DNS_: '1.1.1.1'
+      DNSMASQ_LISTENING: 'all'
+      INTERFACE: 'enp1s0'
+    volumes:
+      - ./pihole/etc-pihole:/etc/pihole
+      - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    networks:
+      pihole_net:
+        ipv4_address: 172.20.0.2
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "dig", "@127.0.0.1", "google.com", "+short"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  pihole_net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-pihole
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
