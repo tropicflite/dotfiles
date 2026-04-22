@@ -42,6 +42,7 @@ alias c="clear"
 alias h="history"
 alias q="exit"
 alias x="exit"
+alias ':q!'='exit 1'    # "force quit without saving" - exit with error code
 alias :wq="exit"
 alias u="uname -a"
 alias s="sudo "
