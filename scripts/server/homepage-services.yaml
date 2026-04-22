@@ -1,0 +1,15 @@
+- Media & Files:
+    - Immich:
+        href: https://server.tailc9871d.ts.net:2283
+        description: Photo library
+        icon: immich.png
+    - FileBrowser:
+        href: https://server.tailc9871d.ts.net:8081
+        description: File manager
+        icon: filebrowser.png
+
+- Network:
+    - Pi-hole:
+        href: https://server.tailc9871d.ts.net:8090/admin
+        description: DNS ad blocking
+        icon: pi-hole.png

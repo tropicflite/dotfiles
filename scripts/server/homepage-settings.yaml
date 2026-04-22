@@ -1,0 +1,10 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/configs/settings/
+
+title: Home Server
+allowed_hosts:
+  - server.tailc9871d.ts.net
+providers:
+  openweathermap: openweathermapapikey
+  weatherapi: weatherapiapikey
