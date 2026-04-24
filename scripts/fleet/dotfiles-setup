@@ -1,0 +1,38 @@
+#!/usr/bin/env zsh
+# Symlink dotfiles into place for the current machine
+
+DOTFILES="$HOME/dotfiles"
+IS_PHONE=false
+[[ -n "$PREFIX" ]] && IS_PHONE=true
+
+# Helper
+lns() {
+  local src="$1" dst="$2"
+  mkdir -p "$(dirname "$dst")"
+  ln -sf "$src" "$dst"
+  echo "linked: $dst -> $src"
+}
+
+# Universal
+lns "$DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
+lns "$DOTFILES/.config/nvim" "$HOME/.config/nvim"
+lns "$DOTFILES/.config/ranger" "$HOME/.config/ranger"
+lns "$DOTFILES/ssh/config" "$HOME/.ssh/config"
+
+# Machine-specific .zshrc.local
+MACHINE=$(echo "${HOST%%.*}" | tr '[:upper:]' '[:lower:]')
+$IS_PHONE && MACHINE=phone
+local_zshrc="$DOTFILES/zsh/.zshrc.local.$MACHINE"
+[[ -f "$local_zshrc" ]] && lns "$local_zshrc" "$HOME/.zshrc.local.$MACHINE"
+
+# Non-phone only
+if ! $IS_PHONE; then
+  lns "$DOTFILES/.config/btop" "$HOME/.config/btop"
+fi
+
+# i3 machines (laptop, mini)
+if [[ "$MACHINE" == "laptop" || "$MACHINE" == "mini" ]]; then
+  lns "$DOTFILES/.Xmodmap" "$HOME/.Xmodmap"
+fi
+
+echo "Done."

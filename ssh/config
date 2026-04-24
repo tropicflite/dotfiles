@@ -1,0 +1,26 @@
+Host server
+  HostName server
+  User matt
+  Port 28901
+  ForwardAgent yes
+
+Host desktop
+  HostName desktop
+  User simin
+  ForwardAgent yes
+
+Host laptop
+  HostName laptop
+  User matt
+  ForwardAgent yes
+
+Host mini
+  HostName mini
+  User matt
+  ForwardAgent yes
+
+Host phone
+  HostName phone
+  User matt
+  Port 8022
+  ForwardAgent yes
