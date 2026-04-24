@@ -12,3 +12,4 @@ alias tsoff='sudo tailscale down && sudo service tailscaled stop'
 
 # Reload local file
 alias szl='source ~/.zshrc.local.laptop'
+export OLLAMA_HOST=http://100.78.51.10:11434
