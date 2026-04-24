@@ -184,7 +184,7 @@ function dotl {
 # Fleet-wide dotfiles pull
 fdotl() {
   local me=$(hostname)
-  for host in mini server laptop desktop; do
+  for host in mini server laptop desktop phone; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
       zsh -i -c dotl
@@ -199,7 +199,6 @@ fdotl() {
       ssh matt@$host "zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
     fi
   done
-  echo "==> phone: run dotl manually"
 }
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
