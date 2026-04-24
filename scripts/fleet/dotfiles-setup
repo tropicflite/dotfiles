@@ -34,5 +34,18 @@ fi
 if [[ "$MACHINE" == "laptop" || "$MACHINE" == "mini" ]]; then
   lns "$DOTFILES/.Xmodmap" "$HOME/.Xmodmap"
 fi
-
+# Ollama client binary (non-phone, non-desktop)
+if ! $IS_PHONE && [[ "$MACHINE" != "desktop" ]]; then
+  if ! command -v ollama &>/dev/null; then
+    echo "Installing ollama binary..."
+    OLLAMA_VERSION=$(curl -sL https://api.github.com/repos/ollama/ollama/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+    curl -L "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-linux-amd64.tar.zst" -o /tmp/ollama.tar.zst
+    tar -xf /tmp/ollama.tar.zst -C /tmp
+    sudo install /tmp/bin/ollama /usr/local/bin/ollama
+    rm -rf /tmp/ollama.tar.zst /tmp/bin /tmp/lib
+    echo "ollama ${OLLAMA_VERSION} installed."
+  else
+    echo "ollama already installed, skipping."
+  fi
+fi
 echo "Done."
