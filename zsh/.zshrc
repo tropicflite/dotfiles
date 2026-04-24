@@ -194,9 +194,6 @@ fdotl() {
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
       zsh -i -c dotl
-    elif [[ "$host" == "server" ]]; then
-      echo "==> $host"
-      ssh -p 28901 matt@$host "zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
     elif [[ "$host" == "desktop" ]]; then
       echo "==> $host"
       ssh -q simin@$host "wsl zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
