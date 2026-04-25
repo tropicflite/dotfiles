@@ -45,6 +45,30 @@ These are not tracked by apt and must be handled separately in the init script:
 - **Tailscale** (non-MX machines) — `curl -fsSL https://tailscale.com/install.sh | sh`
 - **fastfetch** (Ubuntu/desktop) — PPA: `sudo add-apt-repository ppa:zhangsongcui3371/fastfetch`
 - **Kitty** (laptop/mini) — downloaded from GitHub releases
+- **Ollama client** (laptop, mini, server) — binary only from GitHub releases tar.zst; handled by `dotfiles-setup`. Do NOT use `ollama.com/install.sh` — it installs a full server.
+
+## Ollama Architecture
+
+- **Server:** Ollama runs on the Windows desktop host (`100.78.51.10:11434`), models on E: drive
+- **Clients:** laptop, mini, server — binary only, no service, no GPU libs
+- **Config:** `OLLAMA_HOST=http://100.78.51.10:11434` in `.zshrc.local` on all client machines
+- **Phone:** deferred — `install.sh` incompatible with Termux, manual install not attempted
+- **Desktop:** is the Ollama server; no client needed
+
+### Usage
+```bash
+ollama list                  # list models on server
+ollama run llama3.2          # interactive chat
+ollama run llama3.2 "prompt" # one-shot
+```
+
+## Open WebUI
+
+- Runs as a Docker container on the server, port 8083 (mapped to container port 8080)
+- Accessible at `https://server.tailc9871d.ts.net` (Tailscale Serve on port 443)
+- Points at Ollama on desktop: `OLLAMA_BASE_URL=http://100.78.51.10:11434`
+- Compose reference: `scripts/server/open-webui-compose.yml`
+- Live config/data: `~/docker/open-webui/` (not in dotfiles)
 
 ## Machine Reference
 
@@ -52,7 +76,7 @@ These are not tracked by apt and must be handled separately in the init script:
 |----------|----|----------|-------|
 | laptop | MX Linux 25.1 | matt | Reference machine |
 | mini | MX Linux 25.1 | matt | No AVX, SysVinit, Bay Trail |
-| desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale |
+| desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale; Ollama server |
 | phone | GrapheneOS (Termux) | — | Pending setup |
 | server | Debian 13 trixie | matt | Excluded from package sync |
 
