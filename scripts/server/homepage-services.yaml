@@ -1,0 +1,39 @@
+- AI:
+    - Open WebUI:
+        href: https://server.tailc9871d.ts.net
+        description: Local LLM interface
+        icon: openwebui.png
+- Media & Files:
+    - FileBrowser:
+        href: https://server.tailc9871d.ts.net:8081
+        description: File manager
+        icon: filebrowser.png
+    - FileBrowser (Share):
+        href: https://server.tailc9871d.ts.net
+        description: File sharing (Funnel on)
+        icon: filebrowser.png
+    - Immich:
+        href: https://server.tailc9871d.ts.net:2283
+        description: Photo library
+        icon: immich.png
+    - Jellyfin:
+        href: https://server.tailc9871d.ts.net:8097
+        description: Media server
+        icon: jellyfin.png
+    - qBittorrent:
+        href: https://server.tailc9871d.ts.net:8082
+        description: Torrent client
+        icon: qbittorrent.png
+- Network:
+    - Asus Router:
+        href: http://192.168.50.1/Main_Login.asp
+        description: RT-AX86U Pro
+        icon: asus.png
+    - Pi-hole:
+        href: https://server.tailc9871d.ts.net:8090/admin
+        description: DNS ad blocking
+        icon: pi-hole.png
+    - Tailscale:
+        href: https://login.tailscale.com/admin/machines
+        description: Tailscale Admin
+        icon: tailscale.png

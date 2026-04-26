@@ -49,3 +49,7 @@ fboff() {
   tailscale serve --bg --https=3000 http://localhost:3001
   echo "Funnel OFF — Open WebUI on 443"
 }
+
+fbstatus() {
+  tailscale serve status | grep -E "Funnel|443"
+}
