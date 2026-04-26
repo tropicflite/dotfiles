@@ -65,7 +65,6 @@ alias lll="ls -aFl --color=auto --group-directories-first"
 alias sl="find . -type l -ls"
 alias rm="rm"
 alias df='df -h'
-alias du='du -h --max-depth=1'
 
 # Package management
 alias acs="apt-cache search"
