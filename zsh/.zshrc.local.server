@@ -6,12 +6,8 @@ alias tson='sudo tailscale up --hostname=server'
 alias tsoff='sudo tailscale down'
 # Network
 alias netstatus="tsstatus; vpnstatus"
-# FileBrowser / Caddy
-alias fbstart='sudo systemctl start filebrowser'
-alias fbstatus='sudo systemctl status filebrowser'
 # Reload local file
 alias szl='source ~/.zshrc.local.server'
-
 vpnstatus() {
   local wg_out
   wg_out=$(sudo wg show wg0 2>/dev/null)
@@ -28,3 +24,28 @@ vpnstatus() {
   [[ -n "$transfer" ]] && echo "  Transfer: $transfer"
 }
 export OLLAMA_HOST=http://100.78.51.10:11434
+# Tailscale Funnel / FileBrowser toggle
+fbon() {
+  tailscale funnel reset
+  tailscale serve reset
+  tailscale serve --bg --https=8081 http://localhost:8081
+  tailscale serve --bg --https=8082 http://localhost:8080
+  tailscale serve --bg --https=8090 http://localhost:8091
+  tailscale serve --bg --https=8097 http://localhost:8096
+  tailscale serve --bg --https=2283 http://localhost:2283
+  tailscale serve --bg --https=3000 http://localhost:3001
+  tailscale funnel --bg --https=443 http://127.0.0.1:8081
+  echo "Funnel ON — FileBrowser public on 443"
+}
+fboff() {
+  tailscale funnel reset
+  tailscale serve reset
+  tailscale serve --bg --https=443 http://127.0.0.1:8083
+  tailscale serve --bg --https=8081 http://localhost:8081
+  tailscale serve --bg --https=8082 http://localhost:8080
+  tailscale serve --bg --https=8090 http://localhost:8091
+  tailscale serve --bg --https=8097 http://localhost:8096
+  tailscale serve --bg --https=2283 http://localhost:2283
+  tailscale serve --bg --https=3000 http://localhost:3001
+  echo "Funnel OFF — Open WebUI on 443"
+}
