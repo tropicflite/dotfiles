@@ -2,6 +2,16 @@
 
 set -euo pipefail
 
+LOCKFILE=/tmp/immich-backup.lock
+
+if [ -e "$LOCKFILE" ]; then
+    echo "[$(date)] Backup already running (lockfile exists). Exiting."
+    exit 1
+fi
+
+trap "rm -f $LOCKFILE" EXIT
+touch $LOCKFILE
+
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DUMP_DIR="/tmp/immich-backup"
 DUMP_FILE="$DUMP_DIR/immich_${TIMESTAMP}.sql.gz"
