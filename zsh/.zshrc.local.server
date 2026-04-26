@@ -51,5 +51,5 @@ fboff() {
 }
 
 fbstatus() {
-  tailscale serve status | grep -E "Funnel|443"
+  tailscale serve status | grep -E "Funnel|ts.net \("
 }
