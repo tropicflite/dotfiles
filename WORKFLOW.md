@@ -126,3 +126,4 @@ Scripts are symlinked into PATH using `scripts-link` (in `scripts/fleet/`). Run 
 - Sudoers entry: /etc/sudoers.d/matt-wg
 - Cron: 0 3 * * * → /var/log/immich-backup.log
 - Lockfile: /tmp/immich-backup.lock (PID-aware)
+- Restore prereq: rclone must be authenticated (run `rclone config` with VPN down, browser needed for Proton OAuth)
