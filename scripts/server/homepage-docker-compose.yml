@@ -1,0 +1,12 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    ports:
+      - "0.0.0.0:3001:3000"
+    volumes:
+      - ./config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      TZ: 'America/Toronto'
+      HOMEPAGE_ALLOWED_HOSTS: 'server.tailc9871d.ts.net:3001,server.tailc9871d.ts.net:3000,100.65.250.53:3001,100.65.250.53:3000'
