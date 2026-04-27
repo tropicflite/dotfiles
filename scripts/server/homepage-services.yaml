@@ -1,6 +1,6 @@
 - AI:
     - Open WebUI:
-        href: https://server.tailc9871d.ts.net
+        href: https://server.tailc9871d.ts.net:8083
         description: Local LLM interface
         icon: openwebui.png
 - Media & Files:
@@ -30,7 +30,7 @@
         description: RT-AX86U Pro
         icon: asus.png
     - Pi-hole:
-        href: https://server.tailc9871d.ts.net:8090/admin
+        href: http://100.65.250.53:8091/admin
         description: DNS ad blocking
         icon: pi-hole.png
     - Tailscale:
