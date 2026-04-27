@@ -17,3 +17,9 @@ Host phone
   HostName 100.104.57.1
   User matt
   Port 8022
+
+Host server
+  HostName 100.65.250.53
+  User matt
+  Port 28901
+  ForwardAgent yes
