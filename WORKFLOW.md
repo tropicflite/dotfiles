@@ -119,3 +119,10 @@ Scripts live in `~/dotfiles/scripts/` with per-machine subdirectories:
 | `scripts/phone/` | Phone/Termux-specific scripts |
 
 Scripts are symlinked into PATH using `scripts-link` (in `scripts/fleet/`). Run `scripts-link` after adding a new script to make it executable from anywhere.
+
+## Immich Backup
+- rclone to Proton Drive requires WireGuard VPN down (wg-watchdog + wg0)
+- Script handles this automatically via sudo systemctl stop/start
+- Sudoers entry: /etc/sudoers.d/matt-wg
+- Cron: 0 3 * * * → /var/log/immich-backup.log
+- Lockfile: /tmp/immich-backup.lock (PID-aware)
