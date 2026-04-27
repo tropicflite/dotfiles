@@ -31,7 +31,11 @@ echo "[$(date)] Starting Immich backup..."
 echo "[$(date)] Dumping Postgres..."
 docker exec immich_postgres pg_dumpall -U postgres | gzip > "$DUMP_FILE"
 
-# Sync photo library (run outside set -e so rclone 422s don't trigger trap)
+# Stop VPN before rclone (Proton blocks VPN IPs)
+echo "[$(date)] Stopping WireGuard VPN..."
+sudo systemctl stop wg-watchdog wg0
+
+# Sync photo library
 echo "[$(date)] Syncing photo library..."
 rclone sync /mnt/data/immich/library "$RCLONE_REMOTE/library" \
     --transfers=4 \
@@ -42,6 +46,10 @@ rclone sync /mnt/data/immich/library "$RCLONE_REMOTE/library" \
 echo "[$(date)] Syncing DB dump..."
 rclone copy "$DUMP_FILE" "$RCLONE_REMOTE/postgres" \
     --log-level INFO || echo "[$(date)] WARNING: rclone copy exited with non-zero status $?"
+
+# Restart VPN
+echo "[$(date)] Restarting WireGuard VPN..."
+sudo systemctl start wg-watchdog
 
 # Clean up old local dumps
 echo "[$(date)] Cleaning up local dumps older than ${RETENTION_DAYS} days..."
