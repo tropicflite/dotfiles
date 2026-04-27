@@ -40,11 +40,13 @@ echo "[$(date)] Syncing photo library..."
 rclone sync /mnt/data/immich/library "$RCLONE_REMOTE/library" \
     --transfers=4 \
     --checkers=8 \
+    --fast-list \
     --log-level INFO || echo "[$(date)] WARNING: rclone sync exited with non-zero status $?"
 
 # Sync DB dump
 echo "[$(date)] Syncing DB dump..."
 rclone copy "$DUMP_FILE" "$RCLONE_REMOTE/postgres" \
+    --fast-list \
     --log-level INFO || echo "[$(date)] WARNING: rclone copy exited with non-zero status $?"
 
 # Restart VPN
@@ -59,6 +61,7 @@ find "$DUMP_DIR" -name "*.sql.gz" -mtime +${RETENTION_DAYS} -delete
 echo "[$(date)] Pruning remote dumps older than ${RETENTION_DAYS} days..."
 rclone delete "$RCLONE_REMOTE/postgres" \
     --min-age "${RETENTION_DAYS}d" \
+    --fast-list \
     --log-level INFO || echo "[$(date)] WARNING: rclone delete exited with non-zero status $?"
 
 echo "[$(date)] Backup complete."
