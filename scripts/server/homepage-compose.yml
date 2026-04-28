@@ -7,6 +7,7 @@ services:
     volumes:
       - ./config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /home/matt/docker/homepage/config/icons:/app/public/icons
     environment:
       TZ: 'America/Toronto'
-      HOMEPAGE_ALLOWED_HOSTS: 'server.tailc9871d.ts.net:3000'
+      HOMEPAGE_ALLOWED_HOSTS: 'server.tailc9871d.ts.net:3001,server.tailc9871d.ts.net:3000,100.65.250.53:3001,100.65.250.53:3000'
