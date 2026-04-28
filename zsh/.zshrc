@@ -183,7 +183,7 @@ function dotp {
 function dotl {
   rm -f ~/dotfiles/.git/packed-refs
   rm -f ~/dotfiles/.git/refs/remotes/origin/master
-  cd ~/dotfiles && git fetch --prune --force origin && git pull || echo "⚠ dotl: pull failed — check ~/dotfiles for conflicts"
+  cd ~/dotfiles && git fetch --prune --force origin && git reset --hard origin/master || echo "⚠ dotl: sync failed — check ~/dotfiles"
   cd ~/
 }
 # Fleet-wide dotfiles pull
