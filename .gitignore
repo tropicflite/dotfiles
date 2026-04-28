@@ -1,1 +1,4 @@
 nvim/lazy-lock.json
+
+# btop runtime log
+.config/btop/btop.log
