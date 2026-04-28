@@ -207,3 +207,4 @@ fdotl() {
 _MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
 
+export PATH="/home/matt/.npm-global/bin:$PATH"
