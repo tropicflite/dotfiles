@@ -192,7 +192,7 @@ bar {
 
 # Screenshot
 bindsym Print exec flameshot gui
-bindsym $mod+Print exec bash -c 'mkdir -p ~/Pictures/Screenshots && scrot -u ~/Pictures/Screenshots/screenshot-%Y-%m-%d-%H%M%S.jpg'
+bindsym $mod+Print exec bash -c 'mkdir -p ~/Pictures/Screenshots && scrot -u ~/Pictures/Screenshots/screenshot-%Y-%m-%d-%H%M%S.jpg -e "xclip -selection clipboard -t image/jpeg -i \$f"'
 
 # Gaps configuration
 gaps inner 10
