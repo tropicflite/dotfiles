@@ -53,3 +53,4 @@ fboff() {
 fbstatus() {
   tailscale serve status | grep -E "Funnel|ts.net \("
 }
+export PATH="$HOME/.local/bin:$PATH"
