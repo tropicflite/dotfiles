@@ -188,7 +188,7 @@ mode "resize" {
 
 bindsym $mod+r mode "resize"
 # --- Screen Locking & Power Saving ---
-# Lock screen with a black background on Win+Shift+L
+# Lock screen with a black background on Mod+Shift+u
 bindsym $mod+Shift+u exec i3lock -c 000000
 
 # Automatically lock when inactive or suspending
