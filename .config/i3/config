@@ -54,8 +54,9 @@ bindsym $mod+Return exec /home/matt/.local/kitty.app/bin/kitty
 #start firefox
 bindsym $mod+x exec firefox
 
-# kill focused window
+#start rofimoji
 bindsym $mod+Shift+q kill
+bindsym $mod+period exec /home/matt/.local/bin/rofimoji --action copy
 
 # start dmenu (a program launcher)
 # bindsym $mod+d exec --no-startup-id dmenu_run
