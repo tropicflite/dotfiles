@@ -181,7 +181,11 @@ function dotp {
   cd ~/
 }
 function dotl {
-  cd ~/dotfiles && git fetch --prune --force origin && git reset --hard origin/master || echo "⚠ dotl: sync failed — check ~/dotfiles"
+  cd ~/dotfiles
+  rm -f .git/packed-refs
+  rm -f .git/refs/remotes/origin/master
+  rm -f .git/index.lock
+  git fetch --prune --force origin && git reset --hard origin/master || echo "⚠ dotl: sync failed — check ~/dotfiles"
   cd ~/
 }
 # Fleet-wide dotfiles pull
