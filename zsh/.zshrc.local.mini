@@ -1,5 +1,6 @@
 # Mini-specific config
 MACHINE_NAME="mini"
+export PATH="$HOME/.local/bin:$PATH"
 PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
 
 # Trackpad
