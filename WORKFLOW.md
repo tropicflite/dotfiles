@@ -64,11 +64,12 @@ ollama run llama3.2 "prompt" # one-shot
 
 ## Open WebUI
 
-- Runs as a Docker container on the server, port 8083 (mapped to container port 8080)
-- Accessible at `https://server.tailc9871d.ts.net` (Tailscale Serve on port 443)
+- Runs as a Docker container on the server, port 443 (Tailscale Serve, Funnel off)
+- Accessible at `https://server.tailc9871d.ts.net`
 - Points at Ollama on desktop: `OLLAMA_BASE_URL=http://100.78.51.10:11434`
-- Compose reference: `scripts/server/open-webui-compose.yml`
-- Live config/data: `~/docker/open-webui/` (not in dotfiles)
+- TTS sidecar: `openai-edge-tts` (Edge TTS via OpenAI-compatible API)
+- Compose: `~/docker/open-webui/docker-compose.yml` (live config, synced to dotfiles)
+- Data volume: `open-webui` (Docker named volume)
 
 ## Machine Reference
 
@@ -90,7 +91,7 @@ ollama run llama3.2 "prompt" # one-shot
 ## Fleet Management
 The dotfiles repo is synced across all machines using two core functions defined in `.zshrc`:
 
-- `dotl` — pulls latest dotfiles on the current machine (`git fetch --prune --force origin && git pull`)
+- `dotl` — pulls latest dotfiles on the current machine (`git fetch --prune origin && git pull`)
 - `dotp [message]` — adds, commits, and pushes all changes (`git add -A && git commit -m "..." ; git push`)
 - `fdotl` — runs `dotl` on all machines via SSH; detects if running locally to avoid self-SSHing; reminds to run `dotl` manually on phone
 
@@ -121,9 +122,25 @@ Scripts live in `~/dotfiles/scripts/` with per-machine subdirectories:
 Scripts are symlinked into PATH using `scripts-link` (in `scripts/fleet/`). Run `scripts-link` after adding a new script to make it executable from anywhere.
 
 ## Immich Backup
-- rclone to Proton Drive requires WireGuard VPN down (wg-watchdog + wg0)
-- Script handles this automatically via sudo systemctl stop/start
-- Sudoers entry: /etc/sudoers.d/matt-wg
-- Cron: 0 3 * * * → /var/log/immich-backup.log
-- Lockfile: /tmp/immich-backup.lock (PID-aware)
-- Restore prereq: rclone must be authenticated (run `rclone config` with VPN down, browser needed for Proton OAuth)
+
+**Hardware:** 465GB USB drive (ext4, labeled `immich-backup`), mounted at `/mnt/immich-backup` via fstab UUID with `nofail`.
+
+**Backup script:** `immich-backup.sh` (runs on server via cron)
+- Uses rsync with `--info=progress2` for live progress
+- Dumps Postgres database directly to USB before syncing photos
+- Maintains monthly `.deleted-*` safety directories (keeps last 30 days)
+- Lockfile: `/tmp/immich-backup.lock` (PID-aware, prevents concurrent runs)
+- Cron: `0 3 * * *` (3 AM daily)
+- Log: `/var/log/immich-backup.log`
+- Typical duration: ~50GB in 2–3 minutes (USB speed)
+
+**Restore script:** `immich-restore.sh` (interactive, manual trigger on server)
+- Lists available Postgres dumps on USB
+- Prompts for dump to restore (requires typing `YES` to confirm)
+- Stops Immich containers but leaves Postgres running during restore
+- Restores both DB dump and photo library from USB
+
+**Long-term considerations:**
+- Current setup is local USB only — single point of failure
+- Future: evaluate Backblaze B2 or a second rotating USB for offsite coverage
+- Proton Drive backup abandoned (rate-limiting issues, rclone flag incompatibilities)
