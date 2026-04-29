@@ -1,48 +1,74 @@
 #!/bin/bash
 set -euo pipefail
-
-RCLONE_REMOTE="proton:backups/immich"
-LIBRARY_DIR="/mnt/data/immich/library"
-DUMP_DIR="/tmp/immich-restore"
-
-echo "[$(date)] Starting Immich restore..."
-
-# Stop VPN (Proton blocks VPN IPs)
-echo "[$(date)] Stopping WireGuard VPN..."
-sudo systemctl stop wg-watchdog wg0
-
-mkdir -p "$DUMP_DIR"
-
-# Pull latest postgres dump
-echo "[$(date)] Finding latest DB dump on Proton Drive..."
-LATEST=$(rclone lsf "$RCLONE_REMOTE/postgres" --format "t;n" | sort -r | head -1 | cut -d';' -f2)
-echo "[$(date)] Latest dump: $LATEST"
-rclone copy "$RCLONE_REMOTE/postgres/$LATEST" "$DUMP_DIR/"
-
-# Restore photo library
-echo "[$(date)] Syncing photo library from Proton Drive (this will take a while)..."
-rclone sync "$RCLONE_REMOTE/library" "$LIBRARY_DIR" \
-    --transfers=4 \
-    --checkers=8 \
-    --log-level INFO
-
-# Restart VPN
-echo "[$(date)] Restarting WireGuard VPN..."
-sudo systemctl start wg-watchdog
-
-# Stop Immich before DB restore
-echo "[$(date)] Stopping Immich services..."
-cd ~/docker/immich && docker compose stop immich-server immich-microservices
-
-# Restore DB
-echo "[$(date)] Restoring Postgres from $LATEST..."
-zcat "$DUMP_DIR/$LATEST" | docker exec -i immich_postgres psql -U postgres
-
-# Restart Immich
-echo "[$(date)] Starting Immich services..."
-docker compose start immich-server immich-microservices
-
-# Cleanup
-rm -rf "$DUMP_DIR"
-
-echo "[$(date)] Restore complete. Verify Immich at https://your-server/immich"
+# ---------------------- CONFIGURATION ----------------------------------------
+USB_MOUNT="/mnt/immich-backup"
+PHOTO_DEST="/mnt/data/immich/library"
+USB_PHOTO_SOURCE="$USB_MOUNT/immich-library"
+USB_DB_SOURCE="$USB_MOUNT/postgres"
+DB_CONTAINER="immich_postgres"
+DB_USER="postgres"
+# ---------------------- FUNCTIONS --------------------------------------------
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+check_usb() {
+    if ! mountpoint -q "$USB_MOUNT"; then
+        log "ERROR: $USB_MOUNT is not mounted. Aborting."
+        exit 1
+    fi
+}
+pick_dump() {
+    # Show available dumps and let user pick, defaulting to latest
+    log "Available DB dumps:"
+    ls -lt "$USB_DB_SOURCE"/*.sql.gz | awk '{print NR")", $9}'
+    echo ""
+    local latest
+    latest=$(ls -t "$USB_DB_SOURCE"/*.sql.gz | head -1)
+    read -rp "Enter dump path to restore [default: $latest]: " choice
+    DUMP_FILE="${choice:-$latest}"
+    if [ ! -f "$DUMP_FILE" ]; then
+        log "ERROR: $DUMP_FILE not found."
+        exit 1
+    fi
+    log "Using dump: $DUMP_FILE"
+}
+confirm() {
+    echo ""
+    echo "  !! WARNING: This will overwrite your live Immich data !!"
+    echo ""
+    read -rp "Type YES to continue: " answer
+    if [ "$answer" != "YES" ]; then
+        log "Aborted."
+        exit 0
+    fi
+}
+restore_db() {
+    log "Stopping Immich containers (keeping Postgres running)..."
+    docker stop immich_server immich_microservices immich_ml 2>/dev/null || true
+    log "Restoring database from $DUMP_FILE..."
+    zcat "$DUMP_FILE" | docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d postgres
+    log "Restarting Immich containers..."
+    docker start immich_server immich_microservices immich_ml
+}
+restore_photos() {
+    log "Restoring photo library from $USB_PHOTO_SOURCE to $PHOTO_DEST..."
+    set +e
+    rsync -ah --info=progress2 --delete "$USB_PHOTO_SOURCE/" "$PHOTO_DEST/"
+    local exit_code=$?
+    set -e
+    if [ $exit_code -eq 0 ] || [ $exit_code -eq 24 ]; then
+        log "Photo restore completed."
+    else
+        log "ERROR: rsync failed with exit code $exit_code."
+        exit 1
+    fi
+}
+# ---------------------- MAIN -------------------------------------------------
+log "========== Immich USB Restore =========="
+check_usb
+pick_dump
+confirm
+restore_db
+restore_photos
+log "========== Restore Complete =========="
+log "You may want to run a library rescan in the Immich web UI."
