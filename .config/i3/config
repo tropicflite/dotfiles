@@ -55,7 +55,6 @@ bindsym $mod+Return exec /home/matt/.local/kitty.app/bin/kitty
 bindsym $mod+x exec firefox
 
 #start rofimoji
-bindsym $mod+Shift+q kill
 bindsym $mod+period exec /home/matt/.local/bin/rofimoji --action copy
 
 # start dmenu (a program launcher)
@@ -66,6 +65,9 @@ bindsym $mod+d exec --no-startup-id rofi -show drun
 # There also is i3-dmenu-desktop which only displays applications shipping a
 # .desktop file. It is a wrapper around dmenu, so you need that installed.
 # bindcode $mod+40 exec --no-startup-id i3-dmenu-desktop
+
+# kill focused window
+bindsym $mod+Shift+q kill
 
 # change focus
 bindsym $mod+j focus left
