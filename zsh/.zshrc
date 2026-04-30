@@ -187,18 +187,29 @@ function dotl {
 # Fleet-wide dotfiles pull
 fdotl() {
   local me=${HOST%%.*}
+  _fdotl_check() {
+    local host=$1 exit=$2
+    if [[ $exit -eq 255 ]]; then
+      echo "⚠️  $host: SSH connection failed"
+    elif [[ $exit -ne 0 ]]; then
+      echo "⚠️  $host: dotl failed (exit $exit)"
+    fi
+  }
   for host in mini server laptop desktop phone; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
       zsh -i -c dotl
     elif [[ "$host" == "desktop" ]]; then
       echo "==> $host"
-      ssh -q simin@$host "wsl zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
+      ssh -q simin@$host "wsl zsh -i -c dotl"
+      _fdotl_check $host $?
     else
       echo "==> $host"
-      ssh matt@$host "zsh -i -c dotl" || echo "⚠️  $host failed or unreachable"
+      ssh matt@$host "zsh -i -c dotl"
+      _fdotl_check $host $?
     fi
   done
+  unfunction _fdotl_check
 }
 # Git pull on login
 (dotl > /dev/null 2>&1 &)
