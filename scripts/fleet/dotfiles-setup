@@ -18,6 +18,7 @@ lns "$DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
 lns "$DOTFILES/.config/nvim" "$HOME/.config/nvim"
 lns "$DOTFILES/.config/ranger" "$HOME/.config/ranger"
 lns "$DOTFILES/ssh/config" "$HOME/.ssh/config"
+lns "$DOTFILES/tmux/tmux.conf" "$HOME/.tmux.conf"
 
 # Machine-specific .zshrc.local
 MACHINE=$(echo "${HOST%%.*}" | tr '[:upper:]' '[:lower:]')
