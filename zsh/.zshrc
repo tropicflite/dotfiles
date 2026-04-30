@@ -173,11 +173,11 @@ extract() {
 # DOTFILES
 ################################################################################
 function dotp {
-  cd ~/dotfiles && git add -A && git commit -m "${1:-update dotfiles}"; git push
+  cd ~/dotfiles && git add -A && git commit -m "${1:-update dotfiles}" && git push
   cd ~/
 }
 function dotl {
-  cd ~/dotfiles
+  cd ~/dotfiles || { echo "⚠ dotl: ~/dotfiles not found"; return 1; }
   rm -f .git/packed-refs
   rm -f .git/refs/remotes/origin/master
   rm -f .git/index.lock
@@ -186,7 +186,7 @@ function dotl {
 }
 # Fleet-wide dotfiles pull
 fdotl() {
-  local me=$(hostname)
+  local me=${HOST%%.*}
   for host in mini server laptop desktop phone; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"

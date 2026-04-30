@@ -128,7 +128,7 @@ The dotfiles repo is synced across all machines using two core functions defined
 - SSHes to mini/laptop as `matt@<host>`
 - SSHes to server as `matt@server` (port 28901 handled by `~/.ssh/config`)
 - SSHes to desktop as `simin@desktop` and runs `wsl zsh -i -c dotl`
-- Phone is excluded — run `dotl` manually in Termux
+- SSHes to phone as `matt@phone` (port 8022 handled by `~/.ssh/config`); slower than other hosts but fully automated
 
 ### Typical workflow
 1. Make changes to dotfiles on any machine
