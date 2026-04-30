@@ -16,6 +16,8 @@ export PATH=$HOME/bin:$HOME/dotfiles/packages:/usr/local/bin:$PATH
 
 source $ZSH/oh-my-zsh.sh
 
+RPROMPT='%{$fg[cyan]%}[%D{%H:%M:%S}]%{$reset_color%}'
+
 # Editor
 export EDITOR='nvim'
 
