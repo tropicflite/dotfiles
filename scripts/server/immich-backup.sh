@@ -39,7 +39,7 @@ sync_photos() {
     log "Syncing photo library from $PHOTO_SOURCE to $USB_PHOTO_DEST..."
     local backup_dir="$USB_MOUNT/.deleted-$(date +%Y%m)"
     set +e
-    rsync -ah --info=progress2 --delete --backup --backup-dir="$backup_dir" \
+    rsync -ah --info=stats2 --delete --backup --backup-dir="$backup_dir" \
         "$PHOTO_SOURCE/" "$USB_PHOTO_DEST/"
     local rsync_exit_code=$?
     set -e
