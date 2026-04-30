@@ -3,7 +3,6 @@ export ZSH=$HOME/.oh-my-zsh
 
 # Theme
 ZSH_THEME="agnoster"
-DEFAULT_USER=matt
 
 # Plugins
 plugins=(vi-mode web-search zsh-syntax-highlighting zsh-autosuggestions)
