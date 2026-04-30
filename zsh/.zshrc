@@ -83,6 +83,7 @@ alias bv="bat ~/.config/nvim/init.lua"
 alias vz="nvim ~/.zshrc"
 alias bz="bat ~/.zshrc"
 # local zshrc helpers (functions to allow $_MACHINE expansion at runtime)
+unalias vzl bzl szl 2>/dev/null
 vzl() { nvim ~/.zshrc.local.$_MACHINE; }
 bzl() { bat ~/.zshrc.local.$_MACHINE; }
 szl() { source ~/.zshrc.local.$_MACHINE; }
