@@ -1,6 +1,5 @@
 # Phone-specific config
-MACHINE_NAME="phone"
-PROMPT="%{$fg[$NCOLOR]%}%Bmatt@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+PROMPT="%{$fg[$NCOLOR]%}%Bmatt@$_MACHINE%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
 # Package management (Termux)
 alias pks="pkg search"
 alias pki="pkg install"
@@ -8,8 +7,6 @@ alias pku="pkg upgrade"
 # Tailscale (Termux — no tailscale command in PATH)
 alias tsstatus='echo "Tailscale: check Android app (Settings → Tailscale)"'
 alias netstatus='tsstatus && echo "ProtonVPN: check Android app"'
-# Reload local file
-alias szl='source ~/.zshrc.local.phone'
 # Git SSH key
 export GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519'
 export OLLAMA_HOST=http://100.78.51.10:11434

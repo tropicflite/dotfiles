@@ -1,14 +1,9 @@
 # Desktop-specific config (WSL2)
-MACHINE_NAME="desktop"
-PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+PROMPT="%{$fg[$NCOLOR]%}%B%n@$_MACHINE%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
 
 # Tailscale (runs on Windows, not in WSL2)
 alias tsstatus='echo "Tailscale: check Windows system tray"'
 
-# PATH (machine-specific)
-
-# Reload local file
-alias szl='source ~/.zshrc.local.desktop'
 
 # Desktop-specific locale
 [ -f /etc/default/locale ] && source /etc/default/locale

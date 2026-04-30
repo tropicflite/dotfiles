@@ -9,6 +9,7 @@ plugins=(vi-mode web-search zsh-syntax-highlighting zsh-autosuggestions)
 
 # Base PATH
 export PATH=$HOME/bin:$HOME/dotfiles/packages:/usr/local/bin:$PATH
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 
 # Kitty (if installed)
 [ -d "$HOME/.local/kitty.app/bin" ] && export PATH="$HOME/.local/kitty.app/bin:$PATH"
@@ -63,7 +64,6 @@ alias l="ls -F --color=auto --group-directories-first"
 alias ll="ls -aF --color=auto --group-directories-first"
 alias lll="ls -aFl --color=auto --group-directories-first"
 alias sl="find . -type l -ls"
-alias rm="rm"
 alias df='df -h'
 
 # Package management
@@ -75,12 +75,6 @@ alias sauu="sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y"
 
 # Neovim
 alias v=nvim
-alias v3="nvim ~/.config/i3/config"
-alias v3s="nvim ~/.config/i3status/config"
-alias b3="bat ~/.config/i3/config"
-alias b3s="bat ~/.config/i3status/config"
-alias vk="nvim ~/.config/kitty/kitty.conf"
-alias bk="bat ~/.config/kitty/kitty.conf"
 alias vim=nvim
 alias sv="sudo nvim"
 alias vv="nvim ~/.config/nvim/init.lua"
@@ -90,6 +84,7 @@ alias bz="bat ~/.zshrc"
 # local zshrc helpers (functions to allow $_MACHINE expansion at runtime)
 vzl() { nvim ~/.zshrc.local.$_MACHINE; }
 bzl() { bat ~/.zshrc.local.$_MACHINE; }
+szl() { source ~/.zshrc.local.$_MACHINE; }
 alias sz="source ~/.zshrc"
 
 # Network
@@ -181,7 +176,7 @@ function dotl {
   rm -f .git/packed-refs
   rm -f .git/refs/remotes/origin/master
   rm -f .git/index.lock
-  git fetch --prune --force origin && git reset --hard origin/master || echo "⚠ dotl: sync failed — check ~/dotfiles"
+  git fetch --prune --force origin && git reset --hard origin/master || { echo "⚠ dotl: sync failed — check ~/dotfiles"; cd ~/; return 1; }
   cd ~/
 }
 # Fleet-wide dotfiles pull
@@ -205,13 +200,13 @@ fdotl() {
       _fdotl_check $host $?
     else
       echo "==> $host"
-      ssh matt@$host "zsh -i -c dotl"
+      ssh -q matt@$host "zsh -i -c dotl"
       _fdotl_check $host $?
     fi
   done
   unfunction _fdotl_check
 }
 # Git pull on login
-(dotl > /dev/null 2>&1 &)
+[[ -o login ]] && (dotl > /dev/null 2>&1 &)
 _MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE

@@ -1,7 +1,13 @@
 # Mini-specific config
-MACHINE_NAME="mini"
-export PATH="$HOME/.local/bin:$PATH"
-PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+PROMPT="%{$fg[$NCOLOR]%}%B%n@$_MACHINE%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+
+# i3 / Kitty
+alias v3="nvim ~/.config/i3/config"
+alias v3s="nvim ~/.config/i3status/config"
+alias b3="bat ~/.config/i3/config"
+alias b3s="bat ~/.config/i3status/config"
+alias vk="nvim ~/.config/kitty/kitty.conf"
+alias bk="bat ~/.config/kitty/kitty.conf"
 
 # Trackpad
 alias tpoff='xinput disable "Synaptics s3203" && echo "Touchpad disabled"'
@@ -12,9 +18,7 @@ alias tson='sudo service tailscaled start && sudo tailscale up'
 alias tsoff='sudo tailscale down && sudo service tailscaled stop'
 
 # Network status (combines ProtonVPN + Tailscale)
-alias netstatus='vpnstatus && tsstatus'
+alias netstatus='vpnstatus; tsstatus'
 
-# Reload local file
-alias szl='source ~/.zshrc.local.mini'
 
 export OLLAMA_HOST=http://100.78.51.10:11434

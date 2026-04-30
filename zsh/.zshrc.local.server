@@ -1,13 +1,10 @@
 # Server-specific config
-MACHINE_NAME="server"
-PROMPT="%{$fg[$NCOLOR]%}%B%n@$MACHINE_NAME%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
+PROMPT="%{$fg[$NCOLOR]%}%B%n@$_MACHINE%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
 # Tailscale (server-specific with hostname flag)
 alias tson='sudo tailscale up --hostname=server'
 alias tsoff='sudo tailscale down'
 # Network
 alias netstatus="tsstatus; vpnstatus"
-# Reload local file
-alias szl='source ~/.zshrc.local.server'
 vpnstatus() {
   local wg_out
   wg_out=$(sudo wg show wg0 2>/dev/null)
@@ -53,4 +50,3 @@ fboff() {
 fbstatus() {
   tailscale serve status | grep -E "Funnel|ts.net \("
 }
-export PATH="$HOME/.local/bin:$PATH"
