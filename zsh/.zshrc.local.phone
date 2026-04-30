@@ -1,4 +1,7 @@
 # Phone-specific config
+# Termux reports u0_a243@localhost — override agnoster's context segment
+prompt_context() { prompt_segment black default "matt@phone"; }
+
 # Package management (Termux)
 alias pks="pkg search"
 alias pki="pkg install"
