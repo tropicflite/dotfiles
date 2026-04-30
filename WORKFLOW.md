@@ -34,6 +34,26 @@ dotl && cd ~/dotfiles/packages && ./packages-pull
 | `packages/packages-pull` | Sync this machine to the master list |
 | `packages/packages-remove` | Remove a package globally |
 
+## Laptop/Mini Only — apt packages (not in packages.txt)
+
+These are X11/desktop packages only needed on laptop and mini. Install via `sudo apt install <pkg>`:
+
+| Package | Purpose |
+|---------|---------|
+| `i3-wm` | Window manager |
+| `i3status` | Status bar |
+| `rofi` | App launcher (`$mod+d`) |
+| `flameshot` | Full-screen screenshot (`Print`) |
+| `scrot` | Focused window screenshot (`$mod+Print`) |
+| `picom` | Compositor |
+| `i3lock` | Screen lock |
+| `xss-lock` | Lock on suspend |
+| `unclutter` | Auto-hide cursor |
+| `dex` | XDG autostart |
+| `brightnessctl` | Brightness keys |
+| `xinput` | Trackpad toggle aliases |
+| `pulseaudio-utils` | Volume keys (`pactl`) |
+
 ## Non-apt Installs (manual/curl)
 
 These are not tracked by apt and must be handled separately in the init script:
@@ -46,6 +66,7 @@ These are not tracked by apt and must be handled separately in the init script:
 - **fastfetch** (Ubuntu/desktop) — PPA: `sudo add-apt-repository ppa:zhangsongcui3371/fastfetch`
 - **Kitty** (laptop/mini) — downloaded from GitHub releases
 - **Ollama client** (laptop, mini, server) — binary only from GitHub releases tar.zst; handled by `dotfiles-setup`. Do NOT use `ollama.com/install.sh` — it installs a full server.
+- **rofimoji** (laptop/mini) — `pip3 install rofimoji`; emoji picker bound to `$mod+period` in i3
 
 ## Ollama Architecture
 
@@ -81,6 +102,13 @@ ollama run llama3.2 "prompt" # one-shot
 | phone | GrapheneOS (Termux) | — | Pending setup |
 | server | Debian 13 trixie | matt | Excluded from package sync |
 
+## VPN Notes
+
+- **laptop/mini:** ProtonVPN CLI (`protonvpn`); `vpnstatus` checks the `proton0` interface
+- **server:** WireGuard (`wg0`); `vpnstatus` inspects `wg show wg0` directly — no ProtonVPN CLI
+- **desktop:** no VPN in WSL2; Tailscale runs on the Windows host
+- **phone:** no VPN CLI; check Android apps manually
+
 ## Termux (Phone) Notes
 
 - Termux hostname is `localhost` — the sync scripts detect Termux via `$PREFIX` and use `phone` as the machine name instead
@@ -91,14 +119,14 @@ ollama run llama3.2 "prompt" # one-shot
 ## Fleet Management
 The dotfiles repo is synced across all machines using two core functions defined in `.zshrc`:
 
-- `dotl` — pulls latest dotfiles on the current machine (`git fetch --prune origin && git pull`)
+- `dotl` — syncs the current machine to `origin/master` by clearing any stale git lock files, then running `git fetch --prune --force origin && git reset --hard origin/master`. **Local changes are destroyed.**
 - `dotp [message]` — adds, commits, and pushes all changes (`git add -A && git commit -m "..." ; git push`)
 - `fdotl` — runs `dotl` on all machines via SSH; detects if running locally to avoid self-SSHing; reminds to run `dotl` manually on phone
 
 ### fdotl behavior
 - Runs `dotl` locally if hostname matches
 - SSHes to mini/laptop as `matt@<host>`
-- SSHes to server as `matt@server -p 28901`
+- SSHes to server as `matt@server` (port 28901 handled by `~/.ssh/config`)
 - SSHes to desktop as `simin@desktop` and runs `wsl zsh -i -c dotl`
 - Phone is excluded — run `dotl` manually in Termux
 

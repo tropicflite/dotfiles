@@ -17,5 +17,4 @@ alias netstatus='vpnstatus && tsstatus'
 # Reload local file
 alias szl='source ~/.zshrc.local.mini'
 
-# npm (only if installed locally)
 export OLLAMA_HOST=http://100.78.51.10:11434
