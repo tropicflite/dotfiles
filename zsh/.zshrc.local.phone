@@ -1,5 +1,4 @@
 # Phone-specific config
-PROMPT="%{$fg[$NCOLOR]%}%Bmatt@$_MACHINE%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
 # Package management (Termux)
 alias pks="pkg search"
 alias pki="pkg install"

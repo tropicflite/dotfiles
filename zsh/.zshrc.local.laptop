@@ -1,6 +1,4 @@
                                             # Laptop-specific config
-PROMPT="%{$fg[$NCOLOR]%}%B%n@$_MACHINE%b%{$reset_color%}:%{$fg[blue]%}%B%c/%b%{$reset_color%} $(git_prompt_info)%(!.#.$) "
-
 # i3 / Kitty
 alias v3="nvim ~/.config/i3/config"
 alias v3s="nvim ~/.config/i3status/config"
