@@ -36,8 +36,6 @@ ssh-add ~/.ssh/id_ed25519 2>/dev/null
 
 # Navigation
 alias ..="cd .."
-alias ...="cd ../.."
-alias ....="cd ../../.."
 alias cdc="cd ~/.config"
 alias cdd="cd ~/dotfiles"
 
@@ -49,11 +47,7 @@ elif command -v bat &>/dev/null; then
 fi
 alias c="clear"
 alias h="history"
-alias q="exit"
 alias x="exit"
-alias ':q!'='exit 1'    # "force quit without saving" - exit with error code
-alias :wq="exit"
-alias u="uname -a"
 alias s="sudo "
 alias sudo="sudo "
 
@@ -65,8 +59,6 @@ alias re="sudo reboot"
 alias l="ls -F --color=auto --group-directories-first"
 alias ll="ls -aF --color=auto --group-directories-first"
 alias lll="ls -aFl --color=auto --group-directories-first"
-alias sl="find . -type l -ls"
-alias df='df -h'
 
 # Package management
 alias acs="apt-cache search"
@@ -77,7 +69,6 @@ alias sauu="sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y"
 
 # Neovim
 alias v=nvim
-alias vim=nvim
 alias sv="sudo nvim"
 alias vv="nvim ~/.config/nvim/init.lua"
 alias bv="bat ~/.config/nvim/init.lua"
@@ -89,10 +80,6 @@ vzl() { nvim ~/.zshrc.local.$_MACHINE; }
 bzl() { bat ~/.zshrc.local.$_MACHINE; }
 szl() { source ~/.zshrc.local.$_MACHINE; }
 alias sz="source ~/.zshrc"
-
-# Network
-alias myip='curl -s -4 ifconfig.me && echo'
-alias ports='ss -tulanp'
 
 # Tailscale (if installed)
 if command -v tailscale &>/dev/null; then
@@ -128,43 +115,6 @@ bindkey "^R" history-incremental-pattern-search-backward
 # Recursive mkdir and cd
 function mkcd {
     mkdir -p "$@" && builtin cd "$@"
-}
-
-# Extract archives
-extract() {
-    local c e i
-
-    (($#)) || return
-
-    for i; do
-        c=''
-        e=1
-
-        if [[ ! -r $i ]]; then
-            echo "$0: file is unreadable: \`$i'" >&2
-            continue
-        fi
-
-        case $i in
-            *.t@(gz|lz|xz|b@(2|z?(2))|a@(z|r?(.@(Z|bz?(2)|gz|lzma|xz)))))
-                   c='bsdtar xvf';;
-            *.7z)  c='7z x';;
-            *.Z)   c='uncompress';;
-            *.bz2) c='bunzip2';;
-            *.exe) c='cabextract';;
-            *.gz)  c='gunzip';;
-            *.rar) c='unrar x';;
-            *.xz)  c='unxz';;
-            *.zip) c='unzip';;
-            *)     echo "$0: unrecognized file extension: \`$i'" >&2
-                   continue;;
-        esac
-
-        command $c "$i"
-        e=$?
-    done
-
-    return $e
 }
 
 ################################################################################
