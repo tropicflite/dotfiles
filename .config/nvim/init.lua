@@ -1,6 +1,3 @@
--- init.lua - modern neovim config
--- Plugin manager: lazy.nvim
--- Place at: ~/.config/nvim/init.lua
 --------------------------------------------------------------------------------
 -- BOOTSTRAP LAZY.NVIM
 --------------------------------------------------------------------------------
@@ -187,6 +184,9 @@ opt.history = 9999
 
 -- Reload files changed outside nvim
 opt.autoread = true
+
+-- Use system clipboard
+opt.clipboard = "unnamedplus"
 
 -- Allow unsaved buffers in background
 opt.hidden = true
@@ -492,5 +492,4 @@ autocmd("FileType", {
   end,
 })
 
--- vim: tw=80 sw=2 fdm=marker
-vim.opt.clipboard = "unnamedplus"
+-- vim: tw=80 sw=2

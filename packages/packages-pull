@@ -6,13 +6,11 @@ REMOVED_FILE="$DOTFILES_DIR/packages/packages-removed.txt"
 # Detect Termux
 if [[ -n "$PREFIX" && "$PREFIX" == *termux* ]]; then
   MACHINE="phone"
-  SUDO=""
   PKG_CHECK="dpkg -s"
   PKG_INSTALL="apt install -y"
   PKG_REMOVE="apt remove -y"
 else
-  MACHINE="$(hostname)"
-  SUDO="sudo"
+  MACHINE="$(hostname -s | tr '[:upper:]' '[:lower:]')"
   PKG_CHECK="dpkg -s"
   PKG_INSTALL="sudo apt install -y"
   PKG_REMOVE="sudo apt remove -y"
