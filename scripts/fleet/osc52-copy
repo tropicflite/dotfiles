@@ -1,0 +1,5 @@
+#!/bin/sh
+# Emit OSC 52 escape sequence to push content to terminal clipboard
+buf=$(cat)
+encoded=$(printf '%s' "$buf" | base64 | tr -d '\n')
+printf '\033]52;c;%s\a' "$encoded"
