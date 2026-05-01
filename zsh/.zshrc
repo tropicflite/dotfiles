@@ -174,7 +174,8 @@ if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
 fi
 # Extend chain when we SSH outward
 ssh() {
-  local chain="${SSH_CHAIN:-${$(hostname -s)/localhost/phone}}"
+  local me="${$(hostname -s)/localhost/phone}"
+  local chain="${SSH_CHAIN:+${SSH_CHAIN} ❯ }${me}"
   env SSH_CHAIN="$chain" /usr/bin/ssh -o SendEnv=SSH_CHAIN "$@"
 }
 # Add SSH chain segment and redefine build_prompt to include it
