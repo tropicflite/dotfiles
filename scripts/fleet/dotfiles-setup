@@ -29,6 +29,7 @@ local_zshrc="$DOTFILES/zsh/.zshrc.local.$MACHINE"
 # Non-phone only
 if ! $IS_PHONE; then
   lns "$DOTFILES/.config/btop" "$HOME/.config/btop"
+  lns "$DOTFILES/.config/kitty" "$HOME/.config/kitty"
 fi
 
 # i3 machines (laptop, mini)
