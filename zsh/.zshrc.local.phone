@@ -12,4 +12,3 @@ alias netstatus='tsstatus && echo "ProtonVPN: check Android app"'
 # Git SSH key
 export GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519'
 export OLLAMA_HOST=http://100.78.51.10:11434
-export SSH_CHAIN_NAME=phone
