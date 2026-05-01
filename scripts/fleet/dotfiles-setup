@@ -9,7 +9,7 @@ IS_PHONE=false
 lns() {
   local src="$1" dst="$2"
   mkdir -p "$(dirname "$dst")"
-  ln -sf "$src" "$dst"
+  ln -sfn "$src" "$dst"
   echo "linked: $dst -> $src"
 }
 
