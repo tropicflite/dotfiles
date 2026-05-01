@@ -48,8 +48,6 @@ fi
 alias c="clear"
 alias h="history"
 alias x="exit"
-alias s="sudo "
-alias sudo="sudo "
 
 # System
 alias po="sudo poweroff"
@@ -65,7 +63,6 @@ alias acs="apt-cache search"
 alias saa="sudo apt autoremove"
 alias sai="sudo apt install"
 alias sar="sudo apt remove"
-alias sauu="sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y"
 
 # Neovim
 alias v=nvim
@@ -170,7 +167,7 @@ fdotl() {
   unfunction _fdotl_check
 }
 # Git pull on login
-[[ -o login ]] && (dotl > /dev/null 2>&1 &)
+#[[ -o login ]] && (dotl > /dev/null 2>&1 &)
 # ── SSH hop chain ─────────────────────────────────────────────
 # Seed chain when we arrive via SSH
 if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
@@ -203,3 +200,6 @@ build_prompt() {
 }
 _MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
+
+alias sauu="sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y"
+alias held="apt-mark showhold"
