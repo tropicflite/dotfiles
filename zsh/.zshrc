@@ -93,6 +93,12 @@ if command -v protonvpn &>/dev/null; then
     alias vpnstatus='ip link show proton0 &>/dev/null && echo "ProtonVPN: connected" || echo "ProtonVPN: disconnected"'
 fi
 
+# Tmux
+alias ta="tmux attach"
+alias tk="tmux kill-session"
+alias tn="tmux new -s"
+alias tl="tmux ls"
+
 # Connections (SSH aliases)
 alias desktop='ssh -t simin@desktop "wsl zsh -l"'
 alias laptop='TERM=xterm-256color ssh matt@laptop'
