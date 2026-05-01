@@ -170,9 +170,8 @@ fdotl() {
 # ── SSH hop chain ─────────────────────────────────────────────
 # Seed chain when we arrive via SSH
 if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
-  export SSH_CHAIN=$(echo $SSH_CONNECTION | awk '{print $1}')
+  export SSH_CHAIN=$(hostname -s)
 fi
-
 # Extend chain when we SSH outward
 ssh() {
   local chain="${SSH_CHAIN:+${SSH_CHAIN} ❯ }$(hostname -s)"
