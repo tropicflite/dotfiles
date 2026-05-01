@@ -100,7 +100,11 @@ alias tn="tmux new -s"
 alias tl="tmux ls"
 
 # Connections (SSH aliases)
-desktop() { ssh -t simin@desktop "wsl zsh -l -c 'export SSH_CHAIN=${SSH_CHAIN:+${SSH_CHAIN}:}desktop; exec zsh'"; }
+desktop() {
+  local me="${$(hostname -s)/localhost/phone}"
+  local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}:desktop"
+  ssh -t simin@desktop "wsl zsh -l -c 'export SSH_CHAIN=$chain; exec zsh'"
+}
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias phone='ssh -p 8022 matt@phone'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
