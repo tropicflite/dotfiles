@@ -176,7 +176,7 @@ fi
 # Extend chain when we SSH outward
 ssh() {
   local chain="${SSH_CHAIN:+${SSH_CHAIN} ❯ }$(hostname -s)"
-  SSH_CHAIN="$chain" command ssh -o SendEnv=SSH_CHAIN "$@"
+  env SSH_CHAIN="$chain" /usr/bin/ssh -o SendEnv=SSH_CHAIN "$@"
 }
 
 # Add SSH chain segment and redefine build_prompt to include it
