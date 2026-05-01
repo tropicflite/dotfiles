@@ -102,7 +102,7 @@ alias tl="tmux ls"
 # Connections (SSH aliases)
 desktop() {
   local me="${$(hostname -s)/localhost/phone}"
-  local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}:desktop"
+  local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}"
   ssh -t simin@desktop "wsl zsh -l -c 'export SSH_CHAIN=$chain; exec zsh'"
 }
 alias laptop='TERM=xterm-256color ssh matt@laptop'
