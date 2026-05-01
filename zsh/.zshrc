@@ -167,5 +167,37 @@ fdotl() {
 }
 # Git pull on login
 [[ -o login ]] && (dotl > /dev/null 2>&1 &)
+# ── SSH hop chain ─────────────────────────────────────────────
+# Seed chain when we arrive via SSH
+if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
+  export SSH_CHAIN=$(echo $SSH_CONNECTION | awk '{print $1}')
+fi
+
+# Extend chain when we SSH outward
+ssh() {
+  local chain="${SSH_CHAIN:+${SSH_CHAIN} ❯ }$(hostname -s)"
+  command ssh -o SendEnv=SSH_CHAIN SSH_CHAIN="$chain" "$@"
+}
+
+# Add SSH chain segment and redefine build_prompt to include it
+prompt_ssh_chain() {
+  [[ -z $SSH_CHAIN ]] && return
+  prompt_segment cyan black " $SSH_CHAIN "
+}
+
+build_prompt() {
+  RETVAL=$?
+  prompt_ssh_chain
+  prompt_status
+  prompt_virtualenv
+  prompt_aws
+  prompt_terraform
+  prompt_context
+  prompt_dir
+  prompt_git
+  prompt_bzr
+  prompt_hg
+  prompt_end
+}
 _MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
