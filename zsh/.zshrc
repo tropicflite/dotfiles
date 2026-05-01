@@ -100,7 +100,7 @@ alias tn="tmux new -s"
 alias tl="tmux ls"
 
 # Connections (SSH aliases)
-desktop() { ssh -t simin@desktop "wsl zsh -l -c 'export SSH_CHAIN=${SSH_CHAIN:+${SSH_CHAIN} > }desktop; exec zsh'"; }
+desktop() { ssh -t simin@desktop "wsl zsh -l -c 'export SSH_CHAIN=${SSH_CHAIN:+${SSH_CHAIN}:}desktop; exec zsh'"; }
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias phone='ssh -p 8022 matt@phone'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
@@ -175,15 +175,14 @@ fi
 # Extend chain when we SSH outward
 ssh() {
   local me="${$(hostname -s)/localhost/phone}"
-  local chain="${SSH_CHAIN:+${SSH_CHAIN} ❯ }${me}"
+  local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}"
   env SSH_CHAIN="$chain" /usr/bin/ssh -o SendEnv=SSH_CHAIN "$@"
 }
-# Add SSH chain segment and redefine build_prompt to include it
+# Display chain with ❯ separators
 prompt_ssh_chain() {
   [[ -z $SSH_CHAIN ]] && return
-  prompt_segment cyan black " $SSH_CHAIN "
+  prompt_segment cyan black " ${SSH_CHAIN//:/ ❯ } "
 }
-
 build_prompt() {
   RETVAL=$?
   prompt_ssh_chain
