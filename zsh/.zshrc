@@ -166,8 +166,6 @@ fdotl() {
   done
   unfunction _fdotl_check
 }
-# Git pull on login
-#[[ -o login ]] && (dotl > /dev/null 2>&1 &)
 # ── SSH hop chain ─────────────────────────────────────────────
 # Seed chain when we arrive via SSH
 if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
