@@ -199,5 +199,9 @@ build_prompt() {
 _MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
 
-alias sauu="sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y"
+sauu() {
+  sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y
+  local held=$(apt-mark showhold)
+  [[ -n "$held" ]] && echo "\n⚠ Held packages:\n$held"
+}
 alias held="apt-mark showhold"
