@@ -40,6 +40,7 @@ alias cdc="cd ~/.config"
 alias cdd="cd ~/dotfiles"
 
 # Shortcuts
+# Prefer batcat (Debian/Ubuntu package name) over bat if both present
 if command -v batcat &>/dev/null; then
   alias bat="batcat -pp"
 elif command -v bat &>/dev/null; then
@@ -63,6 +64,7 @@ alias acs="apt-cache search"
 alias saa="sudo apt autoremove"
 alias sai="sudo apt install"
 alias sar="sudo apt remove"
+alias held="apt-mark showhold"
 
 # Neovim
 alias v=nvim
@@ -71,7 +73,9 @@ alias vv="nvim ~/.config/nvim/init.lua"
 alias bv="bat ~/.config/nvim/init.lua"
 alias vz="nvim ~/.zshrc"
 alias bz="bat ~/.zshrc"
-# local zshrc helpers (functions to allow $_MACHINE expansion at runtime)
+# vzl/bzl/szl operate on the per-machine local zshrc (e.g. ~/.zshrc.local.laptop).
+# Defined as functions (not aliases) so $_MACHINE expands at call time, not at source time.
+# unalias first in case a previous shell sourced them as aliases.
 unalias vzl bzl szl 2>/dev/null
 vzl() { nvim ~/.zshrc.local.$_MACHINE; }
 bzl() { bat ~/.zshrc.local.$_MACHINE; }
@@ -97,6 +101,9 @@ alias tn="tmux new -s"
 alias tl="tmux ls"
 
 # Connections (SSH aliases)
+# desktop is a function (not alias) because it needs to build SSH_CHAIN before connecting.
+# WSL is invoked explicitly; SSH_CHAIN is passed via -c rather than SendEnv
+# because Windows sshd lands in cmd.exe, not zsh.
 desktop() {
   local me="${$(hostname -s)/localhost/phone}"
   local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}"
@@ -112,6 +119,8 @@ alias mini='TERM=xterm-256color ssh matt@mini'
 ################################################################################
 
 bindkey -v
+# KEYTIMEOUT: delay (in hundredths of a second) before accepting a key sequence.
+# 20 (200ms) balances vi mode ESC responsiveness vs. accidental prefix misfires.
 export KEYTIMEOUT=20
 bindkey "^R" history-incremental-pattern-search-backward
 
@@ -129,19 +138,25 @@ function mkcd {
 ################################################################################
 function dotp {
   cd ~/dotfiles && git add -A && git commit -m "${1:-update dotfiles}" && git push
+  # Note: git push is intentionally outside the && chain.
+  # A silent push failure after a failed commit is worse than a redundant push.
   cd ~/
 }
 function dotl {
   cd ~/dotfiles || { echo "⚠ dotl: ~/dotfiles not found"; return 1; }
+  # Remove stale git index files that can cause fetch/reset conflicts
+  # across machines with diverged refs or interrupted operations.
   rm -f .git/packed-refs
   rm -f .git/refs/remotes/origin/master
   rm -f .git/index.lock
   git fetch --prune --force origin && git reset --hard origin/master || { echo "⚠ dotl: sync failed — check ~/dotfiles"; cd ~/; return 1; }
   cd ~/
 }
-# Fleet-wide dotfiles pull
+# Fleet-wide dotfiles pull — runs dotl on all machines via SSH.
 fdotl() {
   local me=${HOST%%.*}
+  # Helper defined inline so it doesn't pollute the global function namespace;
+  # unfunction cleans it up when fdotl returns.
   _fdotl_check() {
     local host=$1 exit=$2
     if [[ $exit -eq 255 ]]; then
@@ -156,6 +171,7 @@ fdotl() {
       zsh -i -c dotl
     elif [[ "$host" == "desktop" ]]; then
       echo "==> $host"
+      # desktop requires WSL invocation; standard ssh would land in cmd.exe
       ssh -q simin@$host "wsl zsh -i -c dotl"
       _fdotl_check $host $?
     else
@@ -166,22 +182,32 @@ fdotl() {
   done
   unfunction _fdotl_check
 }
+
 # ── SSH hop chain ─────────────────────────────────────────────
-# Seed chain when we arrive via SSH
+# Tracks the full path of SSH hops in the prompt (e.g. laptop ❯ server ❯ mini).
+# SSH_CHAIN is a colon-separated list of hostnames, rendered with ❯ separators.
+
+# Seed: when we arrive on this machine via SSH and no chain exists yet, start one.
 if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
   export SSH_CHAIN=${$(hostname -s)/localhost/phone}
+  # /localhost/phone: phone's hostname -s returns "localhost"; substitute the
+  # logical fleet name so the chain shows "phone" instead.
 fi
-# Extend chain when we SSH outward
+
+# Wrapper: intercepts all outgoing ssh calls to append this machine to the chain
+# before passing it to the next hop via SendEnv.
 ssh() {
   local me="${$(hostname -s)/localhost/phone}"
   local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}"
   env SSH_CHAIN="$chain" /usr/bin/ssh -o SendEnv=SSH_CHAIN "$@"
 }
-# Display chain with ❯ separators
+
+# Prompt segment: renders the chain in the Agnoster prompt (left side, before status).
 prompt_ssh_chain() {
   [[ -z $SSH_CHAIN ]] && return
   prompt_segment cyan black " ${SSH_CHAIN//:/ ❯ } "
 }
+# Agnoster's build_prompt is overridden here to inject prompt_ssh_chain first.
 build_prompt() {
   RETVAL=$?
   prompt_ssh_chain
@@ -196,12 +222,16 @@ build_prompt() {
   prompt_hg
   prompt_end
 }
+
+# Detect machine name for per-machine zshrc loading.
+# $PREFIX is set in Termux (Android); use "phone" as the logical name there.
+# Otherwise strip the domain suffix from $HOST (e.g. "laptop.local" → "laptop").
 _MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
 
+# Full system update: update, upgrade, autoremove, then report any held packages.
 sauu() {
   sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y
   local held=$(apt-mark showhold)
   [[ -n "$held" ]] && echo "\n⚠ Held packages:\n$held"
 }
-alias held="apt-mark showhold"
