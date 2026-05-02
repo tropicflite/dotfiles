@@ -97,7 +97,7 @@ fi
 # Tmux
 alias ta="tmux attach"
 alias tk="tmux kill-session"
-alias tn="tmux new -s"
+tn() { tmux new -s "${1:-main}"; }
 alias tl="tmux ls"
 
 # Connections (SSH aliases)
