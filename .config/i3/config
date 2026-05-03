@@ -205,3 +205,4 @@ bindsym $mod+Shift+g gaps inner current set 0
 # Brightness controls
 bindsym XF86MonBrightnessUp exec brightnessctl set 10%+
 bindsym XF86MonBrightnessDown exec brightnessctl set 10%-
+include ~/.config/i3/config.local
