@@ -1,2 +1,3 @@
 exec --no-startup-id xrandr --output eDP --off
 exec --no-startup-id xset s off -dpms
+exec --no-startup-id pkill xss-lock
