@@ -36,6 +36,11 @@ fi
 if [[ "$MACHINE" == "laptop" || "$MACHINE" == "mini" ]]; then
   lns "$DOTFILES/.Xmodmap" "$HOME/.Xmodmap"
 fi
+
+# server only
+if [[ "$MACHINE" == "server" ]]; then
+  lns "$DOTFILES/scripts/server/docker-CLAUDE.md" "$HOME/docker/CLAUDE.md"
+fi
 # Ollama client binary (non-phone, non-desktop)
 if ! $IS_PHONE && [[ "$MACHINE" != "desktop" ]]; then
   if ! command -v ollama &>/dev/null; then
