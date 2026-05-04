@@ -27,19 +27,25 @@ ALERTS=""
 
 # CPU temp
 CPU_TEMP=$(sensors | awk '/Package id 0/ {gsub(/[^0-9.]/,"",$4); print int($4)}')
-if [ "$CPU_TEMP" -gt "$THRESHOLD_CPU" ]; then
+if [ -z "$CPU_TEMP" ]; then
+    ALERTS="${ALERTS}WARNING: CPU temp sensor unreadable\n"
+elif [ "$CPU_TEMP" -gt "$THRESHOLD_CPU" ]; then
     ALERTS="${ALERTS}CPU Package: ${CPU_TEMP}°C (threshold: ${THRESHOLD_CPU}°C)\n"
 fi
 
 # NVMe temp
 NVME_TEMP=$(sensors | awk '/^Composite/ {gsub(/[^0-9.]/,"",$2); print int($2)}')
-if [ "$NVME_TEMP" -gt "$THRESHOLD_NVME" ]; then
+if [ -z "$NVME_TEMP" ]; then
+    ALERTS="${ALERTS}WARNING: NVMe temp sensor unreadable\n"
+elif [ "$NVME_TEMP" -gt "$THRESHOLD_NVME" ]; then
     ALERTS="${ALERTS}NVMe: ${NVME_TEMP}°C (threshold: ${THRESHOLD_NVME}°C)\n"
 fi
 
 # HDD temp
 HDD_TEMP=$(sudo /usr/sbin/smartctl -A /dev/sda | awk '/Temperature_Celsius/ {print int($10)}')
-if [ "$HDD_TEMP" -gt "$THRESHOLD_HDD" ]; then
+if [ -z "$HDD_TEMP" ]; then
+    ALERTS="${ALERTS}WARNING: HDD temp sensor unreadable\n"
+elif [ "$HDD_TEMP" -gt "$THRESHOLD_HDD" ]; then
     ALERTS="${ALERTS}HDD: ${HDD_TEMP}°C (threshold: ${THRESHOLD_HDD}°C)\n"
 fi
 
