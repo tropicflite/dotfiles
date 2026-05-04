@@ -13,6 +13,7 @@ Manual dotfiles repo using git + custom shell functions for fleet-wide synchroni
 dotl                    # git fetch + pull on current machine
 dotp "message"          # git add -A + commit + push
 fdotl                   # SSH to all machines and run dotl
+dotclean                # remove stale git ref lock files (also runs automatically inside dotl)
 ```
 
 ### Initial setup on a new machine

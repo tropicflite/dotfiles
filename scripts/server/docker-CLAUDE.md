@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Version Control
+
+`~/docker/` is a private git repo. Commit compose file and config changes here after making them:
+
+```bash
+git -C ~/docker add -A && git -C ~/docker commit -m "message" && git -C ~/docker push
+```
+
+**Known issue:** runtime files (logs, databases, media covers) show up as modified in `git status` because the per-stack `.gitignore` files are incomplete. These should not be committed. A `.gitignore` cleanup is a known TODO.
+
 ## Managing Stacks
 
 All stacks follow the same pattern. From the stack's directory:
