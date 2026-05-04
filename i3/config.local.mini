@@ -1,0 +1,2 @@
+# Map capslock to escape
+exec_always --no-startup-id setxkbmap -option caps:escape

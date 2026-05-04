@@ -1,6 +1,7 @@
 exec --no-startup-id xrandr --output eDP --off
 exec --no-startup-id sleep 3 && xset s off -dpms
 exec --no-startup-id xss-lock -- /bin/true
+exec_always --no-startup-id setxkbmap -option caps:escape && xmodmap -e "keycode 108 = Super_R" && xmodmap -e "remove mod1 = Super_R" && xmodmap -e "add mod4 = Super_R"
 # Volume controls (external keyboard without media keys)
 bindsym $mod+bracketleft  exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -10% && $refresh_i3status
 bindsym $mod+bracketright exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10% && $refresh_i3status
