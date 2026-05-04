@@ -30,6 +30,7 @@ local_zshrc="$DOTFILES/zsh/.zshrc.local.$MACHINE"
 if ! $IS_PHONE; then
   lns "$DOTFILES/.config/btop" "$HOME/.config/btop"
   lns "$DOTFILES/.config/kitty" "$HOME/.config/kitty"
+  lns "$DOTFILES/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
 fi
 
 # i3 machines (laptop, mini)
