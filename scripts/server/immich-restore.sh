@@ -44,11 +44,21 @@ confirm() {
 }
 restore_db() {
     log "Stopping Immich containers (keeping Postgres running)..."
-    docker stop immich_server immich_microservices immich_ml 2>/dev/null || true
+    docker stop immich_server immich_machine_learning immich_redis 2>/dev/null || true
+    log "Dropping immich database to ensure clean restore..."
+    docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS immich;"
     log "Restoring database from $DUMP_FILE..."
     zcat "$DUMP_FILE" | docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d postgres
+    log "Verifying restore..."
+    local count
+    count=$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d immich -tAc "SELECT COUNT(*) FROM assets;" 2>/dev/null || echo "ERROR")
+    if [ "$count" = "ERROR" ] || [ "$count" = "0" ]; then
+        log "WARNING: assets table empty or missing after restore — verify backup integrity before restarting."
+        exit 1
+    fi
+    log "Restore verification: $count assets in database."
     log "Restarting Immich containers..."
-    docker start immich_server immich_microservices immich_ml
+    docker start immich_redis immich_machine_learning immich_server
 }
 restore_photos() {
     log "Restoring photo library from $USB_PHOTO_SOURCE to $PHOTO_DEST..."
