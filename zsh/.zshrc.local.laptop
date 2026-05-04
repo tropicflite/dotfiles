@@ -19,4 +19,7 @@ alias tpon='xinput enable "SYNA7501:00 06CB:1359" && xinput enable "SynPS/2 Syna
 alias tson='sudo service tailscaled start && sudo tailscale up'
 alias tsoff='sudo tailscale down && sudo service tailscaled stop'
 
+# Network status (combines ProtonVPN + Tailscale)
+alias netstatus='vpnstatus; tsstatus'
+
 export OLLAMA_HOST=http://100.78.51.10:11434

@@ -138,8 +138,6 @@ function mkcd {
 ################################################################################
 function dotp {
   cd ~/dotfiles && git add -A && git commit -m "${1:-update dotfiles}" && git push
-  # Note: git push is intentionally outside the && chain.
-  # A silent push failure after a failed commit is worse than a redundant push.
   cd ~/
 }
 function dotl {
