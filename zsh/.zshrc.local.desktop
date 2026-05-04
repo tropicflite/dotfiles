@@ -6,3 +6,8 @@ alias tsstatus='echo "Tailscale: check Windows system tray"'
 # Desktop-specific locale
 [ -f /etc/default/locale ] && source /etc/default/locale
 cd ~
+
+# NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"

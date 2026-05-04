@@ -30,13 +30,21 @@ cd ~/dotfiles/packages
 ```
 Full sync: `dotl && cd ~/dotfiles/packages && ./packages-pull`
 
+### Useful shell aliases (defined in `.zshrc`)
+```bash
+sauu          # sudo apt update && upgrade && autoremove (reports held packages)
+sai / sar     # sudo apt install / remove
+saa           # sudo apt autoremove
+held          # show held packages
+```
+
 ## Architecture
 
 **Symlinks:** All configs live in `~/dotfiles/` and are symlinked to their expected locations. `dotfiles-setup` creates the links; new program configs must be symlinked manually after the first time.
 
 **Machine detection:** Scripts use `${HOST%%.*}` lowercased as the machine name. Termux (phone) is detected via `$PREFIX` and uses `phone` as the name.
 
-**Machine-specific config:** Each machine has `zsh/.zshrc.local.<machine>` for overrides (prompt name, Tailscale aliases, Ollama host, etc.) and `scripts/<machine>/` for machine-specific scripts.
+**Machine-specific config:** Each machine has `zsh/.zshrc.local.<machine>` for overrides (prompt name, Tailscale aliases, Ollama host, etc.) and `scripts/<machine>/` for machine-specific scripts. Any shell config that only applies to one machine (e.g. NVM on desktop) belongs in the local file, not `.zshrc`.
 
 **Non-APT installs** are handled manually — see `WORKFLOW.md` for the list. Notable: Ollama client binary is auto-installed by `dotfiles-setup` (do NOT use `ollama.com/install.sh` — it installs a full server).
 
