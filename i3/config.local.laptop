@@ -1,3 +1,7 @@
 exec --no-startup-id xrandr --output eDP --off
 exec --no-startup-id sleep 3 && xset s off -dpms
 exec --no-startup-id xss-lock -- /bin/true
+# Volume controls (external keyboard without media keys)
+bindsym $mod+bracketleft  exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -10% && $refresh_i3status
+bindsym $mod+bracketright exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10% && $refresh_i3status
+bindsym $mod+backslash    exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle && $refresh_i3status

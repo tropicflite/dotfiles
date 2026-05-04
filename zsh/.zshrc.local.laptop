@@ -1,8 +1,10 @@
                                             # Laptop-specific config
 # i3 / Kitty
 alias v3="nvim ~/.config/i3/config"
+alias v3l="nvim ~/.config/i3/config.local"
 alias v3s="nvim ~/.config/i3status/config"
 alias b3="bat ~/.config/i3/config"
+alias b3l="nvim ~/.config/i3/config.local"
 alias b3s="bat ~/.config/i3status/config"
 alias vk="nvim ~/.config/kitty/kitty.conf"
 alias bk="bat ~/.config/kitty/kitty.conf"
