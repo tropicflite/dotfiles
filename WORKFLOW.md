@@ -150,6 +150,15 @@ Scripts live in `~/dotfiles/scripts/` with per-machine subdirectories:
 
 Scripts are symlinked into PATH using `scripts-link` (in `scripts/fleet/`). Run `scripts-link` after adding a new script to make it executable from anywhere.
 
+## Docker Maintenance
+
+```bash
+docker volume prune -f   # remove anonymous volumes not attached to any container
+docker image prune -f    # remove dangling (untagged) images
+```
+
+Run occasionally on server to reclaim disk space. `volume prune` is safe — it only removes volumes with no live container attached. Note: one anonymous volume (FlareSolverr) will always be skipped as it is in use.
+
 ## Immich Backup
 
 **Hardware:** 465GB USB drive (ext4, labeled `immich-backup`), mounted at `/mnt/immich-backup` via fstab UUID with `nofail`.
