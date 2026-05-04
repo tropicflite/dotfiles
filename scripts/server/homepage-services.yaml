@@ -13,7 +13,7 @@
         description: Photo library
         icon: immich.png
     - Jellyfin:
-        href: https://server.tailc9871d.ts.net:8097
+        href: https://server.tailc9871d.ts.net:8096
         description: Media server
         icon: jellyfin.png
     - qBittorrent:
@@ -26,7 +26,7 @@
         description: RT-AX86U Pro
         icon: asus.png
     - Pi-hole:
-        href: https://server.tailc9871d.ts.net:8090/admin
+        href: https://server.tailc9871d.ts.net:8091/admin
         description: DNS ad blocking
         icon: pi-hole.png
     - Tailscale:
