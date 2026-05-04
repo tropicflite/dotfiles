@@ -5,8 +5,8 @@
 1. `sudo apt install <package>` on laptop
 2. `cd ~/dotfiles/packages && ./packages-push <package>` to add to master list and push
 3. Configure the program how you like on laptop
-4. Copy the config file into the dotfiles repo (e.g. `cp ~/.config/ranger/rc.conf ~/dotfiles/ranger/`)
-5. Replace the original with a symlink (e.g. `ln -sf ~/dotfiles/ranger/rc.conf ~/.config/ranger/rc.conf`)
+4. Copy the config file into the dotfiles repo (e.g. `cp ~/.config/ranger/rc.conf ~/dotfiles/.config/ranger/`)
+5. Replace the original with a symlink (e.g. `ln -sf ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf`)
 6. `dotp` to commit and push
 7. On each other machine: `dotl` then `cd ~/dotfiles/packages && ./packages-pull`
 8. Create the config symlink manually on each machine (first time only)
@@ -67,6 +67,7 @@ These are not tracked by apt and must be handled separately in the init script:
 - **Kitty** (laptop/mini) — downloaded from GitHub releases
 - **Ollama client** (laptop, mini, server) — binary only from GitHub releases tar.zst; handled by `dotfiles-setup`. Do NOT use `ollama.com/install.sh` — it installs a full server.
 - **rofimoji** (laptop/mini) — `pip3 install rofimoji`; emoji picker bound to `$mod+period` in i3
+- **NVM** (desktop only) — `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/HEAD/install.sh | bash`; loaded via `.zshrc.local.desktop`
 
 ## Ollama Architecture
 
@@ -99,7 +100,7 @@ ollama run llama3.2 "prompt" # one-shot
 | laptop | MX Linux 25.1 | matt | Reference machine |
 | mini | MX Linux 25.1 | matt | No AVX, SysVinit, Bay Trail |
 | desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale; Ollama server |
-| phone | GrapheneOS (Termux) | — | Pending setup |
+| phone | GrapheneOS (Termux) | — | Prompt override, pkg aliases, Ollama client, batt script |
 | server | Debian 13 trixie | matt | Excluded from package sync |
 
 ## VPN Notes
@@ -121,7 +122,7 @@ The dotfiles repo is synced across all machines using two core functions defined
 
 - `dotl` — syncs the current machine to `origin/master` by clearing any stale git lock files, then running `git fetch --prune --force origin && git reset --hard origin/master`. **Local changes are destroyed.**
 - `dotp [message]` — adds, commits, and pushes all changes (`git add -A && git commit -m "..." ; git push`)
-- `fdotl` — runs `dotl` on all machines via SSH; detects if running locally to avoid self-SSHing; reminds to run `dotl` manually on phone
+- `fdotl` — runs `dotl` on all machines via SSH; detects if running locally to avoid self-SSHing; phone is included and fully automated
 
 ### fdotl behavior
 - Runs `dotl` locally if hostname matches
