@@ -7,7 +7,7 @@ Wants=network-online.target tailscaled.service
 Type=oneshot
 RemainAfterExit=yes
 ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do tailscale status && break || sleep 2; done'
-ExecStartPre=/bin/bash -c 'ip route show default | awk "/^default/ && /enp1s0/ {print \$3; exit}" > /run/wg0-gateway'
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 15); do GW=$(ip route show default | awk "/^default/ && /enp1s0/ {print \$3; exit}"); [ -n "$GW" ] && { echo "$GW" > /run/wg0-gateway; exit 0; }; sleep 2; done; echo "ERROR: no default route via enp1s0 after 30s"; exit 1'
 ExecStart=/bin/bash -c '\
   GW=$(cat /run/wg0-gateway) && \
   wg-quick up /etc/wireguard/wg0.conf && \
