@@ -1,0 +1,33 @@
+#!/bin/bash
+# WSL2 wrapper: routes arecord through PulseAudio (RDPSource via WSLg).
+# Claude Code's voice mode probes for arecord but WSL2 has no ALSA kernel
+# modules. This wrapper satisfies the probe and captures real mic audio.
+
+if [[ "$1" == "--version" ]]; then
+    echo "arecord: version 1.2.13 (WSL2/PulseAudio wrapper)"
+    exit 0
+fi
+
+# Probe: arecord ... /dev/null — just confirm we can start
+for arg in "$@"; do
+    [[ "$arg" == "/dev/null" ]] && exit 0
+done
+
+# Parse -r (rate) and -c (channels) from args; ignore the rest
+RATE=16000
+CHANNELS=1
+prev=""
+for arg in "$@"; do
+    case "$prev" in
+        -r) RATE="$arg" ;;
+        -c) CHANNELS="$arg" ;;
+    esac
+    prev="$arg"
+done
+
+exec parec \
+    --format=s16le \
+    --rate="$RATE" \
+    --channels="$CHANNELS" \
+    --raw \
+    --device=RDPSource
