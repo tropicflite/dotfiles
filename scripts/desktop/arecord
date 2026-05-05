@@ -25,7 +25,7 @@ for arg in "$@"; do
     prev="$arg"
 done
 
-parec \
+exec parec \
     --format=s16le \
     --rate="$RATE" \
     --channels="$CHANNELS" \
