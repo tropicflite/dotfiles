@@ -150,6 +150,29 @@ Scripts live in `~/dotfiles/scripts/` with per-machine subdirectories:
 
 Scripts are symlinked into PATH using `scripts-link` (in `scripts/fleet/`). Run `scripts-link` after adding a new script to make it executable from anywhere.
 
+## Claude Code Voice Mode (Desktop/WSL2)
+
+Voice mode works on desktop via a fake `arecord` wrapper at `scripts/desktop/arecord` (symlinked into `~/bin` by `scripts-link`).
+
+**Why a wrapper is needed:** Claude Code's voice mode gate checks for `arecord` or `rec` to decide if audio capture is available. WSL2 has no ALSA kernel modules (`/proc/asound/` absent), so neither command exists. The wrapper satisfies the probe and routes real capture through PulseAudio.
+
+**Audio path:** AT2020 condenser mic → Focusrite Scarlett (Windows, 48kHz) → WSLg RDP bridge → PulseAudio `RDPSource` → `parec` (resamples to 16kHz internally) → Claude Code.
+
+**How the wrapper works:** Handles three call patterns from Claude Code:
+1. `arecord --version` — existence probe; prints a fake version string and exits 0
+2. `arecord ... /dev/null` — startup test; runs parec briefly into /dev/null
+3. `arecord ... <output-file>` — real recording; `exec parec` into the file
+
+**Critical: must use `exec parec`, not just `parec`**
+
+Without `exec`, SIGTERM from Claude Code kills the bash wrapper but leaves parec running as an orphan. After several recordings, many orphaned parec processes all compete for the same PulseAudio source simultaneously — Claude Code receives only a fraction of the audio, causing dropped words and "no speech detected" errors. `exec` replaces the bash PID with parec so SIGTERM terminates it directly.
+
+**Do not add ffmpeg to this pipeline.** ffmpeg causes ~1.1s startup latency that drops the first second of every utterance, making voice mode intermittent. PulseAudio's internal resampler handles 44100→16kHz adequately for speech. The soxr quality gain is not worth it.
+
+**Login requirement:** Claude Code voice mode requires `claude.ai` OAuth login (`/login` inside CC). It streams to Deepgram Nova3 STT via Anthropic's API.
+
+**If it breaks after a WSL/PulseAudio update:** check that `RDPSource` still exists (`pactl list sources short`), that parec is installed (`sudo apt install pulseaudio-utils`), and that no orphaned parec processes are piled up (`pgrep parec` / `pkill parec`).
+
 ## Docker Maintenance
 
 ```bash
