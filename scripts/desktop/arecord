@@ -25,18 +25,9 @@ for arg in "$@"; do
     prev="$arg"
 done
 
-# Capture at PulseAudio's native rate (avoids internal resampling),
-# then use ffmpeg's soxr resampler to downsample to the requested rate.
-PULSE_RATE=44100
-parec \
+exec parec \
     --format=s16le \
-    --rate="$PULSE_RATE" \
+    --rate="$RATE" \
     --channels="$CHANNELS" \
     --raw \
-    --device=RDPSource \
-| ffmpeg \
-    -f s16le -ar "$PULSE_RATE" -ac "$CHANNELS" -i pipe:0 \
-    -f s16le -ar "$RATE"       -ac "$CHANNELS" \
-    -af "aresample=resampler=soxr" \
-    -loglevel quiet \
-    pipe:1
+    --device=RDPSource
