@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 git -C ~/docker add -A && git -C ~/docker commit -m "message" && git -C ~/docker push
 ```
 
-**Known issue:** runtime files (logs, databases, media covers) show up as modified in `git status` because the per-stack `.gitignore` files are incomplete. These should not be committed. A `.gitignore` cleanup is a known TODO.
+**Note:** runtime files (logs, databases, media covers) may show up as modified in `git status` — these should not be committed.
 
 ## Managing Stacks
 
