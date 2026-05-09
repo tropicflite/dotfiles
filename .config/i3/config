@@ -40,8 +40,9 @@ tiling_drag modifier titlebar
 # start a terminal
 bindsym $mod+Return exec $HOME/.local/kitty.app/bin/kitty
 
-#start firefox
+#start firefox and chromium
 bindsym $mod+x exec firefox
+bindsym $mod+c exec chromium
 
 #start rofimoji
 bindsym $mod+period exec $HOME/.local/bin/rofimoji --action copy
