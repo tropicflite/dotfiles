@@ -110,9 +110,10 @@ desktop() {
   ssh -t simin@desktop "wsl zsh -l -c 'export SSH_CHAIN=$chain; exec zsh'"
 }
 alias laptop='TERM=xterm-256color ssh matt@laptop'
-alias phone='ssh -p 8022 matt@phone'
-alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 alias mini='TERM=xterm-256color ssh matt@mini'
+alias phone='ssh -p 8022 matt@phone'
+alias router='ssh admin@router'
+alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 
 ################################################################################
 # KEY BINDINGS
