@@ -105,13 +105,19 @@ alias tl="tmux ls"
 # WSL is invoked explicitly; SSH_CHAIN is passed via -c rather than SendEnv
 # because Windows sshd lands in cmd.exe, not zsh.
 desktop() {
-  local me="${$(hostname -s)/localhost/phone}"
+  local me
+  if [[ -n $PREFIX ]]; then
+    me=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+  else
+    me="${$(hostname -s)/localhost/phone}"
+  fi
   local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}"
   ssh -t simin@desktop "wsl zsh -l -c 'export SSH_CHAIN=$chain; exec zsh'"
 }
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias mini='TERM=xterm-256color ssh matt@mini'
 alias phone='ssh -p 8022 matt@phone'
+alias quest='ssh -p 8022 matt@100.74.113.62'
 alias router='ssh admin@router'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 
@@ -188,15 +194,26 @@ fdotl() {
 
 # Seed: when we arrive on this machine via SSH and no chain exists yet, start one.
 if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
-  export SSH_CHAIN=${$(hostname -s)/localhost/phone}
+  local _chain_name
+  if [[ -n $PREFIX ]]; then
+    _chain_name=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+  else
   # /localhost/phone: phone's hostname -s returns "localhost"; substitute the
   # logical fleet name so the chain shows "phone" instead.
+    _chain_name=${$(hostname -s)/localhost/phone}
+  fi
+  export SSH_CHAIN=$_chain_name
 fi
 
 # Wrapper: intercepts all outgoing ssh calls to append this machine to the chain
 # before passing it to the next hop via SendEnv.
 ssh() {
-  local me="${$(hostname -s)/localhost/phone}"
+  local me
+  if [[ -n $PREFIX ]]; then
+    me=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+  else
+    me="${$(hostname -s)/localhost/phone}"
+  fi
   local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}"
   env SSH_CHAIN="$chain" /usr/bin/ssh -o SendEnv=SSH_CHAIN "$@"
 }
@@ -226,7 +243,6 @@ build_prompt() {
 # $PREFIX is set in Termux (Android); use "phone" as the logical name there.
 # Otherwise strip the domain suffix from $HOST (e.g. "laptop.local" → "laptop").
 
-# New:
 if [ -n "$PREFIX" ]; then
   _MACHINE=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
 else
