@@ -28,3 +28,8 @@ Host server
   User matt
   Port 28901
   ForwardAgent yes
+
+Host quest
+  HostName 100.74.113.62
+  User matt
+  Port 8022
