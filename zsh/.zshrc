@@ -225,7 +225,13 @@ build_prompt() {
 # Detect machine name for per-machine zshrc loading.
 # $PREFIX is set in Termux (Android); use "phone" as the logical name there.
 # Otherwise strip the domain suffix from $HOST (e.g. "laptop.local" → "laptop").
-_MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
+
+# New:
+if [ -n "$PREFIX" ]; then
+  _MACHINE=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+else
+  _MACHINE="${HOST%%.*}"
+fi
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
 
 # Full system update: update, upgrade, autoremove, then report any held packages.
