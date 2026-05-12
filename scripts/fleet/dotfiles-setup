@@ -2,8 +2,8 @@
 # Symlink dotfiles into place for the current machine
 
 DOTFILES="$HOME/dotfiles"
-IS_PHONE=false
-[[ -n "$PREFIX" ]] && IS_PHONE=true
+IS_TERMUX=false
+[[ -n "$PREFIX" ]] && IS_TERMUX=true
 
 # Helper
 lns() {
@@ -22,12 +22,12 @@ lns "$DOTFILES/tmux/tmux.conf" "$HOME/.tmux.conf"
 
 # Machine-specific .zshrc.local
 MACHINE=$(echo "${HOST%%.*}" | tr '[:upper:]' '[:lower:]')
-$IS_PHONE && MACHINE=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+$IS_TERMUX && MACHINE=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
 local_zshrc="$DOTFILES/zsh/.zshrc.local.$MACHINE"
 [[ -f "$local_zshrc" ]] && lns "$local_zshrc" "$HOME/.zshrc.local.$MACHINE"
 
 # Non-phone only
-if ! $IS_PHONE; then
+if ! $IS_TERMUX; then
   lns "$DOTFILES/.config/btop" "$HOME/.config/btop"
   lns "$DOTFILES/.config/kitty" "$HOME/.config/kitty"
   lns "$DOTFILES/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
@@ -43,7 +43,7 @@ if [[ "$MACHINE" == "server" ]]; then
   lns "$DOTFILES/scripts/server/docker-CLAUDE.md" "$HOME/docker/CLAUDE.md"
 fi
 # Ollama client binary (non-phone, non-desktop)
-if ! $IS_PHONE && [[ "$MACHINE" != "desktop" ]]; then
+if ! $IS_TERMUX && [[ "$MACHINE" != "desktop" ]]; then
   if ! command -v ollama &>/dev/null; then
     echo "Installing ollama binary..."
     OLLAMA_VERSION=$(curl -sL https://api.github.com/repos/ollama/ollama/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
