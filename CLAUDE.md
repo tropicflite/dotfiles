@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Manual dotfiles repo using git + custom shell functions for fleet-wide synchronization across 5 machines. No stow, chezmoi, or Nix — configs live in the repo and are symlinked into place by hand or via `dotfiles-setup`.
+Manual dotfiles repo using git + custom shell functions for fleet-wide synchronization across 6 machines. No stow, chezmoi, or Nix — configs live in the repo and are symlinked into place by hand or via `dotfiles-setup`.
 
 ## Key Commands
 
@@ -43,7 +43,7 @@ held          # show held packages
 
 **Symlinks:** All configs live in `~/dotfiles/` and are symlinked to their expected locations. `dotfiles-setup` creates the links; new program configs must be symlinked manually after the first time.
 
-**Machine detection:** Scripts use `${HOST%%.*}` lowercased as the machine name. Termux (phone) is detected via `$PREFIX` and uses `phone` as the name.
+**Machine detection:** Scripts use `${HOST%%.*}` lowercased as the machine name. Termux devices (phone, quest) are detected via `$PREFIX`; the logical name is read from `$PREFIX/etc/machine-name` (falls back to `phone` if missing).
 
 **Machine-specific config:** Each machine has `zsh/.zshrc.local.<machine>` for overrides (prompt name, Tailscale aliases, Ollama host, etc.) and `scripts/<machine>/` for machine-specific scripts. Any shell config that only applies to one machine (e.g. NVM on desktop) belongs in the local file, not `.zshrc`.
 
@@ -57,7 +57,8 @@ held          # show held packages
 | mini | MX Linux 25.1 | No AVX, SysVinit, Bay Trail; i3 + Kitty |
 | desktop | Ubuntu 24.04 (WSL2) | Ollama server (`100.78.51.10:11434`); `fdotl` reaches via `wsl zsh -i -c dotl` |
 | server | Debian 13 trixie | Port 28901; excluded from package sync; runs Open WebUI + Docker |
-| phone | GrapheneOS (Termux) | Manual `dotl` only; uses `$PREFIX` detection |
+| phone | GrapheneOS (Termux) | Full `fdotl` member; port 8022; uses `$PREFIX` + machine-name detection |
+| quest | Meta Quest (Termux) | Full `fdotl` member; port 8022; Tailscale IP `100.74.113.62` |
 
 ## Scripts Directory
 
