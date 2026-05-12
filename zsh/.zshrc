@@ -165,23 +165,23 @@ fdotl() {
   _fdotl_check() {
     local host=$1 exit=$2
     if [[ $exit -eq 255 ]]; then
-      echo "⚠️  $host: SSH connection failed"
+      echo "⚠️  $host: offline or unreachable (skipped)"
     elif [[ $exit -ne 0 ]]; then
       echo "⚠️  $host: dotl failed (exit $exit)"
     fi
   }
-  for host in mini server laptop desktop phone; do
+  for host in mini server laptop desktop phone quest; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
       zsh -i -c dotl
     elif [[ "$host" == "desktop" ]]; then
       echo "==> $host"
       # desktop requires WSL invocation; standard ssh would land in cmd.exe
-      ssh -q simin@$host "wsl zsh -i -c dotl"
+      ssh -q -o ConnectTimeout=10 simin@$host "wsl zsh -i -c dotl"
       _fdotl_check $host $?
     else
       echo "==> $host"
-      ssh -q matt@$host "zsh -i -c dotl"
+      ssh -q -o ConnectTimeout=10 matt@$host "zsh -i -c dotl"
       _fdotl_check $host $?
     fi
   done
