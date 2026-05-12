@@ -117,7 +117,7 @@ desktop() {
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias mini='TERM=xterm-256color ssh matt@mini'
 alias phone='ssh -p 8022 matt@phone'
-alias quest='ssh matt@quest'
+alias quest='TERM=xterm-256color ssh matt@quest'
 alias router='ssh admin@router'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 
