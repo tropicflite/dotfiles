@@ -31,6 +31,7 @@ if ! $IS_TERMUX; then
   lns "$DOTFILES/.config/btop" "$HOME/.config/btop"
   lns "$DOTFILES/.config/kitty" "$HOME/.config/kitty"
   lns "$DOTFILES/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
+  lns "$DOTFILES/.claude/settings.json" "$HOME/.claude/settings.json"
 fi
 
 # i3 machines (laptop, mini)
