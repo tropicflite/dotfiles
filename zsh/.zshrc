@@ -117,7 +117,7 @@ desktop() {
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias mini='TERM=xterm-256color ssh matt@mini'
 alias phone='ssh -p 8022 matt@phone'
-alias quest='ssh -p 8022 matt@100.74.113.62'
+alias quest='ssh matt@quest'
 alias router='ssh admin@router'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 
@@ -194,15 +194,13 @@ fdotl() {
 
 # Seed: when we arrive on this machine via SSH and no chain exists yet, start one.
 if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
-  local _chain_name
   if [[ -n $PREFIX ]]; then
-    _chain_name=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+    export SSH_CHAIN=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
   else
-  # /localhost/phone: phone's hostname -s returns "localhost"; substitute the
-  # logical fleet name so the chain shows "phone" instead.
-    _chain_name=${$(hostname -s)/localhost/phone}
+    # /localhost/phone: phone's hostname -s returns "localhost"; substitute the
+    # logical fleet name so the chain shows "phone" instead.
+    export SSH_CHAIN=${$(hostname -s)/localhost/phone}
   fi
-  export SSH_CHAIN=$_chain_name
 fi
 
 # Wrapper: intercepts all outgoing ssh calls to append this machine to the chain
