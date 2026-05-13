@@ -1,4 +1,4 @@
-# Phone (Termux) specific ignores
+# Quest (Meta Quest Termux) specific ignores
 bat
 btop
 build-essential
@@ -19,7 +19,6 @@ ranger
 rsync
 sshfs
 tailscale
-tmux
 tree-sitter-lua-src
 wget
 xclip

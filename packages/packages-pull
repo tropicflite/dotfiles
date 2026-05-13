@@ -5,7 +5,8 @@ REMOVED_FILE="$DOTFILES_DIR/packages/packages-removed.txt"
 
 # Detect Termux
 if [[ -n "$PREFIX" && "$PREFIX" == *termux* ]]; then
-  MACHINE="phone"
+  MACHINE="$(cat "$PREFIX/etc/machine-name" 2>/dev/null | tr -d '[:space:]')"
+  [[ -z "$MACHINE" ]] && MACHINE="phone"
   PKG_CHECK="dpkg -s"
   PKG_INSTALL="apt install -y"
   PKG_REMOVE="apt remove -y"
