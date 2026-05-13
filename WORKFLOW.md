@@ -100,8 +100,9 @@ ollama run llama3.2 "prompt" # one-shot
 | laptop | MX Linux 25.1 | matt | Reference machine |
 | mini | MX Linux 25.1 | matt | No AVX, SysVinit, Bay Trail |
 | desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale; Ollama server |
-| phone | GrapheneOS (Termux) | — | Prompt override, pkg aliases, Ollama client, batt script |
 | server | Debian 13 trixie | matt | Excluded from package sync |
+| phone | GrapheneOS (Termux) | — | Port 8022; prompt override, pkg aliases, Ollama client, batt script |
+| quest | Meta Quest (Termux) | — | Port 8022; Tailscale IP 100.74.113.62; machine-name file required at bootstrap |
 
 ## VPN Notes
 
@@ -110,11 +111,12 @@ ollama run llama3.2 "prompt" # one-shot
 - **desktop:** no VPN in WSL2; Tailscale runs on the Windows host
 - **phone:** no VPN CLI; check Android apps manually
 
-## Termux (Phone) Notes
+## Termux (Phone & Quest) Notes
 
-- Termux hostname is `localhost` — the sync scripts detect Termux via `$PREFIX` and use `phone` as the machine name instead
+- Termux hostname is `localhost` — scripts detect Termux via `$PREFIX` and read the machine name from `$PREFIX/etc/machine-name` (falls back to `phone` if missing)
+- Quest requires `echo quest > $PREFIX/etc/machine-name` at bootstrap time for correct machine detection
 - Termux does not use `sudo` — scripts handle this automatically
-- Termux has its own package repo; many packages from the master list are in `packages-ignore.phone`
+- Termux has its own package repo; many packages from the master list are in `packages-ignore.phone` / `packages-ignore.quest`
 - Package manager is `apt` but packages are Termux-specific builds, not Debian/Ubuntu packages
 
 ## Fleet Management
@@ -130,6 +132,7 @@ The dotfiles repo is synced across all machines using two core functions defined
 - SSHes to server as `matt@server` (port 28901 handled by `~/.ssh/config`)
 - SSHes to desktop as `simin@desktop` and runs `wsl zsh -i -c dotl`
 - SSHes to phone as `matt@phone` (port 8022 handled by `~/.ssh/config`); slower than other hosts but fully automated
+- SSHes to quest as `matt@quest` (port 8022, Tailscale IP `100.74.113.62`, handled by `~/.ssh/config`)
 
 ### Typical workflow
 1. Make changes to dotfiles on any machine
