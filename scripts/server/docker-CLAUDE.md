@@ -88,6 +88,7 @@ All services are accessed over Tailscale. The server's Tailscale hostname is `se
 | qBittorrent | 8082 | 8080 |
 | Open WebUI | 443 (default HTTPS) | 8083 |
 | Homepage | 3000 | 3001 |
+| Stirling PDF | 8085 | 8084 |
 
 Other services (Immich :2283, Uptime Kuma :3002, Filebrowser :8081) use the same port on both sides.
 
