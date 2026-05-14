@@ -19,9 +19,9 @@ Host phone
   Port 8022
 
 Host router
-    HostName 192.168.50.1
-    User admin
-    Port 2222
+  HostName 192.168.50.1
+  User admin
+  Port 2222
 
 Host server
   HostName 100.65.250.53

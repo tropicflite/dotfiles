@@ -12,7 +12,7 @@ LOG_TAG="vpn-diskcheck"
 send_email() {
     local subject="$1"
     local body="$2"
-    printf "To: %s\nSubject: [Server] %s\n\n%s\n" \
+    printf "To: %s\nSubject: [Server] %s\n\n%b\n" \
         "$ALERT_EMAIL" "$subject" "$body" | msmtp "$ALERT_EMAIL"
 }
 

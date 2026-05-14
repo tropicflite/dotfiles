@@ -107,7 +107,7 @@ alias tl="tmux ls"
 desktop() {
   local me
   if [[ -n $PREFIX ]]; then
-    me=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+    me=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
   else
     me="${$(hostname -s)/localhost/phone}"
   fi
@@ -195,7 +195,7 @@ fdotl() {
 # Seed: when we arrive on this machine via SSH and no chain exists yet, start one.
 if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
   if [[ -n $PREFIX ]]; then
-    export SSH_CHAIN=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+    export SSH_CHAIN=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
   else
     # /localhost/phone: phone's hostname -s returns "localhost"; substitute the
     # logical fleet name so the chain shows "phone" instead.
@@ -208,7 +208,7 @@ fi
 ssh() {
   local me
   if [[ -n $PREFIX ]]; then
-    me=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+    me=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
   else
     me="${$(hostname -s)/localhost/phone}"
   fi
@@ -242,7 +242,7 @@ build_prompt() {
 # Otherwise strip the domain suffix from $HOST (e.g. "laptop.local" → "laptop").
 
 if [ -n "$PREFIX" ]; then
-  _MACHINE=$(cat $PREFIX/etc/machine-name 2>/dev/null || echo phone)
+  _MACHINE=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
 else
   _MACHINE="${HOST%%.*}"
 fi

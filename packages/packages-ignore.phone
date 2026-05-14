@@ -19,7 +19,6 @@ ranger
 rsync
 sshfs
 tailscale
-tmux
 tree-sitter-lua-src
 wget
 xclip
