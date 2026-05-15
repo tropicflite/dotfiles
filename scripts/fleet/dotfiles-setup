@@ -37,6 +37,7 @@ fi
 # i3 machines (laptop, mini)
 if [[ "$MACHINE" == "laptop" || "$MACHINE" == "mini" ]]; then
   lns "$DOTFILES/.Xmodmap" "$HOME/.Xmodmap"
+  lns "$DOTFILES/.config/i3status/config.$MACHINE" "$HOME/.config/i3status/config"
 fi
 
 # server only
