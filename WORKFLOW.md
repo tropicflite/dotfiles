@@ -185,6 +185,28 @@ docker image prune -f    # remove dangling (untagged) images
 
 Run occasionally on server to reclaim disk space. `volume prune` is safe — it only removes volumes with no live container attached. Note: one anonymous volume (FlareSolverr) will always be skipped as it is in use.
 
+## Docker Restart After `sauu`
+
+`sudo apt upgrade` (`sauu`) may restart the Docker daemon, which tears down the `docker0` bridge and leaves all containers stopped. `unless-stopped` does **not** protect against this — it only restarts containers if the daemon itself is running.
+
+After any `sauu` on server, bring all containers back up with:
+
+```bash
+c && for f in ~/docker/*/docker-compose.yml; do docker compose -f "$f" up -d; done
+```
+
+If a container fails to start with `address already in use`, check whether Tailscale Serve has grabbed the port:
+
+```bash
+c && sudo ss -tlnp | grep <port>
+```
+
+Then commit and push:
+
+```bash
+dotp "docs: add sauu Docker restart note"
+```
+
 ## Immich Backup
 
 **Hardware:** 465GB USB drive (ext4, labeled `immich-backup`), mounted at `/mnt/immich-backup` via fstab UUID with `nofail`.
