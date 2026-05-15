@@ -7,7 +7,7 @@
 
 THRESHOLD_CPU=75
 THRESHOLD_NVME=70
-THRESHOLD_HDD=50
+THRESHOLD_HDD=55
 COOLDOWN_FILE=/tmp/temp-monitor-cooldown
 COOLDOWN_MINUTES=30
 TO="nichols_matt@pm.me"
@@ -41,12 +41,20 @@ elif [ "$NVME_TEMP" -gt "$THRESHOLD_NVME" ]; then
     ALERTS="${ALERTS}NVMe: ${NVME_TEMP}°C (threshold: ${THRESHOLD_NVME}°C)\n"
 fi
 
-# HDD temp
+# HDD temp (sda - USB backup drive)
 HDD_TEMP=$(sudo /usr/sbin/smartctl -A /dev/sda | awk '/Temperature_Celsius/ {print int($10)}')
 if [ -z "$HDD_TEMP" ]; then
-    ALERTS="${ALERTS}WARNING: HDD temp sensor unreadable\n"
+    ALERTS="${ALERTS}WARNING: sda temp sensor unreadable\n"
 elif [ "$HDD_TEMP" -gt "$THRESHOLD_HDD" ]; then
-    ALERTS="${ALERTS}HDD: ${HDD_TEMP}°C (threshold: ${THRESHOLD_HDD}°C)\n"
+    ALERTS="${ALERTS}HDD (sda - backup): ${HDD_TEMP}°C (threshold: ${THRESHOLD_HDD}°C)\n"
+fi
+
+# HDD temp (sdb - Immich library drive)
+SDB_TEMP=$(sudo /usr/sbin/smartctl -A /dev/sdb | awk '/Temperature_Celsius/ {print int($10)}')
+if [ -z "$SDB_TEMP" ]; then
+    ALERTS="${ALERTS}WARNING: sdb temp sensor unreadable\n"
+elif [ "$SDB_TEMP" -gt "$THRESHOLD_HDD" ]; then
+    ALERTS="${ALERTS}HDD (sdb - Immich library): ${SDB_TEMP}°C (threshold: ${THRESHOLD_HDD}°C)\n"
 fi
 
 # Send alert if any thresholds exceeded
