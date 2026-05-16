@@ -92,8 +92,7 @@ ollama run llama3.2 "prompt" # one-shot
 - TTS sidecar: `openai-edge-tts` (Edge TTS via OpenAI-compatible API)
 - Compose: `~/docker/open-webui/docker-compose.yml` (live config, synced to dotfiles)
 - Data volume: `open-webui` (Docker named volume)
-- **Note:** Tailscale Serve rule not persisted — if Tailscale resets, re-run:
-  `sudo tailscale serve --bg --https=8083 localhost:8083`
+- **Note:** Tailscale Serve rule persisted via `tailscale-serve-openwebui.service` (systemd, enabled). Survives reboots and Tailscale restarts.
 
 ## Machine Reference
 
