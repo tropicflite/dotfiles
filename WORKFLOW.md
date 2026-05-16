@@ -86,12 +86,14 @@ ollama run llama3.2 "prompt" # one-shot
 
 ## Open WebUI
 
-- Runs as a Docker container on the server, port 443 (Tailscale Serve, Funnel off)
-- Accessible at `https://server.tailc9871d.ts.net`
+- Runs as a Docker container on the server, port 8083 (Tailscale Serve HTTPS)
+- Accessible at `https://server.tailc9871d.ts.net:8083`
 - Points at Ollama on desktop: `OLLAMA_BASE_URL=http://100.78.51.10:11434`
 - TTS sidecar: `openai-edge-tts` (Edge TTS via OpenAI-compatible API)
 - Compose: `~/docker/open-webui/docker-compose.yml` (live config, synced to dotfiles)
 - Data volume: `open-webui` (Docker named volume)
+- **Note:** Tailscale Serve rule not persisted — if Tailscale resets, re-run:
+  `sudo tailscale serve --bg --https=8083 localhost:8083`
 
 ## Machine Reference
 
@@ -208,8 +210,7 @@ dotp "docs: add sauu Docker restart note"
 ```
 
 ## Immich Backup
-
-**Hardware:** 465GB USB drive (ext4, labeled `immich-backup`), mounted at `/mnt/immich-backup` via fstab UUID with `nofail`.
+**Hardware:** WD 320GB internal SATA (`sda`), UUID `600369d3-9539-4c26-8093-4c7e4b8c20b1`, mounted at `/mnt/immich-backup` via fstab with `nofail`. Live Immich library on WD My Passport 2TB USB (`sdb`), UUID `1b9a2ab5-0f1a-45b6-b55e-5e96c7f8a0f9`, mounted at `/mnt/data`.
 
 **Backup script:** `immich-backup.sh` (runs on server via cron)
 - Uses rsync with `--info=progress2` for live progress
