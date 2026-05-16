@@ -94,6 +94,21 @@ ollama run llama3.2 "prompt" # one-shot
 - Data volume: `open-webui` (Docker named volume)
 - **Note:** Tailscale Serve rule persisted via `tailscale-serve-openwebui.service` (systemd, enabled). Survives reboots and Tailscale restarts.
 
+## Tailscale Serve Rules
+
+All rules are persisted via systemd units and survive reboots and Tailscale restarts.
+
+| Service | External URL | Internal Port | systemd unit |
+|---------|-------------|---------------|--------------|
+| Homepage | `https://server.tailc9871d.ts.net` | 3001 | `tailscale-serve-homepage.service` |
+| Open WebUI | `https://server.tailc9871d.ts.net:8083` | 8083 | `tailscale-serve-openwebui.service` |
+
+To add a new rule:
+```bash
+sudo tailscale serve --bg --https=<port> localhost:<internal_port>
+```
+Then create a matching systemd unit in `/etc/systemd/system/` following the pattern of the existing ones.
+
 ## Machine Reference
 
 | Hostname | OS | Username | Notes |
