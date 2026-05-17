@@ -1,0 +1,33 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    ports:
+      - "0.0.0.0:3001:3000"
+    volumes:
+      - ./config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /home/matt/docker/homepage/config/icons:/app/public/icons
+    environment:
+      TZ: 'America/Toronto'
+      HOMEPAGE_ALLOWED_HOSTS: 'server.tailc9871d.ts.net:3001,server.tailc9871d.ts.net:3000,server.tailc9871d.ts.net,100.65.250.53:3001,100.65.250.53:3000'
+      HOMEPAGE_VAR_QBIT_PASSWORD: ${QBIT_PASSWORD}
+      HOMEPAGE_VAR_PIHOLE_KEY: ${PIHOLE_KEY}
+      HOMEPAGE_VAR_IMMICH_KEY: ${IMMICH_KEY}
+      HOMEPAGE_VAR_JELLYFIN_KEY: ${JELLYFIN_KEY}
+      HOMEPAGE_VAR_JELLYSEERR_KEY: ${JELLYSEERR_KEY}
+      HOMEPAGE_VAR_RADARR_KEY: ${RADARR_KEY}
+      HOMEPAGE_VAR_SONARR_KEY: ${SONARR_KEY}
+      HOMEPAGE_VAR_PROWLARR_KEY: ${PROWLARR_KEY}
+      HOMEPAGE_VAR_BAZARR_KEY: ${BAZARR_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - arrs
+      - default
+      - immich_default
+networks:
+  arrs:
+    external: true
+  immich_default:
+    external: true
