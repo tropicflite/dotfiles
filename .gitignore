@@ -2,3 +2,6 @@ nvim/lazy-lock.json
 
 # btop runtime log
 .config/btop/btop.log
+
+# secrets — never commit .env files
+**/.env
