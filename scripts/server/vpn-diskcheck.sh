@@ -43,6 +43,7 @@ fi
 
 # ── Disk Space Check ─────────────────────────────────────────────────────────
 
+DISK_FLAG="/tmp/disk_was_full"
 DISK_ALERT=0
 DISK_MSG=""
 
@@ -56,6 +57,14 @@ while IFS= read -r line; do
 done < <(df -h | awk 'NR>1 && ($6 == "/" || $6 == "/mnt/data" || $6 == "/mnt/immich-backup")')
 
 if [[ "$DISK_ALERT" -eq 1 ]]; then
-    send_email "Disk Space Warning" \
-        "Disk usage above ${DISK_THRESHOLD}% on $(hostname) at $(date):\n\n${DISK_MSG}"
+    if [[ ! -f "$DISK_FLAG" ]]; then
+        touch "$DISK_FLAG"
+        send_email "Disk Space Warning" \
+            "Disk usage above ${DISK_THRESHOLD}% on $(hostname) at $(date):\n\n${DISK_MSG}"
+    fi
+    # Flag already exists — already alerted, don't spam
+else
+    if [[ -f "$DISK_FLAG" ]]; then
+        rm -f "$DISK_FLAG"
+    fi
 fi
