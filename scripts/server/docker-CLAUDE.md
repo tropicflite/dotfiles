@@ -39,13 +39,13 @@ There are four named Docker networks:
 | Network | Bridge | Subnet | Purpose |
 |---------|--------|--------|---------|
 | `arrs` | (default) | — | Shared by arrs stack, jellyfin, qbittorrent, and homepage; allows inter-container name resolution |
-| `pihole_net` | `br-pihole` | `172.20.0.0/24` | Isolated bridge for Pi-hole; NAT'd through wg0 via iptables |
+| `pihole_net` | `br-pihole` | `172.21.0.0/24` | Isolated bridge for Pi-hole; NAT'd through wg0 via iptables |
 | `qbittorrent` | `br-qbittorrent` | `172.22.0.0/24` | Kill-switch bridge: iptables blocks all forwarding to `enp1s0`/`wlp2s0`; only wg0 is permitted |
 | `uptime-kuma_default` (alias `kuma`) | — | — | Immich joins this so Uptime Kuma can probe it |
 
 **qBittorrent kill switch:** enforced by iptables rules in `~/dotfiles/scripts/server/wg0-up-extra.sh`, which runs as `ExecStartPost` of `wg0.service`. If wg0 is down, qBittorrent has no internet access.
 
-**Pi-hole routing through VPN:** same script also NAT-masquerades `172.20.0.0/24` through wg0.
+**Pi-hole routing through VPN:** same script also NAT-masquerades `172.21.0.0/24` through wg0.
 
 ### Volume conventions
 
