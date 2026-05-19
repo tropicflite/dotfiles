@@ -1,2 +1,2 @@
-# Map capslock to escape
-exec_always --no-startup-id setxkbmap -option caps:escape
+# Map capslock to escape; remap right alt to Super_R (mod4) for use as mod key
+exec_always --no-startup-id setxkbmap -option caps:escape && xmodmap -e "keycode 108 = Super_R" && xmodmap -e "remove mod1 = Super_R" && xmodmap -e "add mod4 = Super_R"
