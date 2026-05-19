@@ -36,16 +36,15 @@ fbon() {
 fboff() {
   tailscale funnel reset
   tailscale serve reset
-  tailscale serve --bg --https=443 http://127.0.0.1:8083
+  tailscale serve --bg --https=443 http://localhost:3001
   tailscale serve --bg --https=8081 http://localhost:8081
   tailscale serve --bg --https=8082 http://localhost:8080
   tailscale serve --bg --https=8090 http://localhost:8091
   tailscale serve --bg --https=8097 http://localhost:8096
   tailscale serve --bg --https=2283 http://localhost:2283
   tailscale serve --bg --https=3000 http://localhost:3001
-  echo "Funnel OFF — Open WebUI on 443"
+  echo "Funnel OFF — Homepage on 443"
 }
-
 fbstatus() {
   tailscale serve status | grep -E "Funnel|ts.net \("
 }
