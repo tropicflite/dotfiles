@@ -1,25 +1,4 @@
-[Unit]
-Description=WireGuard VPN - wg0
-After=network-online.target tailscaled.service
-Wants=network-online.target tailscaled.service
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do tailscale status && break || sleep 2; done'
-ExecStartPre=/bin/bash -c 'for i in $(seq 1 15); do GW=$(ip route show default | awk "/^default/ && /enp1s0/ {print \$3; exit}"); [ -n "$GW" ] && { echo "$GW" > /run/wg0-gateway; exit 0; }; sleep 2; done; echo "ERROR: no default route via enp1s0 after 30s"; exit 1'
-ExecStart=/bin/bash -c '\
-  GW=$(cat /run/wg0-gateway) && \
-  wg-quick up /etc/wireguard/wg0.conf && \
-  ip route add 0.0.0.0/0 dev wg0 metric 100 && \
-  ip route add 154.47.17.158/32 via "$GW" && \
-  printf "nameserver 10.2.0.1\nnameserver 100.100.100.100\n" > /etc/resolv.conf'
-ExecStartPost=/usr/local/bin/wg0-up-extra.sh
-ExecStop=/bin/bash -c '\
-  ip route del 0.0.0.0/0 dev wg0 metric 100 2>/dev/null || true && \
-  ip route del 154.47.17.158/32 2>/dev/null || true && \
-  wg-quick down /etc/wireguard/wg0.conf && \
-  printf "nameserver 100.100.100.100\n" > /etc/resolv.conf'
-
-[Install]
-WantedBy=multi-user.target
+#!/bin/bash
+iptables -I FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
+iptables -I FORWARD -i wg0 -o br-pihole -j ACCEPT 2>/dev/null || true
+iptables -t nat -I POSTROUTING 1 -s 172.21.0.0/24 -o wg0 -j MASQUERADE 2>/dev/null || true
