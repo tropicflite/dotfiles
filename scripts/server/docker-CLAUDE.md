@@ -24,11 +24,18 @@ docker compose logs -f        # tail logs
 docker compose logs -f <svc>  # logs for one service
 ```
 
-Two stacks are managed by systemd services (so they start on boot):
-- `homepage`: `homepage-compose.service` — starts after `docker.service` and `tailscaled.service`
-- `pihole`: `pihole-compose.service` — starts after `wg0.service` and `docker.service`
+Most stacks are managed by systemd services (so they start on boot). Unit files live in `~/docker/systemd/` and are installed to `/etc/systemd/system/`. Use `sudo systemctl start|stop|restart <name>-compose` rather than bare `docker compose` for these:
 
-Use `sudo systemctl start|stop|restart homepage-compose` / `pihole-compose` for those rather than bare `docker compose`.
+- `arrs-compose` — After docker, wg0, mnt-data
+- `filebrowser-compose` — After docker, wg0, mnt-data
+- `homepage-compose` — After docker, tailscaled, mnt-data
+- `immich-compose` — After docker, wg0, mnt-data
+- `jellyfin-compose` — After docker, tailscaled, mnt-data
+- `open-webui-compose` — After docker, tailscaled
+- `pihole-compose` — After docker, wg0
+- `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data
+
+Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`.
 
 ## Architecture
 
@@ -38,7 +45,7 @@ There are four named Docker networks:
 
 | Network | Bridge | Subnet | Purpose |
 |---------|--------|--------|---------|
-| `arrs` | (default) | — | Shared by arrs stack, jellyfin, qbittorrent, and homepage; allows inter-container name resolution |
+| `arrs` | (default) | — | Shared by arrs stack, jellyfin, qbittorrent, homepage, and uptime-kuma; allows inter-container name resolution |
 | `pihole_net` | `br-pihole` | `172.21.0.0/24` | Isolated bridge for Pi-hole; NAT'd through wg0 via iptables |
 | `qbittorrent` | `br-qbittorrent` | `172.22.0.0/24` | Isolated bridge for qBittorrent; software kill switch stops container if wg0 goes down |
 | `uptime-kuma_default` (alias `kuma`) | — | — | Immich joins this so Uptime Kuma can probe it |
@@ -72,7 +79,7 @@ Most config and data is bind-mounted, not in named volumes:
 - **Jellyfin** uses `/dev/dri/renderD128` for Intel GPU hardware transcoding (group `992` = render group) and is on the `arrs` network so Jellyseerr can reach it by name.
 - **Open WebUI** connects to Ollama on the desktop machine via Tailscale IP `100.78.51.10:11434` (not a local container). TTS is provided by a co-located `openai-edge-tts` sidecar.
 - **Homepage** joins the `arrs` network so it can contact arrs-stack services by container name for its widgets. It also mounts the Docker socket read-only for container status.
-- **Uptime Kuma** uses `host.docker.internal:host-gateway` to reach host-bound ports. Immich joins the `uptime-kuma_default` network so Kuma can probe it by container name.
+- **Uptime Kuma** is on both `uptime-kuma_default` and `arrs` networks. It uses `host.docker.internal:host-gateway` to probe host-bound ports. Immich joins `uptime-kuma_default` so Kuma can probe it by container name. Homepage reaches the widget API at `http://uptime-kuma:3001` over arrs.
 - **Filebrowser** binds only to `127.0.0.1:8081` — exposed externally via Tailscale Serve/Funnel or a reverse proxy, not directly.
 
 ### Access
@@ -86,11 +93,10 @@ All services are accessed over Tailscale. The server's Tailscale hostname is `se
 | Jellyfin | 8097 | 8096 |
 | Pi-hole | 8090 | 8091 |
 | qBittorrent | 8082 | 8080 |
-| Open WebUI | 443 (default HTTPS) | 8083 |
 | Homepage | 3000 | 3001 |
 | Stirling PDF | 8085 | 8084 |
 
-Other services (Immich :2283, Uptime Kuma :3002, Filebrowser :8081) use the same port on both sides.
+Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :8081) use the same Tailscale external port as their Docker host port.
 
 ## Non-obvious constraints
 
@@ -102,3 +108,5 @@ Other services (Immich :2283, Uptime Kuma :3002, Filebrowser :8081) use the same
 - **Immich backup** (`immich-backup.sh`) requires `/mnt/immich-backup` to be a mounted USB drive. It dumps Postgres via `docker exec pg_dumpall | gzip` and rsyncs the library with a monthly `.deleted-YYYYMM` backup dir. Retention: 7 days for DB dumps, 30 days for deleted-file dirs.
 - **Pi-hole** binds to `0.0.0.0:53` — the host must not have `systemd-resolved` stub listener active on port 53.
 - **WireGuard watchdog** (`wg-watchdog.sh`) runs as a background loop and restarts `wg0.service` if the VPN endpoint or Tailscale coordination becomes unreachable.
+- **Tailscale/Docker port conflict:** when a service's Tailscale serve external port equals its Docker host port (currently open-webui :8083 and uptime-kuma :3003), Tailscale binds the Tailscale IP on that port at boot — before Docker starts the container. If Docker binds `0.0.0.0`, it fails. Fix: use `127.0.0.1:<port>:<container-port>` in the compose `ports` directive. Tailscale serve proxies to `localhost:<port>` which reaches the loopback binding. Services that other containers need to reach (e.g. uptime-kuma for Homepage's widget) must also join a shared Docker network so they can be addressed by container name instead of `host.docker.internal`.
+- **qBittorrent 5.x WebUI auth:** the `WebUI\AuthSubnetWhitelistEnabled` bypass (currently `172.20.0.0/16`) is required for the Homepage widget; qBittorrent 5.x CSRF protection returns 403 on the login endpoint for non-whitelisted IPs. If the widget breaks after a network change, check that the Homepage container's arrs IP is covered by the whitelist CIDR.
