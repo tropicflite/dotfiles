@@ -1,6 +1,7 @@
 # Server-specific config
 alias cl='claude'
 alias cld='claude --dangerously-skip-permissions'
+alias cdk='cd ~/docker'
 # Tailscale (server-specific with hostname flag)
 alias tson='sudo tailscale up --hostname=server'
 alias tsoff='sudo tailscale down'
