@@ -1,0 +1,96 @@
+#!/bin/bash
+# Quick post-reboot health check. Usage: server-check
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+BOLD='\033[1m'
+
+OK="${GREEN}✓${NC}"
+FAIL="${RED}✗${NC}"
+WARN="${YELLOW}!${NC}"
+
+issues=0
+
+check() {
+    local label="$1" status="$2" detail="$3"
+    case "$status" in
+        ok)   printf "  ${OK} %-35s" "$label" ;;
+        fail) printf "  ${FAIL} %-35s" "$label"; ((issues++)) ;;
+        warn) printf "  ${WARN} %-35s" "$label" ;;
+    esac
+    [ -n "$detail" ] && printf "${NC}%s" "$detail"
+    printf "\n"
+}
+
+echo
+printf "${BOLD}=== Server health — $(date '+%Y-%m-%d %H:%M:%S') ===${NC}\n"
+
+# --- Systemd ---
+echo
+printf "${BOLD}Systemd${NC}\n"
+failed=$(systemctl --failed --no-legend --no-pager 2>/dev/null | awk 'NF{print $1}')
+if [ -z "$failed" ]; then
+    check "no failed units" ok
+else
+    while IFS= read -r unit; do
+        check "$unit" fail "failed"
+    done <<< "$failed"
+fi
+
+# --- Docker containers ---
+echo
+printf "${BOLD}Docker${NC}\n"
+while IFS=$'\t' read -r name state status_str; do
+    health=$(echo "$status_str" | grep -oP '(?<=\()[^)]+(?=\))' || true)
+    if [ "$state" != "running" ]; then
+        check "$name" fail "$state"
+    elif [ "$health" = "unhealthy" ]; then
+        check "$name" fail "unhealthy"
+    elif echo "$health" | grep -q "starting"; then
+        check "$name" warn "starting…"
+    elif [ "$health" = "healthy" ]; then
+        check "$name" ok "healthy"
+    else
+        check "$name" ok "running"
+    fi
+done < <(docker ps -a --format $'{{.Names}}\t{{.State}}\t{{.Status}}' | sort)
+
+# --- WireGuard ---
+echo
+printf "${BOLD}WireGuard${NC}\n"
+if ! ip link show wg0 &>/dev/null; then
+    check "wg0" fail "interface not up"
+else
+    handshake=$(sudo wg show wg0 latest-handshakes 2>/dev/null | awk '{print $2}')
+    if [ -z "$handshake" ] || [ "$handshake" = "0" ]; then
+        check "wg0" fail "no handshake yet"
+    else
+        age=$(( $(date +%s) - handshake ))
+        if [ "$age" -lt 120 ]; then
+            check "wg0" ok "handshake ${age}s ago"
+        else
+            check "wg0" warn "last handshake ${age}s ago"
+        fi
+    fi
+fi
+
+# --- Tailscale ---
+echo
+printf "${BOLD}Tailscale${NC}\n"
+if ! tailscale status &>/dev/null; then
+    check "tailscale" fail "not running"
+else
+    ts_ip=$(tailscale ip -4 2>/dev/null)
+    check "tailscale" ok "up — ${ts_ip}"
+fi
+
+# --- Summary ---
+echo
+if [ "$issues" -eq 0 ]; then
+    printf "${GREEN}${BOLD}All good.${NC}\n"
+else
+    printf "${RED}${BOLD}${issues} issue(s) found — see above.${NC}\n"
+fi
+echo
