@@ -3,10 +3,11 @@
     "type": "command",
     "command": "python3 /home/matt/.claude/statusline-command.sh"
   },
-  "theme": "dark",
-  "voiceEnabled": true,
   "voice": {
     "enabled": true,
     "mode": "hold"
-  }
+  },
+  "theme": "dark",
+  "voiceEnabled": true,
+  "skipDangerousModePermissionPrompt": true
 }

@@ -18,7 +18,7 @@ services:
       - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
     networks:
       pihole_net:
-        ipv4_address: 172.20.0.2
+        ipv4_address: 172.25.0.2
     restart: unless-stopped
 
     healthcheck:
@@ -34,4 +34,4 @@ networks:
       com.docker.network.bridge.name: br-pihole
     ipam:
       config:
-        - subnet: 172.20.0.0/24
+        - subnet: 172.25.0.0/24
