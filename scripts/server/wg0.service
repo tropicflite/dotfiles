@@ -13,7 +13,7 @@ ExecStart=/bin/bash -c '\
   wg-quick up /etc/wireguard/wg0.conf && \
   ip route add 0.0.0.0/0 dev wg0 metric 100 && \
   ip route add 154.47.17.158/32 via "$GW" && \
-  printf "nameserver 10.2.0.1\nnameserver 100.100.100.100\n" > /etc/resolv.conf'
+  printf "nameserver 100.100.100.100\nnameserver 10.2.0.1\n" > /etc/resolv.conf'
 ExecStartPost=/usr/local/bin/wg0-up-extra.sh
 ExecStop=/bin/bash -c '\
   ip route del 0.0.0.0/0 dev wg0 metric 100 2>/dev/null || true && \
