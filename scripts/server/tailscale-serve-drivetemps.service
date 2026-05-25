@@ -1,0 +1,12 @@
+[Unit]
+Description=Tailscale Serve rule for Drive Temps API
+After=tailscaled.service wg0.service
+Requires=tailscaled.service wg0.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/tailscale serve --bg --https=7777 localhost:7778
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 [Unit]
 Description=Homepage Docker Compose
 Requires=docker.service mnt-data.mount mnt-immich\x2dbackup.mount immich-compose.service
-After=docker.service tailscaled.service mnt-data.mount mnt-immich\x2dbackup.mount immich-compose.service
+After=docker.service wg0.service mnt-data.mount mnt-immich\x2dbackup.mount immich-compose.service
 
 [Service]
 Type=oneshot

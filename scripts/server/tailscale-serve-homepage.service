@@ -1,0 +1,12 @@
+[Unit]
+Description=Tailscale Serve rule for Homepage
+After=tailscaled.service wg0.service
+Requires=tailscaled.service wg0.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/tailscale serve --bg --https=443 localhost:3001
+
+[Install]
+WantedBy=multi-user.target
