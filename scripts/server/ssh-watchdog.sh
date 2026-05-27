@@ -24,7 +24,7 @@ while true; do
     ssh_ok=false
     net_ok=false
 
-    nc -z -w 10 127.0.0.1 22 &>/dev/null && ssh_ok=true
+    nc -z -w 10 127.0.0.1 28901 &>/dev/null && ssh_ok=true
     ping -c 2 -W 5 -I enp1s0 "$GATEWAY" &>/dev/null && net_ok=true
 
     if $ssh_ok && $net_ok; then
