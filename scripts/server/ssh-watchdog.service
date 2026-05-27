@@ -1,0 +1,12 @@
+[Unit]
+Description=SSH and Network Watchdog
+After=network-online.target ssh.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/ssh-watchdog.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
