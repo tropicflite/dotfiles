@@ -39,8 +39,13 @@ while true; do
     logger -t "$LOG_TAG" "Check failed (${FAIL_COUNT}/${MAX_FAILS}): ssh=${ssh_ok} net=${net_ok}"
 
     if ! $ssh_ok; then
-        logger -t "$LOG_TAG" "Attempting ssh service restart"
-        systemctl restart ssh
+        if ! systemctl is-active --quiet ssh; then
+            logger -t "$LOG_TAG" "sshd is not active, restarting"
+            systemctl restart ssh
+            sleep 5
+        else
+            logger -t "$LOG_TAG" "sshd is active but port check failed, skipping restart"
+        fi
     fi
 
     if [ "$FAIL_COUNT" -ge "$MAX_FAILS" ]; then
