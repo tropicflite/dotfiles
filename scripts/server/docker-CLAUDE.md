@@ -12,6 +12,14 @@ git -C ~/docker add -A && git -C ~/docker commit -m "message" && git -C ~/docker
 
 **Note:** runtime files (logs, databases, media covers) may show up as modified in `git status` — these should not be committed.
 
+### Deploying host-level config
+
+`pihole/cron.d/pihole` is the weekly gravity update cron job. Deploy it with:
+
+```bash
+sudo cp ~/docker/pihole/cron.d/pihole /etc/cron.d/pihole
+```
+
 ## Managing Stacks
 
 All stacks follow the same pattern. From the stack's directory:
