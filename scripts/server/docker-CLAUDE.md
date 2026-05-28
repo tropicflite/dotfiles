@@ -70,7 +70,7 @@ Most config and data is bind-mounted, not in named volumes:
 - Shared media tree: `/mnt/data/media/{movies,tv}` — mounted into Radarr, Sonarr, Bazarr, Jellyfin, qBittorrent, and Filebrowser
 - Torrent paths: `/mnt/data/torrents/{downloads,incomplete}` — mounted into Radarr, Sonarr, and qBittorrent
 - Immich library: `/mnt/data/immich/library` (set via `UPLOAD_LOCATION` in `immich/.env`)
-- Immich Postgres: `/mnt/data/immich/postgres` (set via `DB_DATA_LOCATION` in `immich/.env`)
+- Immich Postgres: `/var/lib/immich/postgres` on NVMe (set via `DB_DATA_LOCATION` in `immich/.env`; moved off sdb 2026-05-28 after sdb journal recovery wiped the DB)
 - Jellyfin config/cache: `/opt/docker/jellyfin/{config,cache}` (not under `~/docker`)
 - Filebrowser root: `/mnt/data` (entire data mount) plus `/home/matt`
 - `open-webui` data: named Docker volume `open-webui` (external — must exist before `docker compose up`)
