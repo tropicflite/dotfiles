@@ -4,7 +4,7 @@ alias cl='claude'
 alias cld='claude --dangerously-skip-permissions'
 alias cdk='cd ~/docker'
 # Tailscale (server-specific with hostname flag)
-alias tson='sudo tailscale up --hostname=server'
+alias tson='sudo tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server'
 alias tsoff='sudo tailscale down'
 # Network
 alias netstatus="tsstatus; vpnstatus"
@@ -30,10 +30,12 @@ fbon() {
   tailscale serve reset
   tailscale serve --bg --https=8081 http://localhost:8081
   tailscale serve --bg --https=8082 http://localhost:8080
+  tailscale serve --bg --https=8085 http://localhost:8084
   tailscale serve --bg --https=8090 http://localhost:8091
   tailscale serve --bg --https=8097 http://localhost:8096
   tailscale serve --bg --https=2283 http://localhost:2283
   tailscale serve --bg --https=3000 http://localhost:3001
+  tailscale serve --bg --https=7777 http://localhost:7778
   tailscale funnel --bg --https=443 http://127.0.0.1:8081
   echo "Funnel ON — FileBrowser public on 443"
 }
@@ -43,10 +45,12 @@ fboff() {
   tailscale serve --bg --https=443 http://localhost:3001
   tailscale serve --bg --https=8081 http://localhost:8081
   tailscale serve --bg --https=8082 http://localhost:8080
+  tailscale serve --bg --https=8085 http://localhost:8084
   tailscale serve --bg --https=8090 http://localhost:8091
   tailscale serve --bg --https=8097 http://localhost:8096
   tailscale serve --bg --https=2283 http://localhost:2283
   tailscale serve --bg --https=3000 http://localhost:3001
+  tailscale serve --bg --https=7777 http://localhost:7778
   echo "Funnel OFF — Homepage on 443"
 }
 fbstatus() {

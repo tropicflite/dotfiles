@@ -43,7 +43,7 @@ Most stacks are managed by systemd services (so they start on boot). Unit files 
 - `pihole-compose` — After docker, wg0
 - `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data
 
-Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`.
+Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`, `tailscale-serve-drivetemps`, `tailscale-serve-stirling-pdf`.
 
 ## Architecture
 
@@ -54,13 +54,13 @@ There are four named Docker networks:
 | Network | Bridge | Subnet | Purpose |
 |---------|--------|--------|---------|
 | `arrs` | (default) | — | Shared by arrs stack, jellyfin, qbittorrent, homepage, and uptime-kuma; allows inter-container name resolution |
-| `pihole_net` | `br-pihole` | `172.21.0.0/24` | Isolated bridge for Pi-hole; NAT'd through wg0 via iptables |
-| `qbittorrent` | `br-qbittorrent` | `172.22.0.0/24` | Isolated bridge for qBittorrent; software kill switch stops container if wg0 goes down |
+| `pihole_net` | `br-pihole` | `172.25.0.0/24` | Isolated bridge for Pi-hole; NAT'd through wg0 via iptables |
+| `qbittorrent` | `br-qbittorrent` | `172.23.0.0/24` | Isolated bridge for qBittorrent; software kill switch stops container if wg0 goes down |
 | `uptime-kuma_default` (alias `kuma`) | — | — | Immich joins this so Uptime Kuma can probe it |
 
 **qBittorrent kill switch:** `vpn-diskcheck.sh` runs every 5 minutes via cron, pings `1.1.1.1` through wg0, and stops the qbittorrent container (with email alert) if the VPN is down. There is no iptables hard block — it is a software kill switch with up to a 5-minute gap.
 
-**Pi-hole routing through VPN:** `wg0-up-extra.sh` (runs as `ExecStartPost` of `wg0.service`) adds FORWARD rules for `br-pihole ↔ wg0` and NAT-masquerades `172.21.0.0/24` through wg0.
+**Pi-hole routing through VPN:** `wg0-up-extra.sh` (runs as `ExecStartPost` of `wg0.service`) adds FORWARD rules for `br-pihole ↔ wg0` and NAT-masquerades `172.25.0.0/24` through wg0.
 
 ### Volume conventions
 
@@ -72,7 +72,7 @@ Most config and data is bind-mounted, not in named volumes:
 - Immich library: `/mnt/data/immich/library` (set via `UPLOAD_LOCATION` in `immich/.env`)
 - Immich Postgres: `/var/lib/immich/postgres` on NVMe (set via `DB_DATA_LOCATION` in `immich/.env`; moved off sdb 2026-05-28 after sdb journal recovery wiped the DB)
 - Jellyfin config/cache: `/opt/docker/jellyfin/{config,cache}` (not under `~/docker`)
-- Filebrowser root: `/mnt/data` (entire data mount) plus `/home/matt`
+- Filebrowser root: `/mnt/data` (entire data mount, mounted as `/srv`)
 - `open-webui` data: named Docker volume `open-webui` (external — must exist before `docker compose up`)
 - Immich ML models: named Docker volume `immich_model-cache` (auto-created by compose, not external)
 - Uptime Kuma data: `/home/matt/docker/uptime-kuma` (compose working dir, not a subdirectory)
@@ -113,6 +113,7 @@ Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :
 - **Jellyfin config is at `/opt/docker/jellyfin/`**, not under `~/docker/jellyfin/` — only the compose file lives there.
 - **All linuxserver.io images run as PUID/PGID 1000** — the `/mnt/data/media` and `/mnt/data/torrents` trees must be owned by uid/gid 1000.
 - **dotfiles/scripts/server/** contains older or alternate versions of some compose files (open-webui, immich, filebrowser, pihole, homepage). The canonical files are in `~/docker/`. The dotfiles copies are kept for reference/templating; do not run them directly. This CLAUDE.md itself lives at `dotfiles/scripts/server/docker-CLAUDE.md` and is symlinked as `~/docker/CLAUDE.md`.
+- **dotfiles/scripts/server/ systemd unit files are stale** — do not copy them to `/etc/systemd/system/` on a reinstall. The installed canonical versions are in `~/docker/systemd/`. Known divergences: all five `tailscale-serve-*.service` files in dotfiles have a `wg0.service` dependency that was dropped from the installed versions; `homepage-compose.service` and `open-webui-compose.service` differ in their `After=` and `Requires=` lines. Always use `~/docker/systemd/` as the source of truth for systemd units.
 - **Immich backup** (`immich-backup.sh`) requires `/mnt/immich-backup` to be a mounted USB drive. It dumps Postgres via `docker exec pg_dumpall | gzip` and rsyncs the library with a monthly `.deleted-YYYYMM` backup dir. Retention: 7 days for DB dumps, 30 days for deleted-file dirs.
 - **Pi-hole** binds to `0.0.0.0:53` — the host must not have `systemd-resolved` stub listener active on port 53.
 - **WireGuard watchdog** (`wg-watchdog.sh`) runs as a background loop and restarts `wg0.service` if the VPN endpoint or Tailscale coordination becomes unreachable.
