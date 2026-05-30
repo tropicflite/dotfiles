@@ -13,6 +13,29 @@ lns() {
   echo "linked: $dst -> $src"
 }
 
+# Claude Code's live settings.json is git-ignored and machine-local: Claude
+# rewrites it at runtime (model, theme…), so tracking it would churn the repo
+# and dotl's hard reset would wipe those writes. We keep a tracked
+# settings.json.example with the shared defaults and merge it into the live
+# file (base keys authoritative, local-only keys like model/theme preserved),
+# then symlink the live file into place.
+setup_claude_settings() {
+  local base="$DOTFILES/.claude/settings.json.example"
+  local live="$DOTFILES/.claude/settings.json"
+  [[ -f "$live" ]] || cp "$base" "$live"
+  if command -v jq &>/dev/null; then
+    local tmp
+    tmp=$(mktemp)
+    if jq -s '.[0] * .[1]' "$live" "$base" > "$tmp" 2>/dev/null; then
+      mv "$tmp" "$live"
+    else
+      rm -f "$tmp"
+      echo "⚠ claude settings: jq merge failed, left live file untouched"
+    fi
+  fi
+  lns "$live" "$HOME/.claude/settings.json"
+}
+
 # Universal
 lns "$DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
 lns "$DOTFILES/.config/nvim" "$HOME/.config/nvim"
@@ -31,7 +54,7 @@ if ! $IS_TERMUX; then
   lns "$DOTFILES/.config/btop" "$HOME/.config/btop"
   lns "$DOTFILES/.config/kitty" "$HOME/.config/kitty"
   lns "$DOTFILES/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
-  lns "$DOTFILES/.claude/settings.json" "$HOME/.claude/settings.json"
+  setup_claude_settings
 fi
 
 # i3 machines (laptop, mini)

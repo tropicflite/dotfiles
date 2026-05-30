@@ -1,5 +1,10 @@
 #!/usr/bin/env zsh
-# Remove stale git ref lock files from dotfiles repo
+# Force git to rebuild its refs for the dotfiles repo.
+# This deletes the packed-refs file and the origin/master remote-tracking ref
+# themselves (NOT *.lock files) — git regenerates both on the next fetch. It's a
+# sledgehammer for the diverged / corrupted refs that crop up when the same repo
+# is force-synced across machines (see dotl). Safe here because master is the
+# only branch and there are no tags to lose.
 rm -f ~/dotfiles/.git/packed-refs
 rm -f ~/dotfiles/.git/refs/remotes/origin/master
-echo "🧹 stale refs cleared"
+echo "🧹 refs reset (will be refetched)"

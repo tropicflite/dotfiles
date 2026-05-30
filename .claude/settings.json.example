@@ -7,7 +7,5 @@
     "enabled": true,
     "mode": "hold"
   },
-  "theme": "dark",
-  "voiceEnabled": true,
   "skipDangerousModePermissionPrompt": true
 }

@@ -5,3 +5,11 @@ nvim/lazy-lock.json
 
 # secrets — never commit .env files
 **/.env
+
+# Claude Code: live settings are machine-local. Claude rewrites this file at
+# runtime (model, theme…); tracking it would churn the repo and `dotl`'s hard
+# reset would silently wipe those changes. Shared defaults live in
+# settings.json.example and are merged in by dotfiles-setup. The permissions
+# allowlist is machine-local too (and may contain secrets).
+.claude/settings.json
+.claude/settings.local.json

@@ -149,8 +149,11 @@ function dotp {
 }
 function dotl {
   cd ~/dotfiles || { echo "⚠ dotl: ~/dotfiles not found"; return 1; }
-  # Remove stale git index files that can cause fetch/reset conflicts
-  # across machines with diverged refs or interrupted operations.
+  # Force a clean re-fetch: delete packed-refs and the origin/master ref (git
+  # rebuilds both below) plus any leftover index.lock from an interrupted op.
+  # This clears the diverged/corrupted refs that the cross-machine hard-reset
+  # workflow can produce. NOTE: the reset --hard below discards ALL uncommitted
+  # changes in ~/dotfiles, so nothing machine-local should be tracked here.
   rm -f .git/packed-refs
   rm -f .git/refs/remotes/origin/master
   rm -f .git/index.lock

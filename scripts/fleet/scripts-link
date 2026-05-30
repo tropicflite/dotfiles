@@ -5,11 +5,27 @@ SCRIPTS_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 BIN_DIR="$HOME/bin"
 MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
 mkdir -p "$BIN_DIR"
+
+# Prune stale links left behind by renamed or deleted scripts.
+# Only touch broken links that point back into this scripts dir, so links to
+# anything else the user keeps in ~/bin are left alone.
+for link in "$BIN_DIR"/*(N); do
+  [ -L "$link" ] || continue
+  [ -e "$link" ] && continue            # target still exists → keep
+  case "$(readlink "$link")" in
+    "$SCRIPTS_DIR"/*) rm -f "$link"; echo "pruned stale: $(basename "$link")" ;;
+  esac
+done
+
 for dir in "$SCRIPTS_DIR/fleet" "$SCRIPTS_DIR/$MACHINE"; do
   [ -d "$dir" ] || continue
   for script in "$dir"/*; do
     [ -f "$script" ] || continue
-    chmod +x "$script"
+    # Only mark real scripts executable. Config/data files (compose, .service,
+    # .yaml, .conf) are linked for convenience but must stay non-executable, or
+    # the chmod shows up as a spurious mode change every time this runs.
+    IFS= read -r _shebang < "$script"
+    [[ $_shebang == '#!'* && ! -x "$script" ]] && chmod +x "$script"
     ln -sf "$script" "$BIN_DIR/$(basename "$script")"
     echo "linked: $(basename "$script")"
   done
