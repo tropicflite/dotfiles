@@ -1,0 +1,18 @@
+[Unit]
+Description=Tailscale Serve rule for qBittorrent
+# Only enable/start this unit if Tailscale state has been wiped (e.g. after
+# tailscale logout or a full daemon reset clears all serve rules). Under normal
+# operation the rule persists across tailscaled restarts without this unit.
+# To restore just this rule after a state wipe:
+#   sudo systemctl start tailscale-serve-qbittorrent
+After=tailscaled.service
+Requires=tailscaled.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/tailscale serve --bg --https=8082 http://localhost:8080
+ExecStop=/usr/bin/tailscale serve --https=8082 off
+
+[Install]
+WantedBy=multi-user.target
