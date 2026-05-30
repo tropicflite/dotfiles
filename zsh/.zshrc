@@ -120,6 +120,7 @@ alias phone='ssh -p 8022 matt@phone'
 alias quest='TERM=xterm-256color ssh matt@quest'
 alias router='ssh admin@router'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
+alias tserver='TERM=xterm-256color ssh -p 28901 matt@server -t "tmux attach || tmux new-session -s main"'
 
 ################################################################################
 # KEY BINDINGS
