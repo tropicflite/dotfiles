@@ -43,7 +43,7 @@ Most stacks are managed by systemd services (so they start on boot). Unit files 
 - `pihole-compose` — After docker, wg0
 - `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data
 
-Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`, `tailscale-serve-drivetemps`, `tailscale-serve-stirling-pdf`.
+Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`, `tailscale-serve-drivetemps`, `tailscale-serve-stirling-pdf`. `tailscale-serve-qbittorrent` also exists but is a break-glass unit — only start it to restore the qBittorrent serve rule after a Tailscale state wipe; under normal operation the rule persists without it.
 
 ## Architecture
 
