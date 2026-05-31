@@ -6,8 +6,7 @@ Wants=network-online.target tailscaled.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do tailscale ip 2>/dev/null | grep -q "^100\." && break || sleep 2; done'
-ExecStartPre=/bin/bash -c 'ip route show default | awk "/^default/ && /enp1s0/ {print \$3; exit}" > /run/wg0-gateway'
+ExecStartPre=/usr/local/bin/wg0-prestart.sh
 ExecStart=/bin/bash -c '\
   GW=$(cat /run/wg0-gateway) && \
   wg-quick up /etc/wireguard/wg0.conf && \
