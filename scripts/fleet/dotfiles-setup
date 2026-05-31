@@ -54,6 +54,7 @@ if ! $IS_TERMUX; then
   lns "$DOTFILES/.config/btop" "$HOME/.config/btop"
   lns "$DOTFILES/.config/kitty" "$HOME/.config/kitty"
   lns "$DOTFILES/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
+  lns "$DOTFILES/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
   setup_claude_settings
 fi
 
