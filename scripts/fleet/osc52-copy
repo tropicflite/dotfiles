@@ -1,5 +1,8 @@
 #!/bin/sh
-# Emit OSC 52 escape sequence to push content to terminal clipboard
 buf=$(cat)
 encoded=$(printf '%s' "$buf" | base64 | tr -d '\n')
-printf '\033]52;c;%s\a' "$encoded"
+if [ -n "$TMUX" ]; then
+  printf '\033Ptmux;\033\033]52;c;'"$encoded"'\a\033\\' > /dev/tty
+else
+  printf '\033]52;c;%s\a' "$encoded" > /dev/tty
+fi
