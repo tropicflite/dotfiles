@@ -68,3 +68,4 @@ function docp {
   # A silent push failure after a failed commit is worse than a redundant push.
   cd ~/
 }
+export GPG_TTY=$(tty)
