@@ -1,16 +1,20 @@
 #!/bin/sh
 case $1 in
+    onbatt-notify)
+        logger -t upssched-cmd "UPS on battery - sending notification email"
+        printf "Subject: UPS on battery\nTo: nichols_matt@pm.me\nFrom: nichols_matt@pm.me\n\nUPS apc1000 switched to battery power at $(date).\n" | msmtp -a proton nichols_matt@pm.me
+        ;;
     onbatt-warn)
         logger -t upssched-cmd "UPS on battery for 30s"
         wall "UPS WARNING: Server running on battery - power may be out"
         ;;
     onbatt-shutdown)
-        logger -t upssched-cmd "UPS on battery for 20 minutes - shutting down"
-        /sbin/shutdown -h now
+        logger -t upssched-cmd "UPS on battery for 15 minutes - shutting down"
+        sudo /sbin/shutdown -h now
         ;;
     lowbatt-shutdown)
         logger -t upssched-cmd "UPS battery critical - emergency shutdown"
-        /sbin/shutdown -h now
+        sudo /sbin/shutdown -h now
         ;;
     *)
         logger -t upssched-cmd "Unrecognized command: $1"
