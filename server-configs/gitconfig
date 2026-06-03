@@ -1,0 +1,10 @@
+[user]
+	email = nichols_matt@pm.me
+	name = Matt
+	signingkey = /home/matt/.ssh/id_ed25519.pub
+[commit]
+	gpgsign = true
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	allowedSignersFile = /home/matt/.ssh/allowed_signers
