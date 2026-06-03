@@ -1,0 +1,9 @@
+# Install: crontab ~/dotfiles/server-configs/crontab
+MAILTO=""
+
+# m h  dom mon dow   command
+*/5 * * * * /usr/local/bin/temp-monitor.sh
+0 9 * * * days=$(gpg --list-keys --with-colons nichols_matt@pm.me 2>/dev/null | awk -F: '/^pub:/{if($7!="") print int(($7-systime())/86400)}' | sort -n | head -1); [ -n "$days" ] && [ "$days" -le 30 ] && printf "Subject: [server] GPG Key Expiring Soon\n\nGPG key for nichols_matt@pm.me expires in %s days. Renew it or Proton Bridge will lose its keychain.\n" "$days" | msmtp -C /etc/msmtprc nichols_matt@pm.me
+0 2 * * * /usr/local/bin/health-monitor.sh
+0 3 * * * /home/matt/dotfiles/scripts/server/immich-backup.sh >> /var/log/immich-backup.log 2>&1
+*/5 * * * * /home/matt/dotfiles/scripts/server/vpn-diskcheck.sh
