@@ -1,0 +1,9 @@
+[Unit]
+Description=Proton Mail Bridge SMTP watchdog timer
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target

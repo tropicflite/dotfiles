@@ -1,0 +1,17 @@
+[Unit]
+Description=Proton Mail Bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=matt
+ExecStartPre=/bin/sh -c 'until curl -sf --max-time 5 https://mail-api.proton.me/tests/ping >/dev/null 2>&1; do sleep 5; done'
+ExecStart=/usr/bin/protonmail-bridge --noninteractive
+Restart=on-failure
+RestartSec=30
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

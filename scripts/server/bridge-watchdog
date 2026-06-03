@@ -1,0 +1,16 @@
+#!/bin/sh
+# Restart protonmail-bridge if SMTP auth is failing
+python3 -c "
+import smtplib, ssl, sys
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+try:
+    s = smtplib.SMTP('127.0.0.1', 1025, timeout=10)
+    s.starttls(context=ctx)
+    s.login('nichols_matt@pm.me', 'm40RhocwaFuWGSxhDXGLdw')
+    s.quit()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+" || systemctl restart protonmail-bridge
