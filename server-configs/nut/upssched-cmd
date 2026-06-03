@@ -9,12 +9,12 @@ case $1 in
         wall "UPS WARNING: Server running on battery - power may be out"
         ;;
     onbatt-shutdown)
-        logger -t upssched-cmd "UPS on battery for 15 minutes - shutting down"
-        sudo /sbin/shutdown -h now
+        logger -t upssched-cmd "UPS on battery for 15 minutes - initiating FSD"
+        sudo /usr/sbin/upsmon -c fsd
         ;;
     lowbatt-shutdown)
-        logger -t upssched-cmd "UPS battery critical - emergency shutdown"
-        sudo /sbin/shutdown -h now
+        logger -t upssched-cmd "UPS battery critical - initiating FSD"
+        sudo /usr/sbin/upsmon -c fsd
         ;;
     *)
         logger -t upssched-cmd "Unrecognized command: $1"
