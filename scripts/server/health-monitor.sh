@@ -57,6 +57,6 @@ fi
 
 # Send alert if anything flagged
 if [ -n "$ALERTS" ]; then
-    echo -e "Subject: [${HOSTNAME}] Health Alert\n\nIssues detected:\n\n${ALERTS}" | \
+    echo -e "Subject: [${HOSTNAME}] Health Alert\nTo: ${TO}\nFrom: ${TO}\n\nIssues detected:\n\n${ALERTS}" | \
         msmtp -C /etc/msmtprc "$TO"
 fi
