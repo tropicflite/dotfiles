@@ -132,11 +132,10 @@ bindkey -v
 # KEYTIMEOUT: delay (in hundredths of a second) before accepting a key sequence.
 # 20 (200ms) balances vi mode ESC responsiveness vs. accidental prefix misfires.
 export KEYTIMEOUT=20
-bindkey "^R" history-incremental-pattern-search-backward
 # fzf key bindings and completion
+export FZF_DEFAULT_COMMAND='fdfind --hidden --follow'
 [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]] && source /usr/share/doc/fzf/examples/key-bindings.zsh
 [[ -f /usr/share/doc/fzf/examples/completion.zsh ]] && source /usr/share/doc/fzf/examples/completion.zsh
-export FZF_DEFAULT_COMMAND='fdfind --hidden --follow'
 
 ################################################################################
 # FUNCTIONS
