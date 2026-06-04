@@ -13,8 +13,8 @@ if [[ -n "$PREFIX" && "$PREFIX" == *termux* ]]; then
 else
   MACHINE="$(hostname -s | tr '[:upper:]' '[:lower:]')"
   PKG_CHECK="dpkg -s"
-  PKG_INSTALL="sudo apt install -y"
-  PKG_REMOVE="sudo apt remove -y"
+PKG_INSTALL="sudo DEBIAN_FRONTEND=noninteractive apt install -y"
+  PKG_REMOVE="sudo DEBIAN_FRONTEND=noninteractive apt remove -y"
 fi
 
 IGNORE_FILE="$DOTFILES_DIR/packages/packages-ignore.$MACHINE"
