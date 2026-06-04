@@ -46,9 +46,11 @@ if command -v batcat &>/dev/null; then
 elif command -v bat &>/dev/null; then
   alias bat="bat -pp"
 fi
+alias bz="bat ~/.zshrc"
 alias c="clear"
 alias fd='fdfind'
 alias h="history"
+alias rg='rg --hidden'
 alias x="exit"
 
 # System
@@ -73,7 +75,6 @@ alias sv="sudo nvim"
 alias vv="nvim ~/.config/nvim/init.lua"
 alias bv="bat ~/.config/nvim/init.lua"
 alias vz="nvim ~/.zshrc"
-alias bz="bat ~/.zshrc"
 # vzl/bzl/szl operate on the per-machine local zshrc (e.g. ~/.zshrc.local.laptop).
 # Defined as functions (not aliases) so $_MACHINE expands at call time, not at source time.
 # unalias first in case a previous shell sourced them as aliases.
@@ -135,6 +136,7 @@ bindkey "^R" history-incremental-pattern-search-backward
 # fzf key bindings and completion
 [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]] && source /usr/share/doc/fzf/examples/key-bindings.zsh
 [[ -f /usr/share/doc/fzf/examples/completion.zsh ]] && source /usr/share/doc/fzf/examples/completion.zsh
+export FZF_DEFAULT_COMMAND='fdfind --hidden --follow'
 
 ################################################################################
 # FUNCTIONS
