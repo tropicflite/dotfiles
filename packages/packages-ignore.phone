@@ -2,6 +2,7 @@
 bat
 btop
 build-essential
+fd-find
 feh
 gcc
 htop
