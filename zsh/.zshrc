@@ -196,7 +196,32 @@ fdotl() {
   done
   unfunction _fdotl_check
 }
-
+fpapl() {
+  local me=${HOST%%.*}
+  _fpapl_check() {
+    local host=$1 exit=$2
+    if [[ $exit -eq 255 ]]; then
+      echo "⚠️  $host: offline or unreachable (skipped)"
+    elif [[ $exit -ne 0 ]]; then
+      echo "⚠️  $host: packages-pull failed (exit $exit)"
+    fi
+  }
+  for host in mini server laptop desktop phone quest; do
+    if [[ "$host" == "$me" ]]; then
+      echo "==> $host (self, running locally)"
+      zsh -i -c packages-pull
+    elif [[ "$host" == "desktop" ]]; then
+      echo "==> $host"
+      ssh -q -o ConnectTimeout=10 simin@$host "wsl zsh -i -c packages-pull"
+      _fpapl_check $host $?
+    else
+      echo "==> $host"
+      ssh -q -o ConnectTimeout=10 matt@$host "zsh -i -c packages-pull"
+      _fpapl_check $host $?
+    fi
+  done
+  unfunction _fpapl_check
+}
 # ── SSH hop chain ─────────────────────────────────────────────
 # Tracks the full path of SSH hops in the prompt (e.g. laptop ❯ server ❯ mini).
 # SSH_CHAIN is a colon-separated list of hostnames, rendered with ❯ separators.

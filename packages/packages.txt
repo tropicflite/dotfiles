@@ -3,7 +3,7 @@ btop
 build-essential
 curl
 fastfetch
-fdfind
+fd-find
 feh
 fzf
 gcc
