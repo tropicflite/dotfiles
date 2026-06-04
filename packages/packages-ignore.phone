@@ -2,8 +2,11 @@
 bat
 btop
 build-essential
+fd-find
 feh
+fzf
 gcc
+git-delta
 htop
 jq
 kitty
@@ -16,6 +19,7 @@ openssh-client
 openssh-server
 proton-vpn-cli
 ranger
+ripgrep
 rsync
 sshfs
 tailscale
