@@ -131,6 +131,9 @@ bindkey -v
 # 20 (200ms) balances vi mode ESC responsiveness vs. accidental prefix misfires.
 export KEYTIMEOUT=20
 bindkey "^R" history-incremental-pattern-search-backward
+# fzf key bindings and completion
+[[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]] && source /usr/share/doc/fzf/examples/key-bindings.zsh
+[[ -f /usr/share/doc/fzf/examples/completion.zsh ]] && source /usr/share/doc/fzf/examples/completion.zsh
 
 ################################################################################
 # FUNCTIONS
