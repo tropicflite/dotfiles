@@ -3,9 +3,12 @@ btop
 build-essential
 curl
 fastfetch
+fdfind
 feh
+fzf
 gcc
 git
+git-delta
 htop
 jq
 kitty
@@ -20,6 +23,7 @@ openssh-client
 openssh-server
 proton-vpn-cli
 ranger
+ripgrep
 rsync
 sshfs
 tailscale
