@@ -47,6 +47,7 @@ elif command -v bat &>/dev/null; then
   alias bat="bat -pp"
 fi
 alias c="clear"
+alias fd='fdd'
 alias h="history"
 alias x="exit"
 
