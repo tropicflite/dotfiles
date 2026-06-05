@@ -19,6 +19,23 @@ alias tpon='xinput enable "Synaptics s3203" && echo "Touchpad enabled"'
 alias tson='sudo service tailscaled start && sudo tailscale up'
 alias tsoff='sudo tailscale down && sudo service tailscaled stop'
 
+# ProtonVPN: works over SSH by borrowing the session bus from i3 when
+# DBUS_SESSION_BUS_ADDRESS isn't set (SysVinit doesn't inherit it into SSH)
+protonvpn() {
+  if [[ -z "$DBUS_SESSION_BUS_ADDRESS" ]]; then
+    local i3_pid=$(pgrep -u matt i3 | head -1)
+    local bus_addr
+    [[ -n "$i3_pid" ]] && bus_addr=$(tr '\0' '\n' < /proc/$i3_pid/environ 2>/dev/null | grep DBUS_SESSION_BUS_ADDRESS | cut -d= -f2-)
+    if [[ -n "$bus_addr" ]]; then
+      DBUS_SESSION_BUS_ADDRESS="$bus_addr" command protonvpn "$@"
+    else
+      dbus-run-session command protonvpn "$@"
+    fi
+  else
+    command protonvpn "$@"
+  fi
+}
+
 # Network status (combines ProtonVPN + Tailscale)
 alias netstatus='vpnstatus; tsstatus'
 
