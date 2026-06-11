@@ -9,8 +9,13 @@ case $1 in
         wall "UPS WARNING: Server running on battery - power may be out"
         ;;
     onbatt-shutdown)
-        logger -t upssched-cmd "UPS on battery for 15 minutes - initiating FSD"
-        sudo /usr/sbin/upsmon -c fsd
+        status=$(upsc apc1000 ups.status 2>/dev/null)
+        if echo "$status" | grep -q "OB"; then
+            logger -t upssched-cmd "UPS on battery for 15 minutes (status=$status) - initiating FSD"
+            sudo /usr/sbin/upsmon -c fsd
+        else
+            logger -t upssched-cmd "15-min timer fired but UPS is back online (status=$status) - skipping FSD"
+        fi
         ;;
     lowbatt-shutdown)
         logger -t upssched-cmd "UPS battery critical - initiating FSD"
