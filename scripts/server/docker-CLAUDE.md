@@ -120,3 +120,17 @@ Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :
 - **SSH/network watchdog** (`ssh-watchdog.sh`) runs as a background loop (`ssh-watchdog.service`) and reboots the server after 5 consecutive failed checks (~5 minutes). Checks: TCP connect to `localhost:22` (sshd accepting), and ping to LAN gateway `192.168.50.1` via `enp1s0`. If only sshd is down it attempts `systemctl restart ssh` before counting the failure. Added 2026-05-26 to recover from the recurring state where the server becomes unreachable via both Tailscale and LAN SSH without a kernel hang.
 - **Tailscale/Docker port conflict:** when a service's Tailscale serve external port equals its Docker host port (currently open-webui :8083 and uptime-kuma :3003), Tailscale binds the Tailscale IP on that port at boot — before Docker starts the container. If Docker binds `0.0.0.0`, it fails. Fix: use `127.0.0.1:<port>:<container-port>` in the compose `ports` directive. Tailscale serve proxies to `localhost:<port>` which reaches the loopback binding. Services that other containers need to reach (e.g. uptime-kuma for Homepage's widget) must also join a shared Docker network so they can be addressed by container name instead of `host.docker.internal`.
 - **qBittorrent 5.x WebUI auth:** the `WebUI\AuthSubnetWhitelistEnabled` bypass (currently `172.20.0.0/16`) is required for the Homepage widget; qBittorrent 5.x CSRF protection returns 403 on the login endpoint for non-whitelisted IPs. If the widget breaks after a network change, check that the Homepage container's arrs IP is covered by the whitelist CIDR.
+
+## Troubleshooting
+
+### Immich ML unhealthy after unclean shutdown
+
+**Symptom:** `immich_machine_learning` reports unhealthy; health checks time out (ping endpoint accepts connection but never responds); container logs show gunicorn started but no worker boot message.
+
+**Cause:** An unclean shutdown (power loss, forced kill) leaves stale HuggingFace download `.lock` files in the `model-cache` volume. On restart the worker deadlocks trying to acquire them.
+
+**Fix:**
+```bash
+docker exec immich_machine_learning find /cache -name '*.lock' -delete
+docker restart immich_machine_learning
+```
