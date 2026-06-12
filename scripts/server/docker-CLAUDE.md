@@ -55,7 +55,7 @@ There are four named Docker networks:
 |---------|--------|--------|---------|
 | `arrs` | (default) | — | Shared by arrs stack, jellyfin, qbittorrent, homepage, and uptime-kuma; allows inter-container name resolution |
 | `pihole_net` | `br-pihole` | `172.25.0.0/24` | Isolated bridge for Pi-hole; NAT'd through wg0 via iptables |
-| `qbittorrent` | `br-qbittorrent` | `172.23.0.0/24` | Isolated bridge for qBittorrent; software kill switch stops container if wg0 goes down |
+| `qbittorrent` | `br-qbittorrent` | `172.27.0.0/24` | Isolated bridge for qBittorrent; software kill switch stops container if wg0 goes down |
 | `uptime-kuma_default` (alias `kuma`) | — | — | Immich joins this so Uptime Kuma can probe it |
 
 **qBittorrent kill switch:** `vpn-diskcheck.sh` runs every 5 minutes via cron, pings `1.1.1.1` through wg0, and stops the qbittorrent container (with email alert) if the VPN is down. There is no iptables hard block — it is a software kill switch with up to a 5-minute gap.
