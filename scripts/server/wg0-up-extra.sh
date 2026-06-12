@@ -19,12 +19,16 @@ iptables -t nat -I POSTROUTING 1 -s 100.64.0.0/10 -o wg0 -j MASQUERADE
 # Fix UDP GRO forwarding for Tailscale exit node performance
 ethtool -K enp1s0 rx-udp-gro-forwarding on rx-gro-list off 2>/dev/null || true
 
-# Redirect DNS from exit node clients to 1.1.1.1: carrier DNS (e.g. Telus 75.156.200.x)
+# Redirect DNS from Tailscale clients to Pi-hole: carrier DNS (e.g. Telus 75.156.200.x)
 # only responds to queries from their own subscriber IPs, not from ProtonVPN's IP.
+# Pi-hole (172.25.0.2) uses Quad9 upstream and routes out through wg0, solving that.
+# This also gives all Tailscale clients ad-blocking via Pi-hole.
 iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j DNAT --to-destination 1.1.1.1 2>/dev/null || true
 iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 1.1.1.1 2>/dev/null || true
-iptables -t nat -I PREROUTING 1 -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j DNAT --to-destination 1.1.1.1
-iptables -t nat -I PREROUTING 2 -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 1.1.1.1
+iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j DNAT --to-destination 172.25.0.2 2>/dev/null || true
+iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 172.25.0.2 2>/dev/null || true
+iptables -t nat -I PREROUTING 1 -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j DNAT --to-destination 172.25.0.2
+iptables -t nat -I PREROUTING 2 -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 172.25.0.2
 
 # MSS clamping for exit node TCP: prevents large packet drops through the
 # tailscale0 (MTU 1280) <-> wg0 (MTU 1420) path
