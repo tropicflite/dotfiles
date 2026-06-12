@@ -30,5 +30,5 @@ while true; do
 
     logger -t "$LOG_TAG" "Tailscale coordination server unreachable, restarting tailscaled"
     tailscale down
-    tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server
+    tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server --advertise-exit-node
 done
