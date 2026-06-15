@@ -108,6 +108,9 @@ else
     printf "${RED}${BOLD}${issues} issue(s) found — see above.${NC}\n"
     echo
     if [[ -z "${NTFY_PASSWORD:-}" ]]; then
+        NTFY_PASSWORD=$(cat ~/.config/ntfy/password 2>/dev/null) || true
+    fi
+    if [[ -z "${NTFY_PASSWORD:-}" ]]; then
         read -rsp "ntfy password for matt: " NTFY_PASSWORD
         echo
     fi
