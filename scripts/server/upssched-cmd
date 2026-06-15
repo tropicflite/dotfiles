@@ -1,4 +1,6 @@
 #!/bin/sh
+# Install: sudo cp ~/dotfiles/scripts/server/upssched-cmd /usr/bin/upssched-cmd && sudo chmod +x /usr/bin/upssched-cmd
+# Requires: /etc/nut/ntfy-password (root:nut 640) — copy from ~/.config/ntfy/password
 
 send_ntfy() {
     pass=$(cat /etc/nut/ntfy-password 2>/dev/null) || return 0
