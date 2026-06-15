@@ -12,12 +12,14 @@ FAIL="${RED}✗${NC}"
 WARN="${YELLOW}!${NC}"
 
 issues=0
+failures=""
 
 check() {
     local label="$1" status="$2" detail="$3"
     case "$status" in
         ok)   printf "  ${OK} %-35s" "$label" ;;
-        fail) printf "  ${FAIL} %-35s" "$label"; ((issues++)) ;;
+        fail) printf "  ${FAIL} %-35s" "$label"; ((issues++))
+              failures+="${label}${detail:+ (${detail})}"$'\n' ;;
         warn) printf "  ${WARN} %-35s" "$label" ;;
     esac
     [ -n "$detail" ] && printf "${NC}%s" "$detail"
@@ -104,5 +106,19 @@ if [ "$issues" -eq 0 ]; then
     printf "${GREEN}${BOLD}All good.${NC}\n"
 else
     printf "${RED}${BOLD}${issues} issue(s) found — see above.${NC}\n"
+    echo
+    if [[ -z "${NTFY_PASSWORD:-}" ]]; then
+        read -rsp "ntfy password for matt: " NTFY_PASSWORD
+        echo
+    fi
+    body=$(printf "%d issue(s) found on %s:\n%s" "$issues" "$(hostname)" "$failures")
+    curl -s \
+        -u "matt:$NTFY_PASSWORD" \
+        -H "Title: [server] Health check failed" \
+        -H "Priority: high" \
+        -H "Tags: rotating_light" \
+        -d "$body" \
+        http://localhost:2586/server-alerts > /dev/null \
+        && printf "  ntfy alert sent.\n"
 fi
 echo
