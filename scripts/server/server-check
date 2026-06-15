@@ -76,6 +76,18 @@ else
     fi
 fi
 
+# --- Internet ---
+echo
+printf "${BOLD}Internet${NC}\n"
+for host in 8.8.8.8 1.1.1.1; do
+    if ping -c 1 -W 3 "$host" &>/dev/null; then
+        ms=$(ping -c 1 -W 3 "$host" 2>/dev/null | awk -F'/' 'END{printf "%.0f", $5}')
+        check "$host" ok "${ms}ms"
+    else
+        check "$host" fail "no response"
+    fi
+done
+
 # --- Tailscale ---
 echo
 printf "${BOLD}Tailscale${NC}\n"
