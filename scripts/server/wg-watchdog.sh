@@ -3,6 +3,15 @@ ENDPOINT_IP="154.47.17.158"
 WG_IFACE="wg0"
 LOG_TAG="wg-watchdog"
 
+send_ntfy() {
+    local title="$1" body="$2" priority="${3:-default}" tags="${4:-warning}"
+    local pass
+    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
+    curl -s -u "matt:$pass" \
+        -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
+        -d "$body" http://localhost:2586/server-alerts > /dev/null || true
+}
+
 while true; do
     sleep 30
 
@@ -10,6 +19,7 @@ while true; do
     if ! ip link show "$WG_IFACE" &>/dev/null; then
         logger -t "$LOG_TAG" "wg0 missing, restarting wg0.service"
         ip link delete wg0 2>/dev/null; systemctl restart wg0.service
+        send_ntfy "[server] wg0 interface missing — restarted" "wg0 interface was missing; wg0.service restarted at $(date)."
         sleep 15
         continue
     fi
@@ -18,6 +28,7 @@ while true; do
     if ! ping -c 2 -W 5 -I "$WG_IFACE" "$ENDPOINT_IP" &>/dev/null; then
         logger -t "$LOG_TAG" "Endpoint unreachable, restarting wg0.service"
         ip link delete wg0 2>/dev/null; systemctl restart wg0.service
+        send_ntfy "[server] WireGuard endpoint unreachable — restarted" "Endpoint $ENDPOINT_IP unreachable through $WG_IFACE; wg0.service restarted at $(date)."
         sleep 15
         continue
     fi
@@ -31,4 +42,5 @@ while true; do
     logger -t "$LOG_TAG" "Tailscale coordination server unreachable, restarting tailscaled"
     tailscale down
     tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server --advertise-exit-node
+    send_ntfy "[server] Tailscale coordination unreachable — restarted" "Tailscale coordination server was unreachable; tailscaled bounced at $(date)."
 done

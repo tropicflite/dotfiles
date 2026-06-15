@@ -1,5 +1,14 @@
 #!/bin/bash
 LOG_TAG="ssh-watchdog"
+
+send_ntfy() {
+    local title="$1" body="$2" priority="${3:-default}" tags="${4:-warning}"
+    local pass
+    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
+    curl -s -u "matt:$pass" \
+        -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
+        -d "$body" http://localhost:2586/server-alerts > /dev/null || true
+}
 MAX_FAILS=5
 FAIL_COUNT=0
 
@@ -42,6 +51,7 @@ while true; do
         if ! systemctl is-active --quiet ssh; then
             logger -t "$LOG_TAG" "sshd is not active, restarting"
             systemctl restart ssh
+            send_ntfy "[server] sshd was down — restarted" "sshd was not active; restarted at $(date). Fail count: ${FAIL_COUNT}/${MAX_FAILS}." high warning
             sleep 5
         else
             logger -t "$LOG_TAG" "sshd is active but port check failed, skipping restart"
@@ -50,6 +60,7 @@ while true; do
 
     if [ "$FAIL_COUNT" -ge "$MAX_FAILS" ]; then
         logger -t "$LOG_TAG" "REBOOTING: ${MAX_FAILS} consecutive failures"
+        send_ntfy "[server] Rebooting — ${MAX_FAILS} consecutive failures" "ssh=${ssh_ok} net=${net_ok}. Initiating reboot at $(date)." max rotating_light
         systemctl reboot
     fi
 done
