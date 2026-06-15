@@ -50,7 +50,7 @@ docker compose down
 docker compose pull && docker compose up -d
 ```
 
-Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`, `tailscale-serve-drivetemps`, `tailscale-serve-stirling-pdf`. `tailscale-serve-qbittorrent` also exists but is a break-glass unit — only start it to restore the qBittorrent serve rule after a Tailscale state wipe; under normal operation the rule persists without it.
+Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`, `tailscale-serve-drivetemps`, `tailscale-serve-stirling-pdf`, `tailscale-serve-scrutiny`. `tailscale-serve-qbittorrent` also exists but is a break-glass unit — only start it to restore the qBittorrent serve rule after a Tailscale state wipe; under normal operation the rule persists without it.
 
 ## Architecture
 
@@ -112,7 +112,7 @@ All services are accessed over Tailscale. The server's Tailscale hostname is `se
 | Homepage | 3000 | 3001 |
 | Stirling PDF | 8085 | 8084 |
 
-Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :8081) use the same Tailscale external port as their Docker host port.
+Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :8081, Scrutiny :2587) use the same Tailscale external port as their Docker host port.
 
 ## Non-obvious constraints
 
@@ -126,7 +126,7 @@ Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :
 - **Pi-hole** binds to `0.0.0.0:53` — the host must not have `systemd-resolved` stub listener active on port 53.
 - **WireGuard watchdog** (`wg-watchdog.sh`) runs as a background loop and restarts `wg0.service` if the VPN endpoint or Tailscale coordination becomes unreachable.
 - **SSH/network watchdog** (`ssh-watchdog.sh`) runs as a background loop (`ssh-watchdog.service`) and reboots the server after 5 consecutive failed checks (~5 minutes). Checks: TCP connect to `localhost:22` (sshd accepting), and ping to LAN gateway `192.168.50.1` via `enp1s0`. If only sshd is down it attempts `systemctl restart ssh` before counting the failure. Added 2026-05-26 to recover from the recurring state where the server becomes unreachable via both Tailscale and LAN SSH without a kernel hang.
-- **Tailscale/Docker port conflict:** when a service's Tailscale serve external port equals its Docker host port (currently open-webui :8083 and uptime-kuma :3003), Tailscale binds the Tailscale IP on that port at boot — before Docker starts the container. If Docker binds `0.0.0.0`, it fails. Fix: use `127.0.0.1:<port>:<container-port>` in the compose `ports` directive. Tailscale serve proxies to `localhost:<port>` which reaches the loopback binding. Services that other containers need to reach (e.g. uptime-kuma for Homepage's widget) must also join a shared Docker network so they can be addressed by container name instead of `host.docker.internal`.
+- **Tailscale/Docker port conflict:** when a service's Tailscale serve external port equals its Docker host port (currently open-webui :8083, uptime-kuma :3003, and scrutiny :2587), Tailscale binds the Tailscale IP on that port at boot — before Docker starts the container. If Docker binds `0.0.0.0`, it fails. Fix: use `127.0.0.1:<port>:<container-port>` in the compose `ports` directive. Tailscale serve proxies to `localhost:<port>` which reaches the loopback binding. Services that other containers need to reach (e.g. uptime-kuma for Homepage's widget) must also join a shared Docker network so they can be addressed by container name instead of `host.docker.internal`.
 - **qBittorrent 5.x WebUI auth:** the `WebUI\AuthSubnetWhitelistEnabled` bypass (currently `172.20.0.0/16`) is required for the Homepage widget; qBittorrent 5.x CSRF protection returns 403 on the login endpoint for non-whitelisted IPs. If the widget breaks after a network change, check that the Homepage container's arrs IP is covered by the whitelist CIDR.
 - **ntfy password files:** two copies must be kept in sync. `~/.config/ntfy/password` (matt:matt 600) is used by scripts running as matt or root. `/etc/nut/ntfy-password` (root:nut 640) is used by `upssched-cmd` which runs as the `nut` user. If the password is rotated, update both: `echo 'newpass' > ~/.config/ntfy/password && sudo sh -c 'cat /home/matt/.config/ntfy/password > /etc/nut/ntfy-password'`.
 
