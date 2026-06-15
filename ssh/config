@@ -14,7 +14,7 @@ Host mini
   ForwardAgent yes
 
 Host phone
-  HostName 100.104.57.1
+  HostName 100.82.1.81
   User matt
   Port 8022
 
