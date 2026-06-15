@@ -59,4 +59,11 @@ fi
 if [ -n "$ALERTS" ]; then
     echo -e "Subject: [${HOSTNAME}] Health Alert\nTo: ${TO}\nFrom: ${TO}\n\nIssues detected:\n\n${ALERTS}" | \
         msmtp -C /etc/msmtprc "$TO"
+    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) && \
+    curl -s -u "matt:$pass" \
+        -H "Title: [server] Health alert" \
+        -H "Priority: high" \
+        -H "Tags: warning" \
+        -d "Issues detected on ${HOSTNAME}:\n\n${ALERTS}" \
+        http://localhost:2586/server-alerts > /dev/null || true
 fi

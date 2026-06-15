@@ -30,6 +30,14 @@ send_alert() {
     local body="$2"
     echo -e "Subject: [${HOSTNAME}] ${subject}\n\n${body}" | \
         msmtp -C /etc/msmtprc "$TO"
+    local pass
+    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
+    curl -s -u "matt:$pass" \
+        -H "Title: [server] ${subject}" \
+        -H "Priority: high" \
+        -H "Tags: rotating_light" \
+        -d "${body}" \
+        http://localhost:2586/server-alerts > /dev/null || true
 }
 
 error_exit() {

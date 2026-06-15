@@ -16,6 +16,15 @@ send_email() {
         "$ALERT_EMAIL" "$subject" "$body" | msmtp "$ALERT_EMAIL"
 }
 
+send_ntfy() {
+    local title="$1" body="$2" priority="${3:-default}" tags="${4:-warning}"
+    local pass
+    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
+    curl -s -u "matt:$pass" \
+        -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
+        -d "$body" http://localhost:2586/server-alerts > /dev/null
+}
+
 # ── VPN Check ────────────────────────────────────────────────────────────────
 
 VPN_FLAG="/tmp/vpn_was_down"
@@ -28,6 +37,8 @@ if ping -c 2 -W 5 -I wg0 "$VPN_TEST_IP" > /dev/null 2>&1; then
         systemctl start qbittorrent-compose.service
         send_email "VPN Recovered" \
             "WireGuard VPN is back up on $(hostname) at $(date)."
+        send_ntfy "[server] VPN recovered" \
+            "WireGuard VPN is back up on $(hostname) at $(date)." default white_check_mark
     fi
 else
     # VPN is down
@@ -38,6 +49,8 @@ else
         systemctl stop qbittorrent-compose.service
         send_email "VPN DOWN — qBittorrent stopped" \
             "WireGuard VPN is DOWN on $(hostname) at $(date).\n\nqBittorrent has been stopped to prevent unprotected traffic.\n\nCheck wg0 and wg-watchdog status."
+        send_ntfy "[server] VPN DOWN — qBittorrent stopped" \
+            "WireGuard VPN is DOWN on $(hostname) at $(date). qBittorrent stopped." high rotating_light
     fi
     # If flag already exists, already alerted — don't spam
 fi
@@ -62,6 +75,8 @@ if [[ "$DISK_ALERT" -eq 1 ]]; then
         touch "$DISK_FLAG"
         send_email "Disk Space Warning" \
             "Disk usage above ${DISK_THRESHOLD}% on $(hostname) at $(date):\n\n${DISK_MSG}"
+        send_ntfy "[server] Disk space warning" \
+            "Disk usage above ${DISK_THRESHOLD}% on $(hostname):\n${DISK_MSG}" high warning
     fi
     # Flag already exists — already alerted, don't spam
 else

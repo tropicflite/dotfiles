@@ -61,5 +61,12 @@ fi
 if [ -n "$ALERTS" ]; then
     echo -e "Subject: [${HOSTNAME}] Temperature Alert\n\nTemperature thresholds exceeded:\n\n${ALERTS}" | \
         msmtp -C /etc/msmtprc "$TO"
+    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) && \
+    curl -s -u "matt:$pass" \
+        -H "Title: [server] Temperature alert" \
+        -H "Priority: high" \
+        -H "Tags: thermometer" \
+        -d "Temperature thresholds exceeded on ${HOSTNAME}:\n\n${ALERTS}" \
+        http://localhost:2586/server-alerts > /dev/null || true
     date +%s > "$COOLDOWN_FILE"
 fi
