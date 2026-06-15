@@ -43,6 +43,13 @@ Most stacks are managed by systemd services (so they start on boot). Unit files 
 - `pihole-compose` — After docker, wg0
 - `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data
 
+**ntfy** (`~/docker/ntfy/`) has no systemd unit — `restart: unless-stopped` handles restarts and Docker auto-starts it on daemon boot. Manage directly from `~/docker/ntfy/`:
+```bash
+docker compose up -d
+docker compose down
+docker compose pull && docker compose up -d
+```
+
 Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`, `tailscale-serve-drivetemps`, `tailscale-serve-stirling-pdf`. `tailscale-serve-qbittorrent` also exists but is a break-glass unit — only start it to restore the qBittorrent serve rule after a Tailscale state wipe; under normal operation the rule persists without it.
 
 ## Architecture
@@ -53,7 +60,7 @@ There are four named Docker networks:
 
 | Network | Bridge | Subnet | Purpose |
 |---------|--------|--------|---------|
-| `arrs` | (default) | — | Shared by arrs stack, jellyfin, qbittorrent, homepage, and uptime-kuma; allows inter-container name resolution |
+| `arrs` | (default) | — | Shared by arrs stack, jellyfin, qbittorrent, homepage, uptime-kuma, and ntfy; allows inter-container name resolution |
 | `pihole_net` | `br-pihole` | `172.25.0.0/24` | Isolated bridge for Pi-hole; NAT'd through wg0 via iptables |
 | `qbittorrent` | `br-qbittorrent` | `172.27.0.0/24` | Isolated bridge for qBittorrent; software kill switch stops container if wg0 goes down |
 | `uptime-kuma_default` (alias `kuma`) | — | — | Immich joins this so Uptime Kuma can probe it |
@@ -89,6 +96,7 @@ Most config and data is bind-mounted, not in named volumes:
 - **Homepage** joins the `arrs` network so it can contact arrs-stack services by container name for its widgets. It also mounts the Docker socket read-only for container status.
 - **Uptime Kuma** is on both `uptime-kuma_default` and `arrs` networks. It uses `host.docker.internal:host-gateway` to probe host-bound ports. Immich joins `uptime-kuma_default` so Kuma can probe it by container name. Homepage reaches the widget API at `http://uptime-kuma:3001` over arrs.
 - **Filebrowser** binds only to `127.0.0.1:8081` — exposed externally via Tailscale Serve/Funnel or a reverse proxy, not directly.
+- **ntfy** is the push notification server (`~/docker/ntfy/`). It runs on port 2586 and joins the `arrs` network so Homepage and Uptime Kuma can reach it at `http://ntfy:2586` by container name. Topic: `server-alerts`. Auth: `deny-all` — admin user is `matt`. All alert scripts in dotfiles send to ntfy alongside email; they read the password from `~/.config/ntfy/password`. The `nut` user (UPS scripts) reads from `/etc/nut/ntfy-password` instead. No Tailscale Serve rule — accessible within Tailscale at `http://100.65.250.53:2586`.
 
 ### Access
 
@@ -120,6 +128,7 @@ Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :
 - **SSH/network watchdog** (`ssh-watchdog.sh`) runs as a background loop (`ssh-watchdog.service`) and reboots the server after 5 consecutive failed checks (~5 minutes). Checks: TCP connect to `localhost:22` (sshd accepting), and ping to LAN gateway `192.168.50.1` via `enp1s0`. If only sshd is down it attempts `systemctl restart ssh` before counting the failure. Added 2026-05-26 to recover from the recurring state where the server becomes unreachable via both Tailscale and LAN SSH without a kernel hang.
 - **Tailscale/Docker port conflict:** when a service's Tailscale serve external port equals its Docker host port (currently open-webui :8083 and uptime-kuma :3003), Tailscale binds the Tailscale IP on that port at boot — before Docker starts the container. If Docker binds `0.0.0.0`, it fails. Fix: use `127.0.0.1:<port>:<container-port>` in the compose `ports` directive. Tailscale serve proxies to `localhost:<port>` which reaches the loopback binding. Services that other containers need to reach (e.g. uptime-kuma for Homepage's widget) must also join a shared Docker network so they can be addressed by container name instead of `host.docker.internal`.
 - **qBittorrent 5.x WebUI auth:** the `WebUI\AuthSubnetWhitelistEnabled` bypass (currently `172.20.0.0/16`) is required for the Homepage widget; qBittorrent 5.x CSRF protection returns 403 on the login endpoint for non-whitelisted IPs. If the widget breaks after a network change, check that the Homepage container's arrs IP is covered by the whitelist CIDR.
+- **ntfy password files:** two copies must be kept in sync. `~/.config/ntfy/password` (matt:matt 600) is used by scripts running as matt or root. `/etc/nut/ntfy-password` (root:nut 640) is used by `upssched-cmd` which runs as the `nut` user. If the password is rotated, update both: `echo 'newpass' > ~/.config/ntfy/password && sudo sh -c 'cat /home/matt/.config/ntfy/password > /etc/nut/ntfy-password'`.
 
 ## Troubleshooting
 
