@@ -57,25 +57,6 @@ while IFS=$'\t' read -r name state status_str; do
     fi
 done < <(docker ps -a --format $'{{.Names}}\t{{.State}}\t{{.Status}}' | sort)
 
-# --- WireGuard ---
-echo
-printf "${BOLD}WireGuard${NC}\n"
-if ! ip link show wg0 &>/dev/null; then
-    check "wg0" fail "interface not up"
-else
-    handshake=$(sudo wg show wg0 latest-handshakes 2>/dev/null | awk '{print $2}')
-    if [ -z "$handshake" ] || [ "$handshake" = "0" ]; then
-        check "wg0" fail "no handshake yet"
-    else
-        age=$(( $(date +%s) - handshake ))
-        if [ "$age" -lt 120 ]; then
-            check "wg0" ok "handshake ${age}s ago"
-        else
-            check "wg0" warn "last handshake ${age}s ago"
-        fi
-    fi
-fi
-
 # --- Internet ---
 echo
 printf "${BOLD}Internet${NC}\n"
@@ -96,6 +77,25 @@ if ! tailscale status &>/dev/null; then
 else
     ts_ip=$(tailscale ip -4 2>/dev/null)
     check "tailscale" ok "up — ${ts_ip}"
+fi
+
+# --- WireGuard ---
+echo
+printf "${BOLD}WireGuard${NC}\n"
+if ! ip link show wg0 &>/dev/null; then
+    check "wg0" fail "interface not up"
+else
+    handshake=$(sudo wg show wg0 latest-handshakes 2>/dev/null | awk '{print $2}')
+    if [ -z "$handshake" ] || [ "$handshake" = "0" ]; then
+        check "wg0" fail "no handshake yet"
+    else
+        age=$(( $(date +%s) - handshake ))
+        if [ "$age" -lt 120 ]; then
+            check "wg0" ok "handshake ${age}s ago"
+        else
+            check "wg0" warn "last handshake ${age}s ago"
+        fi
+    fi
 fi
 
 # --- Summary ---
