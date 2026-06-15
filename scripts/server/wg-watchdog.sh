@@ -17,18 +17,18 @@ while true; do
 
     # Check if wg0 exists
     if ! ip link show "$WG_IFACE" &>/dev/null; then
-        logger -t "$LOG_TAG" "wg0 missing, restarting wg0.service"
-        ip link delete wg0 2>/dev/null; systemctl restart wg0.service
-        send_ntfy "[server] wg0 interface missing — restarted" "wg0 interface was missing; wg0.service restarted at $(date)."
+        logger -t "$LOG_TAG" "wg0 missing, bringing interface back up"
+        wg-quick down "$WG_IFACE" 2>/dev/null; wg-quick up "$WG_IFACE"
+        send_ntfy "[server] wg0 interface missing — bounced" "wg0 interface was missing; brought back up at $(date)."
         sleep 15
         continue
     fi
 
     # Check if endpoint is reachable through the tunnel
     if ! ping -c 2 -W 5 -I "$WG_IFACE" "$ENDPOINT_IP" &>/dev/null; then
-        logger -t "$LOG_TAG" "Endpoint unreachable, restarting wg0.service"
-        ip link delete wg0 2>/dev/null; systemctl restart wg0.service
-        send_ntfy "[server] WireGuard endpoint unreachable — restarted" "Endpoint $ENDPOINT_IP unreachable through $WG_IFACE; wg0.service restarted at $(date)."
+        logger -t "$LOG_TAG" "Endpoint unreachable, bouncing wg0 interface"
+        wg-quick down "$WG_IFACE" 2>/dev/null; wg-quick up "$WG_IFACE"
+        send_ntfy "[server] WireGuard endpoint unreachable — bounced" "Endpoint $ENDPOINT_IP unreachable through $WG_IFACE; interface bounced at $(date)."
         sleep 15
         continue
     fi
