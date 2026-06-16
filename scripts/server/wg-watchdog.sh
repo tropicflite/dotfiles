@@ -1,5 +1,5 @@
 #!/bin/bash
-ENDPOINT_IP="154.47.17.158"
+ENDPOINT_IP="154.47.17.129"
 WG_IFACE="wg0"
 LOG_TAG="wg-watchdog"
 
