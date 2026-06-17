@@ -27,6 +27,11 @@ ip rule del fwmark 0x200 lookup 200 2>/dev/null || true
 ip route flush table 200 2>/dev/null || true
 ip route add "${PROTON_ENDPOINT}/32" via "$LAN_GW" table 200
 ip route add 0.0.0.0/0 dev wg0 table 200
+# Pi-hole must be reachable in table 200: mangle PREROUTING (TS_EXIT_MARK) runs before
+# nat PREROUTING (DNAT), so DNS queries to internet IPs get marked 0x200 before the DNAT
+# redirect changes their destination to 172.25.0.2. Without this route, marked DNS
+# packets follow the default (wg0) instead of reaching Pi-hole on br-pihole.
+ip route add 172.25.0.0/24 dev br-pihole table 200
 ip rule add fwmark 0x200 lookup 200 priority 100
 
 iptables -D FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
