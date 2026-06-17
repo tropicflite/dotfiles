@@ -70,6 +70,7 @@ sync_photos() {
     local backup_dir="$USB_MOUNT/.deleted-$(date +%Y%m)"
     set +e
     rsync -ah --no-owner --no-group --info=stats2 --delete --backup --backup-dir="$backup_dir" \
+        --exclude='backups/' \
         "$PHOTO_SOURCE/" "$USB_PHOTO_DEST/"
     local rsync_exit_code=$?
     set -e
