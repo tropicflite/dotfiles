@@ -1,5 +1,17 @@
 #!/bin/bash
 # Idempotent: delete any existing rules before inserting to prevent duplicates on wg0 restart
+
+# Policy routing: Tailscale CGNAT traffic (exit node) routes through ProtonVPN (wg0).
+# Table = off in wg0.conf means wg-quick adds no routes; we must do it here.
+# Table 200 holds a default via wg0, with the ProtonVPN endpoint pinned via LAN to avoid a loop.
+PROTON_ENDPOINT="154.47.17.129"
+LAN_GW="192.168.50.1"
+ip rule del from 100.64.0.0/10 lookup 200 2>/dev/null || true
+ip route flush table 200 2>/dev/null || true
+ip route add "${PROTON_ENDPOINT}/32" via "$LAN_GW" table 200
+ip route add 0.0.0.0/0 dev wg0 table 200
+ip rule add from 100.64.0.0/10 lookup 200 priority 100
+
 iptables -D FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o br-pihole -j ACCEPT 2>/dev/null || true
 iptables -t nat -D POSTROUTING -s 172.25.0.0/24 -o wg0 -j MASQUERADE 2>/dev/null || true
