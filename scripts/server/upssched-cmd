@@ -13,7 +13,7 @@ send_ntfy() {
 case $1 in
     onbatt-notify)
         logger -t upssched-cmd "UPS on battery - sending notification email"
-        printf "Subject: UPS on battery\nTo: nichols_matt@pm.me\nFrom: nichols_matt@pm.me\n\nUPS apc1000 switched to battery power at $(date).\n" | msmtp -a proton nichols_matt@pm.me
+        printf "Subject: UPS on battery\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 switched to battery power at $(date).\n" | msmtp nichols_matt@pm.me
         send_ntfy "[server] UPS on battery" "high" "warning,battery" "UPS apc1000 switched to battery power at $(date)."
         ;;
     onbatt-warn)

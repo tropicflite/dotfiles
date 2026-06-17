@@ -57,7 +57,7 @@ fi
 
 # Send alert if anything flagged
 if [ -n "$ALERTS" ]; then
-    echo -e "Subject: [${HOSTNAME}] Health Alert\nTo: ${TO}\nFrom: ${TO}\n\nIssues detected:\n\n${ALERTS}" | \
+    echo -e "Subject: [${HOSTNAME}] Health Alert\nTo: ${TO}\nFrom: matt@wayoffcourse.ca\n\nIssues detected:\n\n${ALERTS}" | \
         msmtp -C /etc/msmtprc "$TO"
     pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) && \
     curl -s -u "matt:$pass" \
