@@ -80,3 +80,24 @@ ip6tables -D FORWARD -i tailscale0 ! -o tailscale0 -j REJECT 2>/dev/null || true
 ip6tables -I FORWARD 1 -i tailscale0 ! -o tailscale0 -j REJECT
 ip6tables -D ts-forward -i tailscale0 ! -o tailscale0 -j REJECT 2>/dev/null || true
 ip6tables -I ts-forward 1 -i tailscale0 ! -o tailscale0 -j REJECT
+
+# INTENTIONAL: block server from initiating direct WireGuard to external peers.
+#
+# Android Tailscale bug: when the phone uses this server as an exit node over a
+# direct WireGuard connection, it fails to add a bypass route for the server's
+# direct endpoint (99.241.47.35) outside the exit-node tunnel. All traffic —
+# including the WireGuard keepalives themselves — gets routed through the exit-node
+# tunnel, creating a routing loop that kills the phone's internet.
+#
+# The fix has two parts (both required):
+#   1. Router: NAT-PMP disabled + static port forward for 41641 removed — phone
+#      cannot initiate direct connections inbound to the server.
+#   2. This rule: server cannot hole-punch a direct path outbound to the phone,
+#      which would otherwise re-establish direct even without a port forward.
+#
+# LAN peers (mini, laptop, desktop) are unaffected — they reach the server via
+# its LAN IP (192.168.50.34) directly, not through enp1s0 NAT. DERP relay uses
+# TCP, not UDP 41641. Do NOT remove this rule or restore the router port forward
+# without first verifying the Android bug is fixed in the installed Tailscale version.
+iptables -D OUTPUT -o enp1s0 -p udp --sport 41641 ! -d 192.168.50.0/24 -j DROP 2>/dev/null || true
+iptables -I OUTPUT -o enp1s0 -p udp --sport 41641 ! -d 192.168.50.0/24 -j DROP
