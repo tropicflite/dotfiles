@@ -40,6 +40,7 @@ fbon() {
   tailscale serve --bg --https=7777 http://localhost:7778
   tailscale serve --bg --https=8083 http://localhost:8083
   tailscale serve --bg --https=3003 http://localhost:3003
+  tailscale serve --bg --https=2587 http://localhost:2587
   tailscale funnel --bg --https=443 http://127.0.0.1:8081
   echo "Funnel ON — FileBrowser public on 443"
 }
@@ -57,6 +58,7 @@ fboff() {
   tailscale serve --bg --https=7777 http://localhost:7778
   tailscale serve --bg --https=8083 http://localhost:8083
   tailscale serve --bg --https=3003 http://localhost:3003
+  tailscale serve --bg --https=2587 http://localhost:2587
   echo "Funnel OFF — Homepage on 443"
 }
 fbstatus() {
