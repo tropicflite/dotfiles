@@ -1,16 +1,33 @@
 #!/bin/bash
 # Idempotent: delete any existing rules before inserting to prevent duplicates on wg0 restart
 
-# Policy routing: Tailscale CGNAT traffic (exit node) routes through ProtonVPN (wg0).
-# Table = off in wg0.conf means wg-quick adds no routes; we must do it here.
-# Table 200 holds a default via wg0, with the ProtonVPN endpoint pinned via LAN to avoid a loop.
+# Policy routing: exit-node traffic (arriving on tailscale0, destined for internet)
+# routes through ProtonVPN (wg0). Table = off in wg0.conf means wg-quick adds no routes.
+#
+# Custom chain TS_EXIT_MARK marks packets by incoming interface (tailscale0), with
+# early RETURN for destinations that should NOT go through wg0:
+#   - 100.64.0.0/10: Tailscale CGNAT (peer traffic + server's own Tailscale IP 100.65.250.53)
+#   - 192.168.50.0/24, 10.0.0.0/24: server's advertised Tailscale subnets → stay on LAN
+# Marked packets use table 200 (default via wg0). ProtonVPN endpoint pinned via LAN
+# in table 200 to avoid routing loop.
+#
+# DO NOT use source-based ip rules (from 100.64/10) — the server's own Tailscale IP
+# (100.65.250.53) is in that range; source routing breaks replies to all Tailscale peers.
 PROTON_ENDPOINT="154.47.17.129"
 LAN_GW="192.168.50.1"
-ip rule del from 100.64.0.0/10 lookup 200 2>/dev/null || true
+iptables -t mangle -N TS_EXIT_MARK 2>/dev/null || true
+iptables -t mangle -F TS_EXIT_MARK
+iptables -t mangle -A TS_EXIT_MARK -d 100.64.0.0/10 -j RETURN
+iptables -t mangle -A TS_EXIT_MARK -d 192.168.50.0/24 -j RETURN
+iptables -t mangle -A TS_EXIT_MARK -d 10.0.0.0/24 -j RETURN
+iptables -t mangle -A TS_EXIT_MARK -j MARK --set-mark 0x200
+iptables -t mangle -D PREROUTING -i tailscale0 -j TS_EXIT_MARK 2>/dev/null || true
+iptables -t mangle -I PREROUTING 1 -i tailscale0 -j TS_EXIT_MARK
+ip rule del fwmark 0x200 lookup 200 2>/dev/null || true
 ip route flush table 200 2>/dev/null || true
 ip route add "${PROTON_ENDPOINT}/32" via "$LAN_GW" table 200
 ip route add 0.0.0.0/0 dev wg0 table 200
-ip rule add from 100.64.0.0/10 lookup 200 priority 100
+ip rule add fwmark 0x200 lookup 200 priority 100
 
 iptables -D FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o br-pihole -j ACCEPT 2>/dev/null || true
