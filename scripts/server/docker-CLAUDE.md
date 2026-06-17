@@ -62,10 +62,10 @@ There are four named Docker networks:
 |---------|--------|--------|---------|
 | `arrs` | (default) | — | Shared by arrs stack, jellyfin, qbittorrent, homepage, uptime-kuma, and ntfy; allows inter-container name resolution |
 | `pihole_net` | `br-pihole` | `172.25.0.0/24` | Isolated bridge for Pi-hole; NAT'd through wg0 via iptables |
-| `qbittorrent` | `br-qbittorrent` | `172.27.0.0/24` | Isolated bridge for qBittorrent; software kill switch stops container if wg0 goes down |
+| `qbittorrent` | `br-qbittorrent` | `172.27.0.0/24` | Isolated bridge for qBittorrent; hard iptables kill switch + software kill switch if wg0 goes down |
 | `uptime-kuma_default` (alias `kuma`) | — | — | Immich joins this so Uptime Kuma can probe it |
 
-**qBittorrent kill switch:** `vpn-diskcheck.sh` runs every 5 minutes via cron, pings `1.1.1.1` through wg0, and stops the qbittorrent container (with email alert) if the VPN is down. There is no iptables hard block — it is a software kill switch with up to a 5-minute gap.
+**qBittorrent kill switch:** Two-layer protection. (1) **Hard iptables block**: `wg0-up-extra.sh` inserts `iptables -I FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP` — packets from the qBittorrent bridge are kernel-dropped immediately if wg0 is down. Rule persists via netfilter-persistent and is re-applied on every wg0 restart. Rule is NOT removed when wg0 goes down (intentional). (2) **Software kill switch**: `vpn-diskcheck.sh` runs every 5 minutes via cron, pings `1.1.1.1` through wg0, and stops the qbittorrent container (with email alert) if the VPN is down.
 
 **Pi-hole routing through VPN:** `wg0-up-extra.sh` (runs as `ExecStartPost` of `wg0.service`) adds FORWARD rules for `br-pihole ↔ wg0` and NAT-masquerades `172.25.0.0/24` through wg0.
 
@@ -99,7 +99,8 @@ Most config and data is bind-mounted, not in named volumes:
 - **ntfy** is the push notification server (`~/docker/ntfy/`). It runs on port 2586 and joins the `arrs` network so Homepage and Uptime Kuma can reach it at `http://ntfy:2586` by container name. Topic: `server-alerts`. Auth: `deny-all` — admin user is `matt`. All alert scripts in dotfiles send to ntfy alongside email; they read the password from `~/.config/ntfy/password`. The `nut` user (UPS scripts) reads from `/etc/nut/ntfy-password` instead. No Tailscale Serve rule — accessible within Tailscale at `http://100.65.250.53:2586`.
 - **drivetemps** is a custom Python container (`~/docker/homepage/drivetemps/server.py`) that serves a JSON API on host port 7778 (container port 7777). It reports CPU usage + temp, NVMe temp + root disk usage, sda (USB backup) temp + usage, sdb (Immich library) temp + usage, and RAM usage — read from `/hostfs` (root filesystem mounted read-only), smartctl, and `/proc`. Homepage uses it for its system stats widget. Exposed via `tailscale-serve-drivetemps.service` at `https://server.tailc9871d.ts.net:7777`. Excluded from Watchtower (`com.centurylinklabs.watchtower.enable=false`) because it is a locally built image.
 - **autoheal** watches for unhealthy containers and restarts them automatically. Runs with `network_mode: "none"` and only targets containers labeled `autoheal=true`. Check interval: 10 seconds. Lives in the `pihole` compose file (`~/docker/pihole/docker-compose.yml`).
-- **recyclarr** syncs TRaSH Guides quality profiles and custom formats into Radarr and Sonarr on a daily cron schedule (`CRON_SCHEDULE=@daily`). Config: `~/docker/recyclarr/config/recyclarr.yml`. On the `arrs` network to reach radarr and sonarr by container name. Manual sync: `docker exec recyclarr recyclarr sync`.
+- **docker-health-monitor** is a systemd service (`docker-health-monitor.service`) running `~/bin/docker-health-monitor.sh` as user matt. It watches `docker events` for `health_status: unhealthy` transitions and immediately sends ntfy + email alert. Fires before autoheal acts, surfacing container flapping that would otherwise be silent. Script deployed to `/usr/local/bin/docker-health-monitor.sh`.
+- **recyclarr** syncs TRaSH Guides quality profiles and custom formats into Radarr and Sonarr. Config: `~/docker/recyclarr/config/recyclarr.yml`. On the `arrs` network to reach radarr and sonarr by container name. Manual sync: `docker exec recyclarr recyclarr sync`. No internal cron — triggered by host cron at 3am daily via `~/bin/recyclarr-sync.sh`, which logs to `/var/log/recyclarr.log` and sends ntfy + email on failure.
 
 ### Access
 
