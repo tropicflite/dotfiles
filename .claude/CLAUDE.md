@@ -40,4 +40,5 @@ Serve for all services. ProtonVPN via wg0.service, split tunneling with
 
 See ~/docker/CLAUDE.md for full stack detail (networks, volumes, service
 relationships, port mappings, non-obvious constraints).
+See ~/docker/monitoring.md for monitoring scripts, alert thresholds, email pipeline (Proton Bridge/msmtp), and cron schedule.
 See ~/dotfiles/CLAUDE.md for dotfiles workflow detail.
