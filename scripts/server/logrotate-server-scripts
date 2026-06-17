@@ -1,0 +1,39 @@
+/var/log/ups-charge.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 root root
+}
+
+/var/log/msmtp.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 664 matt nut
+}
+
+/var/log/immich-backup.log {
+    monthly
+    rotate 6
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 matt matt
+}
+
+/var/log/recyclarr.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 matt matt
+}
