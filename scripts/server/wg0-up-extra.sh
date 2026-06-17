@@ -50,6 +50,12 @@ iptables -I FORWARD -i tailscale0 -o wg0 -j ACCEPT
 iptables -I FORWARD -i wg0 -o tailscale0 -j ACCEPT
 iptables -t nat -I POSTROUTING 1 -s 100.64.0.0/10 -o wg0 -j MASQUERADE
 
+# qBittorrent hard kill switch: packets from the qbittorrent bridge (172.27.0.0/24)
+# may only leave via wg0. If wg0 is down the kernel drops them immediately, closing
+# the 5-minute gap in the vpn-diskcheck.sh software kill switch.
+iptables -D FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP 2>/dev/null || true
+iptables -I FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP
+
 # Fix UDP GRO forwarding for Tailscale exit node performance
 ethtool -K enp1s0 rx-udp-gro-forwarding on rx-gro-list off 2>/dev/null || true
 
