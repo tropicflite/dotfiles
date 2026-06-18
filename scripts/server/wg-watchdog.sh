@@ -1,5 +1,6 @@
 #!/bin/bash
 ENDPOINT_IP="154.47.17.129"
+ENDPOINT_NAME="ProtonVPN"
 WG_IFACE="wg0"
 LOG_TAG="wg-watchdog"
 
@@ -28,7 +29,7 @@ while true; do
     if ! ping -c 2 -W 5 -I "$WG_IFACE" "$ENDPOINT_IP" &>/dev/null; then
         logger -t "$LOG_TAG" "Endpoint unreachable, bouncing wg0 interface"
         wg-quick down "$WG_IFACE" 2>/dev/null; wg-quick up "$WG_IFACE"
-        send_ntfy "[server] WireGuard endpoint unreachable — bounced" "Endpoint $ENDPOINT_IP unreachable through $WG_IFACE; interface bounced at $(date)."
+        send_ntfy "[server] WireGuard endpoint unreachable — bounced" "$ENDPOINT_NAME endpoint unreachable through $WG_IFACE; interface bounced at $(date)."
         sleep 15
         continue
     fi
