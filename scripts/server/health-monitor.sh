@@ -58,19 +58,6 @@ fi
 # Send alert if anything flagged
 if [ -n "$ALERTS" ]; then
     echo -e "Subject: [${HOSTNAME}] Health Alert\nTo: ${TO}\nFrom: matt@wayoffcourse.ca\n\nIssues detected:\n\n${ALERTS}" | \
-        msmtp -C /etc/msmtprc "$TO"
-    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null)
-    if [ -n "$pass" ] && ! curl -s -u "matt:$pass" \
-        -H "Title: [server] Health alert" \
-        -H "Priority: high" \
-        -H "Tags: warning" \
-        -d "Issues detected on ${HOSTNAME}:\n\n${ALERTS}" \
-        http://localhost:2586/server-alerts > /dev/null 2>&1; then
-        curl -s \
-            -H "Title: [server] Health alert" \
-            -H "Priority: high" \
-            -H "Tags: warning" \
-            -d "Issues detected on ${HOSTNAME}:\n\n${ALERTS}" \
-            https://ntfy.sh/REDACTED > /dev/null || true
-    fi
+        NTFY_PRIORITY=high NTFY_TAGS=warning NTFY_BODY="Issues detected on ${HOSTNAME}:\n\n${ALERTS}" \
+        /usr/local/bin/send-mail
 fi

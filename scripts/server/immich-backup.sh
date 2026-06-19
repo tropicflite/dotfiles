@@ -29,15 +29,8 @@ send_alert() {
     local subject="$1"
     local body="$2"
     echo -e "Subject: [${HOSTNAME}] ${subject}\n\n${body}" | \
-        msmtp -C /etc/msmtprc "$TO"
-    local pass
-    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
-    curl -s -u "matt:$pass" \
-        -H "Title: [server] ${subject}" \
-        -H "Priority: high" \
-        -H "Tags: rotating_light" \
-        -d "${body}" \
-        http://localhost:2586/server-alerts > /dev/null || true
+        NTFY_PRIORITY=high NTFY_TAGS=rotating_light NTFY_BODY="${body}" \
+        /usr/local/bin/send-mail
 }
 
 error_exit() {

@@ -60,20 +60,7 @@ fi
 # Send alert if any thresholds exceeded
 if [ -n "$ALERTS" ]; then
     echo -e "Subject: [${HOSTNAME}] Temperature Alert\n\nTemperature thresholds exceeded:\n\n${ALERTS}" | \
-        msmtp -C /etc/msmtprc "$TO"
-    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null)
-    if [ -n "$pass" ] && ! curl -s -u "matt:$pass" \
-        -H "Title: [server] Temperature alert" \
-        -H "Priority: high" \
-        -H "Tags: thermometer" \
-        -d "Temperature thresholds exceeded on ${HOSTNAME}:\n\n${ALERTS}" \
-        http://localhost:2586/server-alerts > /dev/null 2>&1; then
-        curl -s \
-            -H "Title: [server] Temperature alert" \
-            -H "Priority: high" \
-            -H "Tags: thermometer" \
-            -d "Temperature thresholds exceeded on ${HOSTNAME}:\n\n${ALERTS}" \
-            https://ntfy.sh/REDACTED > /dev/null || true
-    fi
+        NTFY_PRIORITY=high NTFY_TAGS=thermometer NTFY_BODY="Temperature thresholds exceeded on ${HOSTNAME}:\n\n${ALERTS}" \
+        /usr/local/bin/send-mail
     date +%s > "$COOLDOWN_FILE"
 fi
