@@ -66,12 +66,11 @@ if [ -n "$ALERTS" ]; then
         -H "Tags: warning" \
         -d "Issues detected on ${HOSTNAME}:\n\n${ALERTS}" \
         http://localhost:2586/server-alerts > /dev/null 2>&1; then
-        shpass=$(cat /home/matt/.config/ntfy/ntfysh-password 2>/dev/null) && \
-        curl -s -u "tropicflite:$shpass" \
+        curl -s \
             -H "Title: [server] Health alert" \
             -H "Priority: high" \
             -H "Tags: warning" \
             -d "Issues detected on ${HOSTNAME}:\n\n${ALERTS}" \
-            https://ntfy.sh/server-alerts > /dev/null || true
+            https://ntfy.sh/REDACTED > /dev/null || true
     fi
 fi

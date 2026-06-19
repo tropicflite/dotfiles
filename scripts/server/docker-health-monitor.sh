@@ -16,13 +16,12 @@ send_ntfy() {
         -H "Tags: warning" \
         -d "Container $name is unhealthy on $(hostname) at $(date). autoheal will attempt a restart." \
         "$NTFY_URL" > /dev/null 2>&1; then
-        shpass=$(cat /home/matt/.config/ntfy/ntfysh-password 2>/dev/null) && \
-        curl -s -u "tropicflite:$shpass" \
+        curl -s \
             -H "Title: [server] Unhealthy container: $name" \
             -H "Priority: high" \
             -H "Tags: warning" \
             -d "Container $name is unhealthy on $(hostname) at $(date). autoheal will attempt a restart." \
-            https://ntfy.sh/server-alerts > /dev/null || true
+            https://ntfy.sh/REDACTED > /dev/null || true
     fi
 }
 

@@ -11,10 +11,9 @@ send_ntfy() {
     if ! curl -s -u "matt:$pass" \
         -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
         -d "$body" http://localhost:2586/server-alerts > /dev/null 2>&1; then
-        shpass=$(cat /home/matt/.config/ntfy/ntfysh-password 2>/dev/null) && \
-        curl -s -u "tropicflite:$shpass" \
+        curl -s \
             -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
-            -d "$body" https://ntfy.sh/server-alerts > /dev/null || true
+            -d "$body" https://ntfy.sh/REDACTED > /dev/null || true
     fi
 }
 

@@ -68,13 +68,12 @@ if [ -n "$ALERTS" ]; then
         -H "Tags: thermometer" \
         -d "Temperature thresholds exceeded on ${HOSTNAME}:\n\n${ALERTS}" \
         http://localhost:2586/server-alerts > /dev/null 2>&1; then
-        shpass=$(cat /home/matt/.config/ntfy/ntfysh-password 2>/dev/null) && \
-        curl -s -u "tropicflite:$shpass" \
+        curl -s \
             -H "Title: [server] Temperature alert" \
             -H "Priority: high" \
             -H "Tags: thermometer" \
             -d "Temperature thresholds exceeded on ${HOSTNAME}:\n\n${ALERTS}" \
-            https://ntfy.sh/server-alerts > /dev/null || true
+            https://ntfy.sh/REDACTED > /dev/null || true
     fi
     date +%s > "$COOLDOWN_FILE"
 fi
