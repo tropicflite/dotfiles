@@ -37,6 +37,7 @@ setup_claude_settings() {
 }
 
 # Universal
+lns "$DOTFILES/zsh/.zshenv" "$HOME/.zshenv"
 lns "$DOTFILES/zsh/.zshrc" "$HOME/.zshrc"
 lns "$DOTFILES/.config/nvim" "$HOME/.config/nvim"
 lns "$DOTFILES/.config/ranger" "$HOME/.config/ranger"
