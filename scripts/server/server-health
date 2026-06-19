@@ -1,5 +1,5 @@
 #!/bin/bash
-# Quick post-reboot health check. Usage: server-check
+# Quick post-reboot health check. Usage: server-health
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -17,51 +17,52 @@ failures=""
 check() {
     local label="$1" status="$2" detail="$3"
     case "$status" in
-        ok)   printf "  ${OK} %-35s" "$label" ;;
-        fail) printf "  ${FAIL} %-35s" "$label"; ((issues++))
+        ok)   printf "  ${OK} %-12s " "$label" ;;
+        fail) printf "  ${FAIL} %-12s " "$label"; ((issues++))
               failures+="${label}${detail:+ (${detail})}"$'\n' ;;
-        warn) printf "  ${WARN} %-35s" "$label" ;;
+        warn) printf "  ${WARN} %-12s " "$label" ;;
     esac
-    [ -n "$detail" ] && printf "${NC}%s" "$detail"
+    [ -n "$detail" ] && printf "%s" "$detail"
     printf "\n"
 }
 
+clear
 echo
-printf "${BOLD}=== Server health — $(date '+%Y-%m-%d %H:%M:%S') ===${NC}\n"
+printf "${BOLD}=== Server health — $(date '+%m-%d %H:%M') ===${NC}\n"
+echo
 
-# --- Systemd ---
-echo
-printf "${BOLD}Systemd${NC}\n"
-failed=$(systemctl --failed --no-legend --no-pager 2>/dev/null | awk 'NF{print $1}')
+# Systemd
+failed=$(systemctl --failed --no-legend --no-pager 2>/dev/null | awk 'NF{print $1}' | paste -sd ' ')
 if [ -z "$failed" ]; then
-    check "no failed units" ok
+    check "Systemd" ok "no failed units"
 else
-    while IFS= read -r unit; do
-        check "$unit" fail "failed"
-    done <<< "$failed"
+    check "Systemd" fail "$failed"
 fi
 
-# --- Docker containers ---
-echo
-printf "${BOLD}Docker${NC}\n"
+# Docker — summary line; expand only failures/warnings
+ok_count=0; warn_count=0; fail_count=0; warn_names=""; fail_names=""
 while IFS=$'\t' read -r name state status_str; do
     health=$(echo "$status_str" | grep -oP '(?<=\()[^)]+(?=\))' || true)
     if [ "$state" != "running" ]; then
-        check "$name" fail "$state"
+        ((fail_count++)); fail_names+="${name}(${state}) "
     elif [ "$health" = "unhealthy" ]; then
-        check "$name" fail "unhealthy"
+        ((fail_count++)); fail_names+="${name}(unhealthy) "
     elif echo "$health" | grep -q "starting"; then
-        check "$name" warn "starting…"
-    elif [ "$health" = "healthy" ]; then
-        check "$name" ok "healthy"
+        ((warn_count++)); warn_names+="${name} "
     else
-        check "$name" ok "running"
+        ((ok_count++))
     fi
 done < <(docker ps -a --format $'{{.Names}}\t{{.State}}\t{{.Status}}' | sort)
+total=$(( ok_count + warn_count + fail_count ))
+if [ "$fail_count" -gt 0 ]; then
+    check "Docker" fail "${ok_count}/${total} ok — ${fail_names% }"
+elif [ "$warn_count" -gt 0 ]; then
+    check "Docker" warn "${ok_count}/${total} ok — starting: ${warn_names% }"
+else
+    check "Docker" ok "all ${ok_count} running"
+fi
 
-# --- Internet ---
-echo
-printf "${BOLD}Internet${NC}\n"
+# Internet
 for host in 8.8.8.8 1.1.1.1; do
     result=$(ping -c 1 -W 3 "$host" 2>/dev/null)
     if [ $? -eq 0 ]; then
@@ -72,40 +73,34 @@ for host in 8.8.8.8 1.1.1.1; do
     fi
 done
 
-# --- Tailscale ---
-echo
-printf "${BOLD}Tailscale${NC}\n"
+# Tailscale
 if ! tailscale status &>/dev/null; then
-    check "tailscale" fail "not running"
+    check "Tailscale" fail "not running"
 else
     ts_ip=$(tailscale ip -4 2>/dev/null)
-    check "tailscale" ok "up — ${ts_ip}"
+    check "Tailscale" ok "up — ${ts_ip}"
 fi
 
-# --- WireGuard ---
-echo
-printf "${BOLD}WireGuard${NC}\n"
+# WireGuard
 if ! ip link show wg0 &>/dev/null; then
-    check "wg0" fail "interface not up"
+    check "WireGuard" fail "interface not up"
 else
     handshake=$(sudo wg show wg0 latest-handshakes 2>/dev/null | awk '{print $2}')
     if [ -z "$handshake" ] || [ "$handshake" = "0" ]; then
-        check "wg0" fail "no handshake yet"
+        check "WireGuard" fail "no handshake yet"
     else
         age=$(( $(date +%s) - handshake ))
         if [ "$age" -lt 300 ]; then
-            check "wg0" ok "handshake ${age}s ago"
+            check "WireGuard" ok "handshake ${age}s ago"
         elif [ "$age" -lt 600 ]; then
-            check "wg0" warn "last handshake ${age}s ago"
+            check "WireGuard" warn "last handshake ${age}s ago"
         else
-            check "wg0" fail "last handshake ${age}s ago"
+            check "WireGuard" fail "last handshake ${age}s ago"
         fi
     fi
 fi
 
-# --- Disk ---
-echo
-printf "${BOLD}Disk${NC}\n"
+# Disk
 for mount in / /mnt/data; do
     if ! mountpoint -q "$mount" 2>/dev/null && [ "$mount" != "/" ]; then
         check "$mount" fail "not mounted"
@@ -116,33 +111,31 @@ for mount in / /mnt/data; do
     if [ -z "$pct" ]; then
         check "$mount" fail "unavailable"
     elif [ "$pct" -ge 90 ]; then
-        check "$mount" fail "${pct}% used (${avail} free)"
+        check "$mount" fail "${pct}% (${avail} free)"
     elif [ "$pct" -ge 80 ]; then
-        check "$mount" warn "${pct}% used (${avail} free)"
+        check "$mount" warn "${pct}% (${avail} free)"
     else
-        check "$mount" ok "${pct}% used (${avail} free)"
+        check "$mount" ok "${pct}% (${avail} free)"
     fi
 done
 
-# --- UPS ---
-echo
-printf "${BOLD}UPS${NC}\n"
+# UPS
 if ! upsc apc1000 &>/dev/null 2>&1; then
-    check "apc1000" fail "upsc unavailable"
+    check "UPS" fail "upsc unavailable"
 else
     ups_status=$(upsc apc1000 ups.status 2>/dev/null)
     batt_pct=$(upsc apc1000 battery.charge 2>/dev/null)
-    detail="${ups_status}${batt_pct:+, battery ${batt_pct}%}"
+    detail="${ups_status}${batt_pct:+, ${batt_pct}%}"
     if [ "$ups_status" != "OL" ] && [ "$ups_status" != "OL CHRG" ]; then
-        check "apc1000" fail "$detail"
+        check "UPS" fail "$detail"
     elif [ -n "$batt_pct" ] && [ "$batt_pct" -lt 50 ]; then
-        check "apc1000" warn "$detail"
+        check "UPS" warn "$detail"
     else
-        check "apc1000" ok "$detail"
+        check "UPS" ok "$detail"
     fi
 fi
 
-# --- Summary ---
+# Summary
 echo
 if [ "$issues" -eq 0 ]; then
     printf "${GREEN}${BOLD}All good.${NC}\n"
