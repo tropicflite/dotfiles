@@ -63,8 +63,9 @@ done < <(docker ps -a --format $'{{.Names}}\t{{.State}}\t{{.Status}}' | sort)
 echo
 printf "${BOLD}Internet${NC}\n"
 for host in 8.8.8.8 1.1.1.1; do
-    if ping -c 1 -W 3 "$host" &>/dev/null; then
-        ms=$(ping -c 1 -W 3 "$host" 2>/dev/null | awk -F'/' 'END{printf "%.0f", $5}')
+    result=$(ping -c 1 -W 3 "$host" 2>/dev/null)
+    if [ $? -eq 0 ]; then
+        ms=$(echo "$result" | awk -F'/' 'END{printf "%.0f", $5}')
         check "$host" ok "${ms}ms"
     else
         check "$host" fail "no response"
@@ -92,11 +93,52 @@ else
         check "wg0" fail "no handshake yet"
     else
         age=$(( $(date +%s) - handshake ))
-        if [ "$age" -lt 120 ]; then
+        if [ "$age" -lt 300 ]; then
             check "wg0" ok "handshake ${age}s ago"
-        else
+        elif [ "$age" -lt 600 ]; then
             check "wg0" warn "last handshake ${age}s ago"
+        else
+            check "wg0" fail "last handshake ${age}s ago"
         fi
+    fi
+fi
+
+# --- Disk ---
+echo
+printf "${BOLD}Disk${NC}\n"
+for mount in / /mnt/data; do
+    if ! mountpoint -q "$mount" 2>/dev/null && [ "$mount" != "/" ]; then
+        check "$mount" fail "not mounted"
+        continue
+    fi
+    pct=$(df --output=pcent "$mount" 2>/dev/null | tail -1 | tr -d ' %')
+    avail=$(df -h --output=avail "$mount" 2>/dev/null | tail -1 | tr -d ' ')
+    if [ -z "$pct" ]; then
+        check "$mount" fail "unavailable"
+    elif [ "$pct" -ge 90 ]; then
+        check "$mount" fail "${pct}% used (${avail} free)"
+    elif [ "$pct" -ge 80 ]; then
+        check "$mount" warn "${pct}% used (${avail} free)"
+    else
+        check "$mount" ok "${pct}% used (${avail} free)"
+    fi
+done
+
+# --- UPS ---
+echo
+printf "${BOLD}UPS${NC}\n"
+if ! upsc apc1000 &>/dev/null 2>&1; then
+    check "apc1000" fail "upsc unavailable"
+else
+    ups_status=$(upsc apc1000 ups.status 2>/dev/null)
+    batt_pct=$(upsc apc1000 battery.charge 2>/dev/null)
+    detail="${ups_status}${batt_pct:+, battery ${batt_pct}%}"
+    if [ "$ups_status" != "OL" ] && [ "$ups_status" != "OL CHRG" ]; then
+        check "apc1000" fail "$detail"
+    elif [ -n "$batt_pct" ] && [ "$batt_pct" -lt 50 ]; then
+        check "apc1000" warn "$detail"
+    else
+        check "apc1000" ok "$detail"
     fi
 fi
 
