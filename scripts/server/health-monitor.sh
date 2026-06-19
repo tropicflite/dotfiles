@@ -59,11 +59,19 @@ fi
 if [ -n "$ALERTS" ]; then
     echo -e "Subject: [${HOSTNAME}] Health Alert\nTo: ${TO}\nFrom: matt@wayoffcourse.ca\n\nIssues detected:\n\n${ALERTS}" | \
         msmtp -C /etc/msmtprc "$TO"
-    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) && \
-    curl -s -u "matt:$pass" \
+    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null)
+    if [ -n "$pass" ] && ! curl -s -u "matt:$pass" \
         -H "Title: [server] Health alert" \
         -H "Priority: high" \
         -H "Tags: warning" \
         -d "Issues detected on ${HOSTNAME}:\n\n${ALERTS}" \
-        http://localhost:2586/server-alerts > /dev/null || true
+        http://localhost:2586/server-alerts > /dev/null 2>&1; then
+        shpass=$(cat /home/matt/.config/ntfy/ntfysh-password 2>/dev/null) && \
+        curl -s -u "tropicflite:$shpass" \
+            -H "Title: [server] Health alert" \
+            -H "Priority: high" \
+            -H "Tags: warning" \
+            -d "Issues detected on ${HOSTNAME}:\n\n${ALERTS}" \
+            https://ntfy.sh/server-alerts > /dev/null || true
+    fi
 fi

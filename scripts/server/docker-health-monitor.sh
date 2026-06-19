@@ -10,12 +10,20 @@ send_ntfy() {
     local name="$1"
     local pass
     pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
-    curl -s -u "matt:$pass" \
+    if ! curl -s -u "matt:$pass" \
         -H "Title: [server] Unhealthy container: $name" \
         -H "Priority: high" \
         -H "Tags: warning" \
         -d "Container $name is unhealthy on $(hostname) at $(date). autoheal will attempt a restart." \
-        "$NTFY_URL" > /dev/null
+        "$NTFY_URL" > /dev/null 2>&1; then
+        shpass=$(cat /home/matt/.config/ntfy/ntfysh-password 2>/dev/null) && \
+        curl -s -u "tropicflite:$shpass" \
+            -H "Title: [server] Unhealthy container: $name" \
+            -H "Priority: high" \
+            -H "Tags: warning" \
+            -d "Container $name is unhealthy on $(hostname) at $(date). autoheal will attempt a restart." \
+            https://ntfy.sh/server-alerts > /dev/null || true
+    fi
 }
 
 send_email() {

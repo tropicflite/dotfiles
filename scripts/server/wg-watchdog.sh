@@ -8,9 +8,14 @@ send_ntfy() {
     local title="$1" body="$2" priority="${3:-default}" tags="${4:-warning}"
     local pass
     pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
-    curl -s -u "matt:$pass" \
+    if ! curl -s -u "matt:$pass" \
         -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
-        -d "$body" http://localhost:2586/server-alerts > /dev/null || true
+        -d "$body" http://localhost:2586/server-alerts > /dev/null 2>&1; then
+        shpass=$(cat /home/matt/.config/ntfy/ntfysh-password 2>/dev/null) && \
+        curl -s -u "tropicflite:$shpass" \
+            -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
+            -d "$body" https://ntfy.sh/server-alerts > /dev/null || true
+    fi
 }
 
 while true; do
