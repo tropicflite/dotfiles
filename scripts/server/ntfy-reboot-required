@@ -1,0 +1,20 @@
+#!/bin/bash
+# Sends ntfy when /run/reboot-required is set by apt/dpkg.
+# Called via DPkg::Post-Invoke (/etc/apt/apt.conf.d/99ntfy-reboot).
+# Deduplicates with /run/ntfy-reboot-notified (tmpfs — auto-clears on reboot).
+[ -f /run/reboot-required ] || exit 0
+[ -f /run/ntfy-reboot-notified ] && exit 0
+
+PASS=$(cat /home/matt/.config/ntfy/password 2>/dev/null)
+PKGS=$(sort -u /run/reboot-required.pkgs 2>/dev/null | tr '\n' ' ')
+BODY="Kernel or system packages updated — reboot when convenient.${PKGS:+
+Packages: ${PKGS}}"
+
+curl -s -u "matt:${PASS}" \
+    -H "Title: [server] Reboot required" \
+    -H "Priority: high" \
+    -H "Tags: rotating_light" \
+    -d "$BODY" \
+    http://localhost:2586/server-alerts > /dev/null 2>&1
+
+touch /run/ntfy-reboot-notified
