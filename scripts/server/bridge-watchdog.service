@@ -1,6 +1,0 @@
-[Unit]
-Description=Proton Mail Bridge SMTP watchdog
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/bridge-watchdog
