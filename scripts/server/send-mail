@@ -4,7 +4,7 @@
 # Usage: echo -e "Subject: ...\n\nbody" | [NTFY_PRIORITY=high] [NTFY_TAGS=warning] [NTFY_BODY="..."] /usr/local/bin/send-mail
 MAIL=$(cat)
 
-SUBJECT=$(printf '%s' "$MAIL" | grep -i '^Subject:' | head -1 | sed 's/^[Ss]ubject: *//')
+SUBJECT=$(printf '%s' "$MAIL" | grep -i '^Subject:' | head -1 | sed 's/^[Ss]ubject: *//' | tr -d '\r')
 
 printf '%s' "$MAIL" | msmtp nichols_matt@pm.me
 
