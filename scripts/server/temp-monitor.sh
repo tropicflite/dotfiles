@@ -8,7 +8,7 @@
 THRESHOLD_CPU=75
 THRESHOLD_NVME=70
 THRESHOLD_HDD=55
-COOLDOWN_FILE=/tmp/temp-monitor-cooldown
+COOLDOWN_FILE="/run/user/$(id -u)/temp-monitor-cooldown"
 COOLDOWN_MINUTES=30
 TO="nichols_matt@pm.me"
 HOSTNAME=$(hostname)

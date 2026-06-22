@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # vpn-diskcheck.sh
 # Checks VPN connectivity and disk space, sends email alerts
@@ -8,12 +9,13 @@ ALERT_EMAIL="nichols_matt@pm.me"
 VPN_TEST_IP="1.1.1.1"
 DISK_THRESHOLD=85
 LOG_TAG="vpn-diskcheck"
+RUNTIME_DIR="/run/user/$(id -u)"
 
 send_email() {
     local subject="$1"
     local body="$2"
     printf "To: %s\nSubject: [Server] %s\n\n%b\n" \
-        "$ALERT_EMAIL" "$subject" "$body" | msmtp "$ALERT_EMAIL"
+        "$ALERT_EMAIL" "$subject" "$body" | msmtp "$ALERT_EMAIL" || true
 }
 
 send_ntfy() {
@@ -22,12 +24,23 @@ send_ntfy() {
     pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
     curl -s -u "matt:$pass" \
         -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
-        -d "$body" http://localhost:2586/server-alerts > /dev/null
+        -d "$body" http://localhost:2586/server-alerts > /dev/null || true
 }
+
+# ── Crash trap ───────────────────────────────────────────────────────────────
+trap '_ec=$?
+if [ "$_ec" -ne 0 ]; then
+    _pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null)
+    [ -n "$_pass" ] && curl -s -u "matt:$_pass" \
+        -H "Title: [server] vpn-diskcheck crashed" \
+        -H "Priority: high" -H "Tags: rotating_light" \
+        -d "vpn-diskcheck.sh crashed (exit ${_ec}) on $(hostname) at $(date). VPN kill switch may not have fired." \
+        http://localhost:2586/server-alerts > /dev/null || true
+fi' EXIT
 
 # ── VPN Check ────────────────────────────────────────────────────────────────
 
-VPN_FLAG="/tmp/vpn_was_down"
+VPN_FLAG="$RUNTIME_DIR/vpn_was_down"
 
 if ping -c 2 -W 5 -I wg0 "$VPN_TEST_IP" > /dev/null 2>&1; then
     # VPN is up
@@ -57,7 +70,7 @@ fi
 
 # ── Disk Space Check ─────────────────────────────────────────────────────────
 
-DISK_FLAG="/tmp/disk_was_full"
+DISK_FLAG="$RUNTIME_DIR/disk_was_full"
 DISK_ALERT=0
 DISK_MSG=""
 

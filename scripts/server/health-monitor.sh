@@ -8,7 +8,8 @@
 DISK_THRESHOLD=80
 MEM_THRESHOLD=10
 LOAD_THRESHOLD=4.0
-RESTART_STATE=/tmp/health-monitor-restarts
+RESTART_STATE="$HOME/.local/share/health-monitor/restarts"
+mkdir -p "$(dirname "$RESTART_STATE")"
 TO="nichols_matt@pm.me"
 HOSTNAME=$(hostname)
 
