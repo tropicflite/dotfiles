@@ -13,13 +13,6 @@ DB_USER="postgres"
 TO="nichols_matt@pm.me"
 HOSTNAME=$(hostname)
 
-# ---------------------- LOCKFILE ---------------------------------------------
-exec 9> "$LOCKFILE"
-if ! flock -n 9; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backup already running. Exiting."
-    exit 1
-fi
-
 # ---------------------- FUNCTIONS --------------------------------------------
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
@@ -35,6 +28,7 @@ send_alert() {
 
 error_exit() {
     local msg="$1"
+    ALERTED=true
     log "ERROR: $msg"
     send_alert "Immich Backup FAILED" "Backup failed on $(date).\n\nError: ${msg}\n\nCheck /var/log/immich-backup.log for details."
     exit 1
@@ -78,9 +72,26 @@ sync_photos() {
     find "$USB_MOUNT" -maxdepth 1 -name ".deleted-*" -mtime +30 -exec rm -rf {} +
 }
 
+# ---------------------- TRAP -------------------------------------------------
+BACKUP_DONE=false
+ALERTED=false
+trap '_ec=$?
+if [ "$BACKUP_DONE" != "true" ] && [ "$ALERTED" != "true" ] && [ "$_ec" -ne 0 ]; then
+    log "ERROR: unexpected exit (code $_ec)"
+    send_alert "Immich Backup FAILED" "Backup script exited unexpectedly (code ${_ec}) on $(date).\n\nCheck /var/log/immich-backup.log for details."
+fi' EXIT
+
+# ---------------------- LOCKFILE ---------------------------------------------
+exec 9> "$LOCKFILE" || error_exit "Cannot open lockfile $LOCKFILE — check ownership (run: ls -la $LOCKFILE)"
+if ! flock -n 9; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backup already running. Exiting."
+    exit 1
+fi
+
 # ---------------------- MAIN -------------------------------------------------
 log "========== Immich USB Backup Started =========="
 check_usb
 dump_db
 sync_photos
+BACKUP_DONE=true
 log "========== Backup Complete =========="
