@@ -11,6 +11,8 @@ UPGRADED_LIST=$(echo "$OUTPUT" | sed -nE 's/^Unpacking ([^ ]+) \(([^)]+)\) over 
 FAILED_PKGS=$(echo "$OUTPUT" | sed -nE 's/^dpkg: error processing package ([^ ]+).*/\1/p')
 FETCH_ERRORS=$(echo "$OUTPUT" | grep '^E: ' | sed 's/^E: //')
 
+MACHINE=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
+
 BODY="Upgraded: $UPGRADED package(s)"
 [ -n "$UPGRADED_LIST" ] && BODY="$BODY
 $UPGRADED_LIST"
@@ -28,7 +30,7 @@ fi
 {
     printf "To: nichols_matt@pm.me\r\n"
     printf "From: matt@wayoffcourse.ca\r\n"
-    printf "Subject: [phone] Termux: %s package(s) upgraded\r\n" "$UPGRADED"
+    printf "Subject: [%s] Termux: %s package(s) upgraded\r\n" "$MACHINE" "$UPGRADED"
     printf "\r\n"
     printf "%s\n" "$BODY"
 } | ssh -p 28901 -i /data/data/com.termux/files/home/.ssh/id_ed25519_sendmail -o BatchMode=yes matt@100.65.250.53
