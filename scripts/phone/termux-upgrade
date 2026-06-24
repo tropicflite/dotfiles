@@ -1,0 +1,34 @@
+#!/data/data/com.termux/files/usr/bin/bash
+export PATH=/data/data/com.termux/files/usr/bin:$PATH
+
+OUTPUT=$(pkg update -y 2>&1 && pkg upgrade -y 2>&1)
+
+UPGRADED=$(echo "$OUTPUT" | grep -oE "[0-9]+ upgraded" | grep -oE "^[0-9]+" | head -1)
+[ -z "$UPGRADED" ] || [ "$UPGRADED" -eq 0 ] && exit 0
+
+UPGRADED_LIST=$(echo "$OUTPUT" | sed -nE 's/^Unpacking ([^ ]+) \(([^)]+)\) over \(([^)]+)\).*/\1 (\3 → \2)/p')
+
+FAILED_PKGS=$(echo "$OUTPUT" | sed -nE 's/^dpkg: error processing package ([^ ]+).*/\1/p')
+FETCH_ERRORS=$(echo "$OUTPUT" | grep '^E: ' | sed 's/^E: //')
+
+BODY="Upgraded: $UPGRADED package(s)"
+[ -n "$UPGRADED_LIST" ] && BODY="$BODY
+$UPGRADED_LIST"
+
+if [ -n "$FAILED_PKGS" ] || [ -n "$FETCH_ERRORS" ]; then
+    BODY="$BODY
+
+Failed:"
+    [ -n "$FAILED_PKGS" ] && BODY="$BODY
+$FAILED_PKGS"
+    [ -n "$FETCH_ERRORS" ] && BODY="$BODY
+$FETCH_ERRORS"
+fi
+
+{
+    printf "To: nichols_matt@pm.me\r\n"
+    printf "From: matt@wayoffcourse.ca\r\n"
+    printf "Subject: [phone] Termux: %s package(s) upgraded\r\n" "$UPGRADED"
+    printf "\r\n"
+    printf "%s\n" "$BODY"
+} | ssh -p 28901 -i /data/data/com.termux/files/home/.ssh/id_ed25519_sendmail -o BatchMode=yes matt@100.65.250.53
