@@ -1,0 +1,25 @@
+#!/bin/bash
+# Daily remind check — fires today's reminders to ntfy/email
+# Source: ~/dotfiles/scripts/server/remind-check
+# Cron: 0 8 * * * /home/matt/dotfiles/scripts/server/remind-check
+# Reminder file: ~/.reminders (server-local, not in dotfiles)
+
+REMIND_FILE="$HOME/.reminders"
+HOSTNAME=$(hostname)
+
+[ -f "$REMIND_FILE" ] || exit 0
+
+# -h: suppress "No reminders." output; empty output = nothing due today
+OUTPUT=$(remind -h "$REMIND_FILE" 2>/dev/null)
+[ -z "$OUTPUT" ] && exit 0
+
+# Strip date header for ntfy body; keep full output for email
+NTFY_ITEMS=$(printf '%s\n' "$OUTPUT" | tail -n +3 | grep -v '^[[:space:]]*$')
+COUNT=$(printf '%s\n' "$NTFY_ITEMS" | wc -l | tr -d ' ')
+
+printf 'Subject: [%s] Reminders (%s)\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\n%s\n' \
+    "$HOSTNAME" "$COUNT" "$OUTPUT" | \
+    NTFY_PRIORITY=default \
+    NTFY_TAGS=spiral_calendar \
+    NTFY_BODY="$NTFY_ITEMS" \
+    /usr/local/bin/send-mail
