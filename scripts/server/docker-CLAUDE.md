@@ -40,7 +40,7 @@ Most stacks are managed by systemd services (so they start on boot). Unit files 
 - `immich-compose` — After docker, wg0, mnt-data
 - `jellyfin-compose` — After docker, tailscaled, mnt-data
 - `open-webui-compose` — After docker, tailscaled
-- `pihole-compose` — After docker, wg0
+- `pihole-compose` — After docker (starts before wg0 so br-pihole exists when wg0-up-extra.sh runs)
 - `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data
 
 **ntfy** (`~/docker/ntfy/`) has no systemd unit — `restart: unless-stopped` handles restarts and Docker auto-starts it on daemon boot. Manage directly from `~/docker/ntfy/`:
