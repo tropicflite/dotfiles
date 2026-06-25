@@ -1,4 +1,5 @@
 # Server-specific config
+export PATH="$HOME/go/bin:$PATH"
 alias clip='tee /dev/tty | osc52-copy'
 alias ruk='~/scripts/reset-uptime-kuma.sh'
 alias cl='claude'
