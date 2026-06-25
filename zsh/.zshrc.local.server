@@ -10,6 +10,7 @@ alias tson='sudo tailscale up --accept-dns=false --operator=matt --advertise-rou
 alias tsoff='sudo tailscale down'
 # Network
 alias netstatus="tsstatus; vpnstatus"
+alias vr='nvim ~/.reminders'
 vpnstatus() {
   local wg_out
   wg_out=$(sudo wg show wg0 2>/dev/null)
