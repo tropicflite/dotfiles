@@ -1,6 +1,6 @@
 # Server-specific config
 alias clip='tee /dev/tty | osc52-copy'
-alias ruk='~/scripts/reset-uptime-kuma.sh'
+alias ruk='~/bin/reset-uptime-kuma.sh'
 alias cl='claude'
 alias cld='claude --dangerously-skip-permissions'
 alias cdk='cd ~/docker'
