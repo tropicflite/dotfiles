@@ -13,13 +13,22 @@ send_ntfy() {
 case $1 in
     onbatt-notify)
         logger -t upssched-cmd "UPS on battery - sending notification email"
+        date +%s > /run/nut/onbatt-time
         printf "Subject: UPS on battery\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 switched to battery power at $(date).\n" | msmtp nichols_matt@pm.me
         send_ntfy "[server] UPS on battery" "high" "warning,battery" "UPS apc1000 switched to battery power at $(date)."
         ;;
     online-notify)
-        logger -t upssched-cmd "UPS power restored - sending notification"
-        printf "Subject: UPS power restored\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power at $(date).\n" | msmtp nichols_matt@pm.me
-        send_ntfy "[server] UPS power restored" "default" "white_check_mark" "UPS apc1000 restored to mains power at $(date)."
+        if [ -f /run/nut/onbatt-time ]; then
+            start=$(cat /run/nut/onbatt-time)
+            elapsed=$(( $(date +%s) - start ))
+            duration="$(( elapsed / 60 ))m $(( elapsed % 60 ))s"
+            rm -f /run/nut/onbatt-time
+        else
+            duration="unknown"
+        fi
+        logger -t upssched-cmd "UPS power restored after ${duration} on battery"
+        printf "Subject: UPS power restored\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power at $(date).\nTime on battery: ${duration}.\n" | msmtp nichols_matt@pm.me
+        send_ntfy "[server] UPS power restored" "default" "white_check_mark" "UPS apc1000 restored to mains power at $(date). Time on battery: ${duration}."
         ;;
     onbatt-warn)
         logger -t upssched-cmd "UPS on battery for 30s"
