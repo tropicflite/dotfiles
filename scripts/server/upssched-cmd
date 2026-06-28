@@ -16,6 +16,11 @@ case $1 in
         printf "Subject: UPS on battery\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 switched to battery power at $(date).\n" | msmtp nichols_matt@pm.me
         send_ntfy "[server] UPS on battery" "high" "warning,battery" "UPS apc1000 switched to battery power at $(date)."
         ;;
+    online-notify)
+        logger -t upssched-cmd "UPS power restored - sending notification"
+        printf "Subject: UPS power restored\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power at $(date).\n" | msmtp nichols_matt@pm.me
+        send_ntfy "[server] UPS power restored" "default" "white_check_mark" "UPS apc1000 restored to mains power at $(date)."
+        ;;
     onbatt-warn)
         logger -t upssched-cmd "UPS on battery for 30s"
         wall "UPS WARNING: Server running on battery - power may be out"
