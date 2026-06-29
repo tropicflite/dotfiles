@@ -7,5 +7,6 @@
     "enabled": true,
     "mode": "hold"
   },
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "disableClaudeAiConnectors": true
 }
