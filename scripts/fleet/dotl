@@ -1,0 +1,7 @@
+#!/bin/zsh
+cd ~/dotfiles || { echo "⚠ dotl: ~/dotfiles not found"; exit 1; }
+rm -f .git/packed-refs
+rm -f .git/refs/remotes/origin/master
+rm -f .git/index.lock
+git fetch --prune --force origin && git reset --hard origin/master || { echo "⚠ dotl: sync failed — check ~/dotfiles"; exit 1; }
+cd ~/

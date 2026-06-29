@@ -182,15 +182,15 @@ fdotl() {
   for host in mini server laptop desktop phone quest; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
-      zsh -i -c dotl
+      ~/dotfiles/scripts/fleet/dotl
     elif [[ "$host" == "desktop" ]]; then
       echo "==> $host"
       # desktop requires WSL invocation; standard ssh would land in cmd.exe
-      ssh -q -o ConnectTimeout=10 simin@$host "wsl zsh -i -c dotl"
+      ssh -q -o ConnectTimeout=10 simin@$host "wsl zsh ~/dotfiles/scripts/fleet/dotl"
       _fdotl_check $host $?
     else
       echo "==> $host"
-      ssh -q -o ConnectTimeout=10 matt@$host "zsh -i -c dotl"
+      ssh -q -o ConnectTimeout=10 matt@$host "zsh ~/dotfiles/scripts/fleet/dotl"
       _fdotl_check $host $?
     fi
   done
