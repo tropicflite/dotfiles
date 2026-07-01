@@ -149,7 +149,9 @@ All services are accessed over Tailscale. The server's Tailscale hostname is `se
 | Homepage | root (:443) | 3001 |
 | drivetemps | 7777 | 7778 |
 
-Homepage's Serve rule used to also expose `:3000`, but that rule had no backing systemd unit (a "ghost" rule — would vanish on the next `tailscaled` restart/reboot). Dropped 2026-07-01 in favor of the root domain as the one durable HTTPS path; `HOMEPAGE_ALLOWED_HOSTS` and `rebuild.md`'s checklist were updated to match. Homepage's plain-HTTP LAN/loopback access (`http://100.65.250.53:3001` or any LAN IP, since it binds `0.0.0.0:3001:3000`) is unrelated to Serve and unaffected.
+Homepage's Serve rule used to also expose `:3000`, but that rule had no backing systemd unit (a "ghost" rule — would vanish on the next `tailscaled` restart/reboot). Dropped 2026-07-01 in favor of the root domain as the one durable HTTPS path; `HOMEPAGE_ALLOWED_HOSTS` and `rebuild.md`'s checklist were updated to match.
+
+Homepage's plain-HTTP port `:3001` was rebound from `0.0.0.0` to `127.0.0.1` the same day (2026-07-01) — it was open to the whole LAN with no auth and no TLS, the last inconsistency once every other service was locked to Tailscale. It's kept (not dropped entirely) as a local fallback in case Tailscale itself is ever down: reachable as `http://localhost:3001` from the server itself (SSH in via `tserver`, or tunnel with `ssh -L 3001:localhost:3001 server` to view it from another machine's browser). `HOMEPAGE_ALLOWED_HOSTS` updated to `localhost:3001,server.tailc9871d.ts.net` accordingly.
 
 Every other service previously on Tailscale Serve (Jellyfin, qBittorrent, Stirling PDF, Scrutiny, Radarr, Sonarr, Prowlarr, Bazarr, Jellyseerr, Uptime Kuma, Filebrowser, ntfy, Immich, Open WebUI, Pi-hole) now uses a tsdproxy hostname instead — no Tailscale/Docker port-conflict concerns for these since tsdproxy talks to the container directly over the Docker network, not through a host-published port. Radicale (:5232) is the one remaining service bound straight to the Tailscale interface IP, bypassing both Serve and tsdproxy.
 
