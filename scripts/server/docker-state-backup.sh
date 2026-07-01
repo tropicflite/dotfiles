@@ -96,6 +96,9 @@ sync_path "$DOCKER/qbittorrent/config" qbittorrent
 log "jellyfin..."
 sync_path /opt/docker/jellyfin/config jellyfin
 
+log "tsdproxy tsnet state..."
+sync_path "$DOCKER/tsdproxy/data" tsdproxy
+
 log "cleaning up .deleted-* dirs older than 30 days..."
 find "$BACKUP_BASE" -maxdepth 1 -name '.deleted-*' -mtime +30 -exec rm -rf {} +
 
