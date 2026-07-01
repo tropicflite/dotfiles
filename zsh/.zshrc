@@ -123,6 +123,9 @@ alias quest='TERM=xterm-256color ssh matt@quest'
 alias router='ssh admin@router'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
 alias tserver='TERM=xterm-256color ssh -p 28901 matt@server -t "tmux attach || tmux new-session -s main"'
+# LAN-direct fallback for when Tailscale is down on this client: tunnels Homepage's
+# loopback-only port so http://localhost:3001 reaches it in a local browser.
+alias homepage-backup='ssh -p 28901 -L 3001:localhost:3001 matt@192.168.50.34'
 
 ################################################################################
 # KEY BINDINGS

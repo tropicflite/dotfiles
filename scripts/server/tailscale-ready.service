@@ -1,0 +1,12 @@
+[Unit]
+Description=Wait for Tailscale interface to have an IP address
+After=tailscaled.service
+Requires=tailscaled.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/wait-for-tailscale.sh
+
+[Install]
+WantedBy=multi-user.target
