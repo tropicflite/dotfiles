@@ -43,6 +43,7 @@ Most stacks are managed by systemd services (so they start on boot). Unit files 
 - `pihole-compose` — After docker (starts before wg0 so br-pihole exists when wg0-up-extra.sh runs)
 - `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data
 - `radicale-compose` — After docker
+- `tsdproxy-compose` — After docker, arrs-compose, immich-compose
 
 **ntfy** (`~/docker/ntfy/`) has no systemd unit — `restart: unless-stopped` handles restarts and Docker auto-starts it on daemon boot. Manage directly from `~/docker/ntfy/`:
 ```bash
@@ -51,9 +52,35 @@ docker compose down
 docker compose pull && docker compose up -d
 ```
 
-Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units: `tailscale-serve-homepage`, `tailscale-serve-openwebui`, `tailscale-serve-uptime-kuma`, `tailscale-serve-drivetemps`, `tailscale-serve-stirling-pdf`, `tailscale-serve-scrutiny`, `tailscale-serve-radarr`, `tailscale-serve-sonarr`, `tailscale-serve-prowlarr`, `tailscale-serve-bazarr`, `tailscale-serve-jellyseerr`. `tailscale-serve-qbittorrent` also exists but is a break-glass unit — only start it to restore the qBittorrent serve rule after a Tailscale state wipe; under normal operation the rule persists without it.
+Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units (post-tsdproxy migration, see below): `tailscale-serve-homepage`, `tailscale-serve-drivetemps`, `tailscale-serve-openwebui`. Everything else that used to be on Tailscale Serve has moved to tsdproxy (per-service Tailscale hostnames) — see the **tsdproxy** section below.
 
-Radicale (`~/docker/radicale/`) and ntfy bind directly to the Tailscale interface IP (`100.65.250.53:<port>`) instead of using a Tailscale Serve rule — no HTTPS termination/proxy involved, just a host port restricted to the tailscale0 interface.
+Radicale (`~/docker/radicale/`) and ntfy bind directly to the Tailscale interface IP (`100.65.250.53:<port>`) instead of using a Tailscale Serve rule — no HTTPS termination/proxy involved, just a host port restricted to the tailscale0 interface. (ntfy is queued to move to tsdproxy too — see below.)
+
+### tsdproxy — per-service Tailscale hostnames
+
+**Why this exists (2026-06-30):** Proton Pass does not support port-level URL matching — it normalizes saved logins to the root domain, so when many services shared `server.tailc9871d.ts.net` differentiated only by port, Pass couldn't tell them apart for autofill and always suggested every saved login for that hostname. [tsdproxy](https://github.com/almeidapaulopt/tsdproxy) fixes this by giving each service its own real Tailscale hostname (`https://bazarr.tailc9871d.ts.net`, `https://radarr.tailc9871d.ts.net`, etc.) instead of a shared hostname + port.
+
+**How it works:** `~/docker/tsdproxy/` runs a single container (`tsdproxy-compose.service`) that watches Docker for containers labeled `tsdproxy.enable=true`, and for each one spins up a lightweight virtual Tailscale node (via the `tsnet` library) with automatic Let's Encrypt HTTPS tied to that node's MagicDNS name. No host port is needed on the target container — tsdproxy reaches it directly over the Docker network (joins `arrs` + `immich_default`; Pi-hole is the one exception, reached via `host.docker.internal` fallback since `pihole_net` is intentionally isolated).
+
+**Label convention**, added to the target service in its own compose file:
+```yaml
+labels:
+  tsdproxy.enable: "true"
+  tsdproxy.name: "bazarr"
+  tsdproxy.port.1: "443/https:6767/http"   # container-internal port, not the host-published port
+```
+
+**Auth key:** `~/docker/tsdproxy/config/tsdproxy.yaml` is committed (references `authKeyFile: /config/authkey`); the actual key lives in `~/docker/tsdproxy/config/authkey`, gitignored, permissions 600. It's a reusable, non-ephemeral, untagged Tailscale auth key (90-day expiry — only matters for *new* node registrations, doesn't affect already-registered nodes). To rotate: generate a new key at `https://login.tailscale.com/admin/settings/keys`, overwrite the file, restart the container.
+
+**Dashboard:** `127.0.0.1:8180` (moved off tsdproxy's default 8080 — qBittorrent already owns that port on loopback).
+
+**Known quirks:**
+- The image is distroless (no `/bin/sh`, no `wget`/`curl`/`cat`/`ls` inside it) — don't add a `CMD-SHELL` healthcheck override; the image's own baked-in `/healthcheck` binary (exec-form, 60s interval) works fine and needs no override.
+- New tsnet nodes sometimes land in a transient `NeedsLogin state without an auth URL` state right after creation, or hit ACME cert-issuance contention when several nodes register concurrently — both are usually self-healing within a minute, or resolved by `docker restart tsdproxy`.
+- If a node's cert generation gets stuck for good (data dir has only `certs/acme-account.key.pem`, never a `.crt`/`.key` pair — check via `sudo ls ~/docker/tsdproxy/data/default/<name>/certs/`), this looks like Let's Encrypt's failed-validation rate limit (5 failures/hour/hostname). `docker restart tsdproxy` does NOT fix this (only helps genuinely-transient stuck states); the actual remedy is stopping tsdproxy, `sudo rm -rf ~/docker/tsdproxy/data/default/<name>/`, restarting tsdproxy, then force-recreating the target container so tsdproxy sees a fresh "container started" event (it does not rescan already-running containers on its own startup). This still may not clear immediately if the rate-limit window keeps getting refreshed by repeated attempts — sometimes the only fix is waiting it out (hours), untouched.
+- Uptime Kuma (and any Node.js-based monitor) can cache stale container IPs across a batch of container recreations on the same Docker network — if several arr-stack-style containers get recreated together and end up with reshuffled IPs, Kuma's monitors may cross-wire (checking service A's old IP, which is now service B) until Kuma itself is restarted to clear its DNS cache.
+
+**Migration status:** 11 of 15 originally-planned services are on tsdproxy hostnames (bazarr, jellyseerr, prowlarr, radarr, sonarr, qbittorrent, stirling-pdf, scrutiny, jellyfin, filebrowser, uptime-kuma) with their old Tailscale Serve rules/units fully decommissioned. **Still pending** (labeled, but stuck on the Let's Encrypt rate limit above): ntfy, immich, open-webui, pihole — these are still on their pre-migration access paths (ntfy/immich/open-webui/pihole all still reachable exactly as before; open-webui still has its `tailscale-serve-openwebui.service`, immich and pihole still have their old Serve "ghost" rules — see below). Once their certs clear: update their Homepage hrefs, turn off their remaining old Serve rules (`sudo tailscale serve --https=2283 off` for immich, `--https=8090 off` for pihole, `--https=8083 off` for open-webui + remove its systemd unit), and update this note.
 
 ## Architecture
 
@@ -93,13 +120,13 @@ Most config and data is bind-mounted, not in named volumes:
 - **Radarr/Sonarr** send completed downloads to qBittorrent and import from `/mnt/data/torrents`. They are on both the `arrs` network and share the same `/mnt/data` mount tree as qBittorrent.
 - **Bazarr** handles subtitles for Radarr/Sonarr content; mounts `/mnt/data/media` but not the torrents path.
 - **Jellyseerr** is the request front-end; it talks to Jellyfin, Radarr, and Sonarr by container name over `arrs`.
-- **Radarr/Sonarr/Prowlarr/Bazarr/Jellyseerr** bind `127.0.0.1` only — reached remotely via their `tailscale-serve-*` units (matching ports: 7878, 8989, 9696, 6767, 5055), not direct LAN access. (Hardened 2026-06-30; previously bound `0.0.0.0`.)
+- **Radarr/Sonarr/Prowlarr/Bazarr/Jellyseerr** bind `127.0.0.1` only, no direct LAN access (hardened 2026-06-30; previously bound `0.0.0.0`) — reached remotely via their own tsdproxy hostnames (`radarr.tailc9871d.ts.net`, etc.), not Tailscale Serve anymore.
 - **FlareSolverr** provides Cloudflare bypass for Prowlarr; runs on `:8191`.
 - **Jellyfin** uses `/dev/dri/renderD128` for Intel GPU hardware transcoding (group `992` = render group) and is on the `arrs` network so Jellyseerr can reach it by name.
 - **Open WebUI** connects to Ollama on the desktop machine via Tailscale IP `100.78.51.10:11434` (not a local container). TTS is provided by a co-located `openai-edge-tts` sidecar.
 - **Homepage** joins the `arrs` network so it can contact arrs-stack services by container name for its widgets. It also mounts the Docker socket read-only for container status.
 - **Uptime Kuma** is on both `uptime-kuma_default` and `arrs` networks. It uses `host.docker.internal:host-gateway` to probe host-bound ports. Immich joins `uptime-kuma_default` so Kuma can probe it by container name. Homepage reaches the widget API at `http://uptime-kuma:3001` over arrs. Monitors for arr-stack services + stirling-pdf use container-name URLs over `arrs` (e.g. `http://radarr:7878`), not host-bound ports — those services bind `127.0.0.1` only, so host-port/Tailscale-IP URLs break the instant a service's binding gets hardened. Editing monitors directly via `kuma.db` requires stopping the container first (matches `~/bin/reset-uptime-kuma.sh`'s pattern) since Kuma only reads monitor config from the DB at startup.
-- **Filebrowser** binds only to `127.0.0.1:8081` — exposed externally via Tailscale Serve/Funnel or a reverse proxy, not directly.
+- **Filebrowser** binds to `127.0.0.1:8081` (Tailscale-Serve-era loopback port, no longer served — kept for local access) and `0.0.0.0:8089` for direct LAN access; reached remotely via its tsdproxy hostname (`filebrowser.tailc9871d.ts.net`).
 - **ntfy** is the push notification server (`~/docker/ntfy/`). It runs on port 2586 and joins the `arrs` network so Homepage and Uptime Kuma can reach it at `http://ntfy:2586` by container name. Topic: `server-alerts`. Auth: `deny-all` — admin user is `matt`. All alert scripts in dotfiles send to ntfy alongside email; they read the password from `~/.config/ntfy/password`. The `nut` user (UPS scripts) reads from `/etc/nut/ntfy-password` instead. No Tailscale Serve rule — bound directly to the Tailscale interface IP at `http://100.65.250.53:2586` (hardened 2026-06-30; previously bound `0.0.0.0`, reachable from the LAN too).
 - **Radicale** is a CardDAV/CalDAV server (`~/docker/radicale/`) for contacts/calendar sync. Bound directly to the Tailscale interface IP at `100.65.250.53:5232`, not via Tailscale Serve. Hardened compose config: `read_only`, `cap_drop: ALL` with minimal `cap_add` (CHOWN/SETUID/SETGID/KILL), `no-new-privileges`, `pids_limit`/`mem_limit`. Data at `/mnt/data/radicale`; users/config bind-mounted read-only from `~/docker/radicale/`.
 - **drivetemps** is a custom Python container (`~/docker/homepage/drivetemps/server.py`) that serves a JSON API on host port 7778 (container port 7777). It reports CPU usage + temp, NVMe temp + root disk usage, sda (USB backup) temp + usage, sdb (Immich library) temp + usage, and RAM usage — read from `/hostfs` (root filesystem mounted read-only), smartctl, and `/proc`. Homepage uses it for its system stats widget. Exposed via `tailscale-serve-drivetemps.service` at `https://server.tailc9871d.ts.net:7777`. Excluded from Watchtower (`com.centurylinklabs.watchtower.enable=false`) because it is a locally built image.
@@ -111,17 +138,19 @@ Most config and data is bind-mounted, not in named volumes:
 
 All services are accessed over Tailscale. The server's Tailscale hostname is `server.tailc9871d.ts.net` (IP `100.65.250.53`). Pi-hole and Homepage have `restart: unless-stopped` and are started by systemd services on boot.
 
-**Tailscale Serve port mappings** — several services use a different external port than the container port. Do not confuse these when editing `services.yaml` or compose files; the `href` in Homepage must use the Tailscale (external) port:
+**Tailscale Serve is now only used by Homepage, drivetemps, and (pending tsdproxy migration) Open WebUI, Immich, and Pi-hole:**
 
 | Service | Tailscale external port | Container internal port |
 |---------|------------------------|------------------------|
-| Jellyfin | 8097 | 8096 |
+| Homepage | 3000 (+ root :443) | 3001 |
+| drivetemps | 7777 | 7778 |
+| Open WebUI | 8083 | 8083 |
+| Immich | 2283 | 2283 |
 | Pi-hole | 8090 | 8091 |
-| qBittorrent | 8082 | 8080 |
-| Homepage | 3000 | 3001 |
-| Stirling PDF | 8085 | 8084 |
 
-Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :8081, Scrutiny :2587, Radarr :7878, Sonarr :8989, Prowlarr :9696, Bazarr :6767, Jellyseerr :5055) use the same Tailscale external port as their Docker host port. ntfy (:2586) and Radicale (:5232) skip Tailscale Serve entirely and bind straight to the Tailscale interface IP instead.
+Immich's and Pi-hole's Serve rules are undocumented "ghost" rules with no backing systemd unit (discovered 2026-06-30 during the tsdproxy migration) — they were live in tailscaled state but not reproducible from `~/docker/systemd/`. Leave them as-is until their tsdproxy migration completes (see the tsdproxy section above), at which point turn them off and remove this table row.
+
+Everything else previously on Tailscale Serve (Jellyfin, qBittorrent, Stirling PDF, Scrutiny, Radarr, Sonarr, Prowlarr, Bazarr, Jellyseerr, Uptime Kuma, Filebrowser) now uses a tsdproxy hostname instead — no Tailscale/Docker port-conflict concerns for these since tsdproxy talks to the container directly over the Docker network, not through a host-published port. ntfy (:2586) and Radicale (:5232) bind straight to the Tailscale interface IP, bypassing both Serve and tsdproxy.
 
 ## Non-obvious constraints
 
@@ -135,7 +164,7 @@ Other services (Immich :2283, Open WebUI :8083, Uptime Kuma :3003, Filebrowser :
 - **Pi-hole** binds to `0.0.0.0:53` — the host must not have `systemd-resolved` stub listener active on port 53.
 - **WireGuard watchdog** (`wg-watchdog.sh`) runs as a background loop and restarts `wg0.service` if the VPN endpoint or Tailscale coordination becomes unreachable.
 - **SSH/network watchdog** (`ssh-watchdog.sh`) runs as a background loop (`ssh-watchdog.service`) and reboots the server after 5 consecutive failed checks (~5 minutes). Checks: TCP connect to `localhost:22` (sshd accepting), and ping to LAN gateway `192.168.50.1` via `enp1s0`. If only sshd is down it attempts `systemctl restart ssh` before counting the failure. Added 2026-05-26 to recover from the recurring state where the server becomes unreachable via both Tailscale and LAN SSH without a kernel hang.
-- **Tailscale/Docker port conflict:** when a service's Tailscale serve external port equals its Docker host port (currently open-webui :8083, uptime-kuma :3003, scrutiny :2587, radarr :7878, sonarr :8989, prowlarr :9696, bazarr :6767, and jellyseerr :5055), Tailscale binds the Tailscale IP on that port at boot — before Docker starts the container. If Docker binds `0.0.0.0`, it fails. Fix: use `127.0.0.1:<port>:<container-port>` in the compose `ports` directive. Tailscale serve proxies to `localhost:<port>` which reaches the loopback binding. Services that other containers need to reach (e.g. uptime-kuma for Homepage's widget) must also join a shared Docker network so they can be addressed by container name instead of `host.docker.internal`.
+- **Tailscale/Docker port conflict:** when a service's Tailscale serve external port equals its Docker host port (currently open-webui :8083 and, pending tsdproxy migration, Immich :2283 and Pi-hole :8090), Tailscale binds the Tailscale IP on that port at boot — before Docker starts the container. If Docker binds `0.0.0.0`, it fails. Fix: use `127.0.0.1:<port>:<container-port>` in the compose `ports` directive. Tailscale serve proxies to `localhost:<port>` which reaches the loopback binding. This concern no longer applies to services migrated to tsdproxy (see above) since tsdproxy reaches containers directly over the Docker network rather than through a host-published port — those services still need a shared Docker network (`arrs`/`immich_default`) if another container needs to reach them by name (e.g. Homepage's widgets), but not for tsdproxy itself.
 - **qBittorrent 5.x WebUI auth:** the `WebUI\AuthSubnetWhitelistEnabled` bypass (currently `172.20.0.0/16`) is required for the Homepage widget; qBittorrent 5.x CSRF protection returns 403 on the login endpoint for non-whitelisted IPs. If the widget breaks after a network change, check that the Homepage container's arrs IP is covered by the whitelist CIDR.
 - **ntfy password files:** two copies must be kept in sync. `~/.config/ntfy/password` (matt:matt 600) is used by scripts running as matt or root. `/etc/nut/ntfy-password` (root:nut 640) is used by `upssched-cmd` which runs as the `nut` user. If the password is rotated, update both: `echo 'newpass' > ~/.config/ntfy/password && sudo sh -c 'cat /home/matt/.config/ntfy/password > /etc/nut/ntfy-password'`.
 - **Router stats pipeline:** Homepage has a custom router stats widget that works via a three-part chain: (1) `router-stats.timer` fires `router-stats.service` every minute, which SSHes to the ASUS Merlin router (`ssh router /jffs/scripts/router-stats.sh`) and writes the JSON output to `~/router-stats/router-stats.json`; (2) `router-stats-http.service` runs `python3 -m http.server 9797 --directory ~/router-stats` so the file is reachable on the host at `:9797`; (3) Homepage fetches from `http://host.docker.internal:9797/router-stats.json` for its widget. If the router is unreachable the fetch silently no-ops and leaves the previous JSON in place.
