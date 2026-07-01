@@ -39,18 +39,22 @@ Most stacks are managed by systemd services (so they start on boot). Unit files 
 - `homepage-compose` — After docker, tailscaled, mnt-data
 - `immich-compose` — After docker, wg0, mnt-data
 - `jellyfin-compose` — After docker, tailscaled, mnt-data
+- `ntfy-compose` — After docker, tailscale-ready, arrs-compose
 - `open-webui-compose` — After docker, tailscaled
 - `pihole-compose` — After docker (starts before wg0 so br-pihole exists when wg0-up-extra.sh runs)
 - `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data
-- `radicale-compose` — After docker
+- `radicale-compose` — After docker, tailscale-ready, mnt-data
 - `tsdproxy-compose` — After docker, arrs-compose, immich-compose
 
-**ntfy** (`~/docker/ntfy/`) has no systemd unit — `restart: unless-stopped` handles restarts and Docker auto-starts it on daemon boot. Manage directly from `~/docker/ntfy/`:
-```bash
-docker compose up -d
-docker compose down
-docker compose pull && docker compose up -d
-```
+**ntfy** (`~/docker/ntfy/`) is managed by `ntfy-compose.service` (added 2026-07-01 after an outage — see `tailscale-ready.service` note below). Use `sudo systemctl start|stop|restart ntfy-compose` rather than bare `docker compose`.
+
+### tailscale-ready.service
+
+`tailscaled.service` is `Type=notify` and reports ready as soon as the daemon starts — but the actual `tailscale up` call, and the IP assigned to `tailscale0`, happens later in an `ExecStartPost`. Any compose unit that binds a container directly to the Tailscale interface IP (not through tsdproxy or Serve) needs to wait for that IP to actually exist, not just for `tailscaled.service` to be active. `tailscale-ready.service` (`~/docker/systemd/tailscale-ready.service`, script at `/usr/local/bin/wait-for-tailscale.sh`, also tracked at `~/dotfiles/scripts/server/`) polls `tailscale ip -4` for up to 60s and exits 0 once it succeeds.
+
+**`ntfy-compose.service` and `radicale-compose.service` both `Requires=` (not just `After=`) `tailscale-ready.service`** — this is required, not cosmetic: `Requires=` makes systemd propagate stops, so if `tailscale-ready.service` ever gets stopped (which cascades from `tailscaled.service` being stopped), these two compose stacks get `docker compose down`'d and their containers are *removed*, not just stopped. Nothing brings them back automatically afterward (no boot occurred, so `restart: unless-stopped` / auto-start-on-boot never triggers) — they stay down until manually `systemctl start`'d again. **Do not run `sudo systemctl stop tailscaled` on this host without expecting ntfy and radicale to go down with it** — this exact sequence caused a 6+ hour undetected Radicale outage and an ntfy outage on 2026-07-01. If tailscaled needs restarting, immediately follow up with `sudo systemctl start ntfy-compose radicale-compose`.
+
+Any new service that binds directly to the Tailscale interface IP (following the Radicale/ntfy pattern, not tsdproxy) must depend on `tailscale-ready.service`, not `tailscaled.service`, in both `After=` and `Requires=`.
 
 Tailscale Serve rules are also managed by systemd units (`tailscale-serve-*.service`) so they survive tailscaled restarts. Current units (post-tsdproxy migration, see below): `tailscale-serve-homepage`, `tailscale-serve-drivetemps`. Everything else that used to be on Tailscale Serve has moved to tsdproxy (per-service Tailscale hostnames) — see the **tsdproxy** section below.
 
