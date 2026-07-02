@@ -1,0 +1,7 @@
+[Unit]
+Description=Log UPS battery charge level
+After=nut-server.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/matt/bin/ups-charge-log

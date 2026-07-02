@@ -1,0 +1,151 @@
+#!/bin/bash
+# dotdrift — detect drift between ~/dotfiles and what this server actually has
+# installed, using scripts/server/dotfiles.map as the source of truth.
+#
+# Pair checks, driven by the map:
+#   copy        - content diff between repo file and its installed copy
+#   copy-secret - same, but repo copy has secrets deliberately redacted, so
+#                 content will never match live; existence is checked instead
+#   symlink     - installed path must be a symlink resolving to the repo file
+#   crontab     - repo file vs that user's live `crontab -l` (comments/blank
+#                 lines stripped from both sides before comparing, since
+#                 `crontab -l` prepends an auto-generated header the repo
+#                 file doesn't have)
+# Plus an unmapped-file scan of /usr/local/bin and /etc/systemd/system/*.service —
+# catches a file that exists live with no map entry at all (the wg0-prestart.sh
+# class of bug: something was fixed live and never backported to the repo).
+#
+# Files unreadable to matt directly (e.g. 0440 root:root sudoers.d entries)
+# fall back to `sudo -n cat`; if that also fails (no passwordless grant for
+# this exact command), the check is skipped and noted rather than reported
+# as false drift.
+#
+# Alerts via send-mail only when something is found; silent + a one-line
+# logger entry otherwise, matching the rest of the server monitoring scripts.
+#
+# Install: none needed, already symlinked into ~/bin by scripts-link.
+# Cron: 0 6 * * 1 /home/matt/bin/dotdrift >> /var/log/dotdrift.log 2>&1
+
+set -uo pipefail
+
+DOTFILES="/home/matt/dotfiles"
+MAP="$DOTFILES/scripts/server/dotfiles.map"
+LOG_TAG="dotdrift"
+
+cd "$DOTFILES" || exit 1
+
+DRIFT=""
+UNMAPPED=""
+PENDING=""
+
+add_drift()    { DRIFT="${DRIFT}${1}
+"; }
+add_unmapped() { UNMAPPED="${UNMAPPED}${1}
+"; }
+add_pending()  { PENDING="${PENDING}${1}
+"; }
+
+# Basenames the map already accounts for, so the unmapped scan below doesn't
+# re-flag anything the pair-diff pass above already covers.
+declare -A KNOWN_LOCALBIN
+declare -A KNOWN_UNITS
+declare -A PENDING_DOTFILES
+
+# --- Part 1: diff known pairs ---
+while read -r type owner repo_path install_path; do
+    [[ -z "${type:-}" || "$type" == \#* ]] && continue
+
+    case "$type" in
+        copy|copy-secret)
+            case "$install_path" in
+                /etc/systemd/system/*) KNOWN_UNITS[$(basename "$install_path")]=1 ;;
+            esac
+            if [[ ! -e "$install_path" ]]; then
+                add_drift "MISSING  $install_path  (repo: $repo_path not installed)"
+            elif [[ "$type" == "copy-secret" ]]; then
+                : # exists is enough — content deliberately redacted in repo
+            elif [[ -r "$install_path" ]]; then
+                diff -q "$repo_path" "$install_path" >/dev/null 2>&1 || add_drift "DRIFT    $repo_path  <->  $install_path"
+            elif live_content=$(sudo -n cat "$install_path" 2>/dev/null); then
+                [[ "$live_content" != "$(cat "$repo_path")" ]] && add_drift "DRIFT    $repo_path  <->  $install_path"
+            else
+                add_pending "SKIP     $install_path unreadable (no perm, sudo -n failed)"
+            fi
+            ;;
+        symlink)
+            KNOWN_LOCALBIN[$(basename "$install_path")]=1
+            expected=$(readlink -f "$repo_path")
+            if [[ ! -L "$install_path" ]]; then
+                add_drift "NOT-LINK $install_path  should symlink to $repo_path"
+            elif [[ "$(readlink -f "$install_path" 2>/dev/null)" != "$expected" ]]; then
+                add_drift "BAD-LINK $install_path -> $(readlink "$install_path")  (expected $repo_path)"
+            fi
+            ;;
+        crontab)
+            case "$install_path" in
+                matt) live=$(crontab -l 2>/dev/null) ;;
+                root)
+                    if ! live=$(sudo -n crontab -l -u root 2>/dev/null); then
+                        add_pending "SKIP     root crontab check — sudo -n failed in this context"
+                        continue
+                    fi
+                    ;;
+                *) continue ;;
+            esac
+            live_clean=$(printf '%s\n' "$live" | grep -vE '^\s*#|^\s*$')
+            repo_clean=$(grep -vE '^\s*#|^\s*$' "$repo_path")
+            if [[ "$live_clean" != "$repo_clean" ]]; then
+                add_drift "CRONTAB  $repo_path  <->  ${install_path}'s crontab"
+            fi
+            ;;
+        exclude)
+            base="$install_path"
+            case "$base" in
+                *.service) KNOWN_UNITS[$base]=1 ;;
+                *) KNOWN_LOCALBIN[$base]=1 ;;
+            esac
+            [[ "$owner" == "dotfiles" ]] && PENDING_DOTFILES[$base]=1
+            ;;
+    esac
+done < <(grep -vE '^\s*#|^\s*$' "$MAP")
+
+# --- Part 2: unmapped-file scan ---
+for f in /usr/local/bin/*; do
+    [[ -f "$f" ]] || continue
+    base=$(basename "$f")
+    if [[ -n "${PENDING_DOTFILES[$base]:-}" ]]; then
+        add_pending "PENDING  /usr/local/bin/$base  (tracked in dotfiles.map as exclude, not yet resolved)"
+    elif [[ -z "${KNOWN_LOCALBIN[$base]:-}" ]]; then
+        add_unmapped "UNMAPPED /usr/local/bin/$base  (no dotfiles.map entry at all)"
+    fi
+done
+
+for f in /etc/systemd/system/*.service; do
+    [[ -f "$f" ]] || continue
+    base=$(basename "$f")
+    [[ -z "${KNOWN_UNITS[$base]:-}" ]] && add_unmapped "UNMAPPED /etc/systemd/system/$base  (no dotfiles.map entry at all)"
+done
+
+# --- Report ---
+ALL="${DRIFT}${UNMAPPED}"
+COUNT=$(printf '%s' "$ALL" | grep -c .)
+
+if [[ -z "$ALL" ]]; then
+    logger -t "$LOG_TAG" "clean — no drift, no unmapped files"
+    exit 0
+fi
+
+logger -t "$LOG_TAG" "drift found: ${COUNT} item(s)"
+
+BODY="dotdrift found ${COUNT} issue(s) on $(hostname):
+
+${DRIFT}${UNMAPPED}"
+[[ -n "$PENDING" ]] && BODY="${BODY}
+(known/pending, not counted above:)
+${PENDING}"
+
+printf 'Subject: [server] dotdrift found drift\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$BODY" | \
+    NTFY_PRIORITY=default \
+    NTFY_TAGS=warning \
+    NTFY_BODY="dotdrift: ${COUNT} issue(s) found on $(hostname) — see email" \
+    /usr/local/bin/send-mail

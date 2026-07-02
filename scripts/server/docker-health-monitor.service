@@ -1,0 +1,16 @@
+[Unit]
+Description=Alert on unhealthy Docker containers
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=matt
+ExecStart=/usr/local/bin/docker-health-monitor.sh
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

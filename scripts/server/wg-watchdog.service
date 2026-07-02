@@ -1,0 +1,11 @@
+[Unit]
+Description=WireGuard Watchdog
+After=wg0.service
+
+[Service]
+ExecStart=/usr/local/bin/wg-watchdog.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

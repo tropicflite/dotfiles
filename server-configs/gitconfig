@@ -8,3 +8,12 @@
 	format = ssh
 [gpg "ssh"]
 	allowedSignersFile = /home/matt/.ssh/allowed_signers
+[core]
+    pager = delta
+
+[delta]
+    navigate = true
+    dark = true
+
+[interactive]
+    diffFilter = delta --color-only

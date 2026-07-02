@@ -1,0 +1,12 @@
+[Unit]
+Description=Fix stale Immich ML lockfile after boot
+After=immich-compose.service
+Requires=immich-compose.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/matt/bin/immich-ml-lockfix.sh
+User=root
+
+[Install]
+WantedBy=multi-user.target

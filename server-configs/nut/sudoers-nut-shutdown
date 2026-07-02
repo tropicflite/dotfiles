@@ -1,1 +1,2 @@
 nut ALL=(ALL) NOPASSWD: /sbin/shutdown
+nut ALL=(ALL) NOPASSWD: /usr/sbin/upsmon

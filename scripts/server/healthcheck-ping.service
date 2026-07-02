@@ -1,0 +1,8 @@
+[Unit]
+Description=Ping healthchecks.io external dead-man's-switch
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=matt
+ExecStart=/home/matt/bin/healthcheck-ping

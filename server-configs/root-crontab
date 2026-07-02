@@ -1,0 +1,5 @@
+# Install: sudo crontab ~/dotfiles/server-configs/root-crontab -u root
+
+# m h  dom mon dow   command
+0 4 1 * * /usr/local/bin/secrets-backup >> /var/log/secrets-backup.log 2>&1
+0 1 * * * /usr/local/bin/docker-state-backup.sh >> /var/log/docker-state-backup.log 2>&1

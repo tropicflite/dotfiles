@@ -1,0 +1,7 @@
+[Unit]
+Description=Fetch router stats for Homepage widget
+
+[Service]
+Type=oneshot
+ExecStart=/home/matt/bin/router-stats-fetch.sh
+User=matt

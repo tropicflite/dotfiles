@@ -1,0 +1,119 @@
+# dotfiles.map — repo-path -> install-path mapping for everything this repo
+# deploys onto the server outside of $HOME (i.e. beyond what dotfiles-setup /
+# scripts-link already keep in sync as plain symlinks).
+#
+# Columns (whitespace-separated, repo_path/install_path may not contain spaces):
+#   type          owner        repo_path                              install_path
+#
+# type:
+#   symlink  - install_path IS a symlink into this repo. Zero drift possible;
+#              dotdrift just verifies the symlink still points here.
+#   copy     - install_path is a separate root-owned (or daemon-consumed)
+#              copy, installed deliberately via `sudo cp` (or `visudo -cf`,
+#              `crontab`, etc). dotdrift diffs repo vs install_path content.
+#   copy-secret - same as copy, but the repo copy deliberately has secrets
+#              redacted (passwords, keys), so content will never match live.
+#              dotdrift only checks that install_path exists.
+#   crontab  - install_path is "matt" or "root": diff repo file against
+#              that user's live `crontab -l`, not a filesystem path.
+#   exclude  - not managed by this repo (docker-repo or distro-owned unit).
+#              Listed only so the unmapped-file scan doesn't flag it.
+#
+# owner: dotfiles | docker-repo | distro
+#
+# Why some scripts are "copy" and not "symlink" despite being scripts:
+#   upssched-cmd runs as the unprivileged `nut` user (RUN_AS_USER in
+#   upsmon.conf), and /home/matt is mode 700 — `nut` has no traversal rights
+#   into the repo. Symlinking it would require loosening that, which is not
+#   worth it for one file. Kept as a deliberate copy instead.
+# Why NUT/msmtp/wg0 config and all systemd units stay "copy":
+#   these are read at daemon startup (or need `daemon-reload`/a coordinated
+#   restart to take effect either way), so a symlink buys no convenience —
+#   it would just let `fdotl`'s hard reset silently mutate live daemon state
+#   with no review step. See feedback_nut_server_restart_danger memory.
+
+# --- scripts: root/matt-invoked, safe to symlink (root bypasses DAC; matt owns $HOME) ---
+symlink  dotfiles  scripts/server/docker-health-monitor.sh   /usr/local/bin/docker-health-monitor.sh
+symlink  dotfiles  scripts/server/docker-state-backup.sh     /usr/local/bin/docker-state-backup.sh
+symlink  dotfiles  scripts/server/health-monitor.sh          /usr/local/bin/health-monitor.sh
+symlink  dotfiles  scripts/server/ntfy-reboot-required       /usr/local/bin/ntfy-reboot-required
+symlink  dotfiles  scripts/server/nut-apt-hook                /usr/local/bin/nut-apt-hook
+symlink  dotfiles  scripts/server/secrets-backup              /usr/local/bin/secrets-backup
+symlink  dotfiles  scripts/server/send-mail                   /usr/local/bin/send-mail
+symlink  dotfiles  scripts/server/ssh-watchdog.sh              /usr/local/bin/ssh-watchdog.sh
+symlink  dotfiles  scripts/server/temp-monitor.sh              /usr/local/bin/temp-monitor.sh
+symlink  dotfiles  scripts/server/ups-battery-health.sh        /usr/local/bin/ups-battery-health.sh
+symlink  dotfiles  scripts/server/wait-for-tailscale.sh        /usr/local/bin/wait-for-tailscale.sh
+symlink  dotfiles  scripts/server/wg0-down-extra.sh            /usr/local/bin/wg0-down-extra.sh
+symlink  dotfiles  scripts/server/wg0-prestart.sh              /usr/local/bin/wg0-prestart.sh
+symlink  dotfiles  scripts/server/wg0-up-extra.sh              /usr/local/bin/wg0-up-extra.sh
+symlink  dotfiles  scripts/server/wg-watchdog.sh                /usr/local/bin/wg-watchdog.sh
+
+# --- one script that must stay a copy: runs as unprivileged `nut` user ---
+copy     dotfiles  scripts/server/upssched-cmd                 /usr/bin/upssched-cmd
+
+# --- NUT config: daemon-read at startup, needs coordinated restart ---
+copy     dotfiles  server-configs/nut/nut.conf                 /etc/nut/nut.conf
+copy     dotfiles  server-configs/nut/ups.conf                 /etc/nut/ups.conf
+copy     dotfiles  server-configs/nut/upsd.conf                 /etc/nut/upsd.conf
+copy-secret dotfiles  server-configs/nut/upsd.users             /etc/nut/upsd.users
+copy-secret dotfiles  server-configs/nut/upsmon.conf             /etc/nut/upsmon.conf
+copy     dotfiles  server-configs/nut/upssched.conf               /etc/nut/upssched.conf
+copy     dotfiles  server-configs/nut/sudoers-nut-shutdown         /etc/sudoers.d/nut-shutdown
+
+# --- other daemon config ---
+copy-secret dotfiles  server-configs/msmtprc                    /etc/msmtprc
+copy-secret dotfiles  server-configs/wg0.conf                    /etc/wireguard/wg0.conf
+copy     dotfiles  server-configs/99nut-safe-upgrade               /etc/apt/apt.conf.d/99nut-safe-upgrade
+copy     dotfiles  server-configs/gitconfig                        /home/matt/.gitconfig
+copy     dotfiles  server-configs/gnupg-agent.conf                  /home/matt/.gnupg/gpg-agent.conf
+copy     dotfiles  server-configs/ssh_allowed_signers                /home/matt/.ssh/allowed_signers
+copy     dotfiles  scripts/server/logrotate-server-scripts             /etc/logrotate.d/server-scripts
+
+# --- crontabs ---
+crontab  dotfiles  server-configs/crontab                       matt
+crontab  dotfiles  server-configs/root-crontab                  root
+
+# --- systemd units (all copy: unit changes always need daemon-reload anyway) ---
+copy     dotfiles  scripts/server/homepage-compose.service                /etc/systemd/system/homepage-compose.service
+copy     dotfiles  scripts/server/ntfy-compose.service                    /etc/systemd/system/ntfy-compose.service
+copy     dotfiles  scripts/server/pihole-compose.service                  /etc/systemd/system/pihole-compose.service
+copy     dotfiles  scripts/server/radicale-compose.service                /etc/systemd/system/radicale-compose.service
+copy     dotfiles  scripts/server/ssh-watchdog.service                    /etc/systemd/system/ssh-watchdog.service
+copy     dotfiles  scripts/server/tailscale-ready.service                 /etc/systemd/system/tailscale-ready.service
+copy     dotfiles  scripts/server/tailscale-serve-drivetemps.service      /etc/systemd/system/tailscale-serve-drivetemps.service
+copy     dotfiles  scripts/server/tailscale-serve-homepage.service        /etc/systemd/system/tailscale-serve-homepage.service
+copy     dotfiles  scripts/server/tailscale-serve-qbittorrent.service     /etc/systemd/system/tailscale-serve-qbittorrent.service
+copy     dotfiles  scripts/server/tailscale-serve-stirling-pdf.service    /etc/systemd/system/tailscale-serve-stirling-pdf.service
+copy     dotfiles  scripts/server/tailscale-serve-uptime-kuma.service     /etc/systemd/system/tailscale-serve-uptime-kuma.service
+copy     dotfiles  scripts/server/wg0.service                             /etc/systemd/system/wg0.service
+copy     dotfiles  scripts/server/docker-health-monitor.service           /etc/systemd/system/docker-health-monitor.service
+copy     dotfiles  scripts/server/wg-watchdog.service                     /etc/systemd/system/wg-watchdog.service
+copy     dotfiles  scripts/server/healthcheck-ping.service                /etc/systemd/system/healthcheck-ping.service
+copy     dotfiles  scripts/server/router-stats.service                    /etc/systemd/system/router-stats.service
+copy     dotfiles  scripts/server/router-stats-http.service                /etc/systemd/system/router-stats-http.service
+copy     dotfiles  scripts/server/ups-charge-log.service                   /etc/systemd/system/ups-charge-log.service
+copy     dotfiles  scripts/server/immich-ml-lockfix.service                 /etc/systemd/system/immich-ml-lockfix.service
+copy     dotfiles  scripts/server/tailscaled-override.conf                 /etc/systemd/system/tailscaled.service.d/override.conf
+
+# --- known-live units NOT managed by this repo, so the unmapped scan skips them ---
+exclude  docker-repo  -  arrs-compose.service
+exclude  docker-repo  -  filebrowser-compose.service
+exclude  docker-repo  -  immich-compose.service
+exclude  docker-repo  -  jellyfin-compose.service
+exclude  docker-repo  -  qbittorrent-compose.service
+exclude  docker-repo  -  tsdproxy-compose.service
+exclude  docker-repo  -  watchtower-compose.service
+exclude  distro       -  dbus-org.freedesktop.timesync1.service
+exclude  distro       -  ip6tables.service
+exclude  distro       -  iptables.service
+exclude  distro       -  smartd.service
+exclude  distro       -  sshd.service
+exclude  distro       -  upsd.service
+exclude  distro       -  upsmon.service
+
+# --- known-live /usr/local/bin files pending manual deletion, not migration ---
+# (see audit notes: reboot-check-notify superseded by ntfy-reboot-required;
+# immich-backup.sh copy is unused, crontab calls the repo path directly)
+exclude  dotfiles     -  reboot-check-notify
+exclude  dotfiles     -  immich-backup.sh
