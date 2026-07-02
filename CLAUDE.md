@@ -13,7 +13,7 @@ Manual dotfiles repo using git + custom shell functions for fleet-wide synchroni
 dotl                    # git fetch + pull on current machine
 dotp "message"          # git add -A + commit + push
 fdotl                   # SSH to all machines and run dotl
-dotclean                # delete packed-refs + origin/master ref so git refetches them (also runs inside dotl)
+dotclean                # delete packed-refs + origin/master ref so git refetches them (dotl inlines the same logic, doesn't call this directly)
 ```
 
 ### Initial setup on a new machine
@@ -59,7 +59,7 @@ held          # show held packages
 |----------|----|-------|
 | laptop | MX Linux 25.1 | Reference machine; i3 + Kitty |
 | mini | MX Linux 25.1 | No AVX, SysVinit, Bay Trail; i3 + Kitty |
-| desktop | Ubuntu 24.04 (WSL2) | `fdotl` reaches via `wsl zsh -i -c dotl` |
+| desktop | Ubuntu 24.04 (WSL2) | `fdotl` reaches via `wsl zsh ~/dotfiles/scripts/fleet/dotl`; connects as `simin` (Windows-side account), not `matt` |
 | server | Debian 13 trixie | Port 28901; excluded from package sync; runs Docker |
 | phone | GrapheneOS (Termux) | Full `fdotl` member; port 8022; uses `$PREFIX` + machine-name detection |
 | quest | Meta Quest (Termux) | Full `fdotl` member; port 8022; Tailscale IP `100.74.113.62` |

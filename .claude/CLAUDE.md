@@ -20,7 +20,7 @@
 - `docp` — git add -A + commit + push ~/docker (server-only, `~/.zshrc.local.server`)
 - `fdotl` — SSH to all machines and run dotl (fleet sync)
 - `tserver` — SSH to server with tmux auto-attach
-- `bz` — grep .zshrc
+- `bz` — bat ~/.zshrc
 
 # Machine reference
 
@@ -35,10 +35,11 @@
 
 # Stack
 
-19 Docker containers including Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent,
-Pi-hole, Immich, Homepage, Uptime Kuma. Tailscale handles HTTPS via
-Serve for all services. ProtonVPN via wg0.service, split tunneling with
-100.64.0.0/10 excluded.
+26 Docker containers including Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent,
+Pi-hole, Immich, Homepage, Uptime Kuma. Most services are exposed via tsdproxy
+on per-service Tailscale hostnames; Tailscale Serve is only used directly for
+Homepage (root domain, :443) and the Drive Temps API (:7777). ProtonVPN via
+wg0.service, split tunneling with 100.64.0.0/10 excluded.
 
 See ~/docker/CLAUDE.md for full stack detail (networks, volumes, service
 relationships, port mappings, non-obvious constraints).

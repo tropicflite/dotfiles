@@ -70,13 +70,20 @@ These are not tracked by apt and must be handled separately in the init script:
 
 ## Tailscale Serve Rules
 
-All rules are persisted via systemd units and survive reboots and Tailscale restarts.
+Since the tsdproxy migration (2026-07-01), most services get their own per-service
+Tailscale hostname via tsdproxy instead of a Serve rule — see `~/docker/CLAUDE.md`
+for that setup. Tailscale Serve is now used directly for only two services:
 
 | Service | External URL | Internal Port | systemd unit |
 |---------|-------------|---------------|--------------|
 | Homepage | `https://server.tailc9871d.ts.net` | 3001 | `tailscale-serve-homepage.service` |
+| Drive Temps API | `https://server.tailc9871d.ts.net:7777` | 7778 | `tailscale-serve-drivetemps.service` |
 
-To add a new rule:
+`tailscale-serve-qbittorrent.service` also exists but is **recovery-only** — disabled
+by default, only started manually to restore that one Serve rule after a Tailscale
+state wipe (see the unit's header comment). It's not part of normal operation.
+
+To add a new Serve rule:
 ```bash
 sudo tailscale serve --bg --https=<port> localhost:<internal_port>
 ```
@@ -88,10 +95,12 @@ Then create a matching systemd unit in `/etc/systemd/system/` following the patt
 |----------|----|----------|-------|
 | laptop | MX Linux 25.1 | matt | Reference machine |
 | mini | MX Linux 25.1 | matt | No AVX, SysVinit, Bay Trail |
-| desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale |
+| desktop | Ubuntu 24.04 (WSL2) | simin* | Windows host handles Tailscale |
 | server | Debian 13 trixie | matt | Excluded from package sync |
 | phone | GrapheneOS (Termux) | — | Port 8022; prompt override, pkg aliases, batt script |
 | quest | Meta Quest (Termux) | — | Port 8022; Tailscale IP 100.74.113.62; machine-name file required at bootstrap |
+
+\* `simin` is the Windows-side account used to reach WSL2 over SSH (`ssh simin@desktop` / `wsl zsh ...`); the WSL2 user inside is `matt`, same as everywhere else.
 
 ## VPN Notes
 
@@ -119,7 +128,7 @@ The dotfiles repo is synced across all machines using two core functions defined
 - Runs `dotl` locally if hostname matches
 - SSHes to mini/laptop as `matt@<host>`
 - SSHes to server as `matt@server` (port 28901 handled by `~/.ssh/config`)
-- SSHes to desktop as `simin@desktop` and runs `wsl zsh -i -c dotl`
+- SSHes to desktop as `simin@desktop` and runs `wsl zsh ~/dotfiles/scripts/fleet/dotl`
 - SSHes to phone as `matt@phone` (port 8022 handled by `~/.ssh/config`); slower than other hosts but fully automated
 - SSHes to quest as `matt@quest` (port 8022, Tailscale IP `100.74.113.62`, handled by `~/.ssh/config`)
 
@@ -188,12 +197,6 @@ If a container fails to start with `address already in use`, check whether Tails
 
 ```bash
 c && sudo ss -tlnp | grep <port>
-```
-
-Then commit and push:
-
-```bash
-dotp "docs: add sauu Docker restart note"
 ```
 
 ## Immich Backup
