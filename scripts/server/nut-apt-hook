@@ -1,0 +1,25 @@
+#!/bin/bash
+# APT Pre/Post-Invoke hook: stop nut-monitor before any nut-server/nut-client
+# package upgrade and restart it after, so unattended-upgrades can't retrigger
+# the nut-server-restart forced-shutdown bug. See docker/CLAUDE.md and
+# feedback_nut_server_restart_danger.md (Claude memory) for the incident this
+# guards against (2026-07-02 unplanned poweroff).
+# Install: /etc/apt/apt.conf.d/99nut-safe-upgrade calls this with pre/post.
+FLAG=/run/nut-monitor-stopped-by-apt
+
+case "$1" in
+  pre)
+    if ls /var/cache/apt/archives/nut*.deb >/dev/null 2>&1; then
+      if systemctl is-active --quiet nut-monitor; then
+        systemctl stop nut-monitor
+        touch "$FLAG"
+      fi
+    fi
+    ;;
+  post)
+    if [ -f "$FLAG" ]; then
+      rm -f "$FLAG"
+      systemctl start nut-monitor
+    fi
+    ;;
+esac

@@ -1,0 +1,5 @@
+// Prevent nut-server package upgrades (e.g. via unattended-upgrades) from
+// retriggering the nut-server-restart forced-shutdown bug. See
+// docker/CLAUDE.md non-obvious constraints and nut-apt-hook script for detail.
+DPkg::Pre-Invoke {"/usr/local/bin/nut-apt-hook pre";};
+DPkg::Post-Invoke {"/usr/local/bin/nut-apt-hook post";};
