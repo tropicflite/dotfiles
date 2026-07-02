@@ -17,6 +17,7 @@ openssh-server
 proton-vpn-cli
 ranger
 rsync
+shellcheck
 sshfs
 tailscale
 tree-sitter-lua-src

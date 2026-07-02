@@ -157,6 +157,25 @@ function dotp {
   cd ~/dotfiles && git add -A && git commit -m "${1:-update dotfiles}" && git push
   cd ~/
 }
+# Lints every sh/bash script under scripts/** with shellcheck. Skips
+# zsh-shebang scripts (dotl, dotclean, dotfiles-setup, scripts-link,
+# machine-name) — shellcheck doesn't understand zsh syntax and would just
+# produce false positives on them.
+dotcheck() {
+  if ! command -v shellcheck &>/dev/null; then
+    echo "⚠ dotcheck: shellcheck not installed (sai shellcheck)"
+    return 1
+  fi
+  local f shebang fail=0
+  for f in ~/dotfiles/scripts/**/*(N.); do
+    IFS= read -r shebang < "$f" 2>/dev/null
+    case "$shebang" in
+      '#!'*zsh*) continue ;;
+      '#!'*sh) shellcheck "$f" || fail=1 ;;
+    esac
+  done
+  return $fail
+}
 function dotl {
   cd ~/dotfiles || { echo "⚠ dotl: ~/dotfiles not found"; return 1; }
   # Force a clean re-fetch: delete packed-refs and the origin/master ref (git

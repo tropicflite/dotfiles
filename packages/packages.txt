@@ -25,6 +25,7 @@ proton-vpn-cli
 ranger
 ripgrep
 rsync
+shellcheck
 sshfs
 tailscale
 tmux
