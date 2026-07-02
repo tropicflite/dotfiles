@@ -1,0 +1,80 @@
+#!/bin/bash
+# Daily check for Tailscale node key expiry across the fleet.
+# Source: ~/dotfiles/scripts/server/tailscale-expiry-check
+# Cron: 0 9 * * * /home/matt/dotfiles/scripts/server/tailscale-expiry-check >> /var/log/tailscale-expiry-check.log 2>&1
+#
+# Reads `tailscale status --json` on this host, which includes KeyExpiry for
+# every peer in the tailnet (control-plane metadata, synced regardless of
+# whether that peer is currently online) — so this also covers devices like
+# quest that aren't reachable directly.
+
+WARN_DAYS=30
+URGENT_DAYS=7
+
+REPORT=$(tailscale status --json | python3 -c "
+import json, sys
+from datetime import datetime, timezone
+
+WARN_DAYS = $WARN_DAYS
+URGENT_DAYS = $URGENT_DAYS
+
+data = json.load(sys.stdin)
+nodes = dict(data.get('Peer', {}))
+nodes['self'] = data.get('Self', {})
+
+now = datetime.now(timezone.utc)
+warn, urgent = [], []
+
+for node in nodes.values():
+    expiry = node.get('KeyExpiry')
+    if not expiry or expiry.startswith('0001-01-01'):
+        continue
+    name = node.get('HostName') or node.get('DNSName') or 'unknown'
+    exp_dt = datetime.strptime(expiry, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
+    days = (exp_dt - now).total_seconds() / 86400
+    line = f'{name}: {days:.1f} days ({expiry})'
+    if days <= URGENT_DAYS:
+        urgent.append(line)
+    elif days <= WARN_DAYS:
+        warn.append(line)
+
+print('URGENT' if urgent else ('WARN' if warn else 'OK'))
+for l in urgent:
+    print('urgent:' + l)
+for l in warn:
+    print('warn:' + l)
+")
+
+echo "[$(date -Iseconds)] $(printf '%s\n' "$REPORT" | head -1)"
+
+TIER=$(printf '%s\n' "$REPORT" | head -1)
+[ "$TIER" = "OK" ] && exit 0
+
+URGENT_LINES=$(printf '%s\n' "$REPORT" | grep '^urgent:' | sed 's/^urgent://')
+WARN_LINES=$(printf '%s\n' "$REPORT" | grep '^warn:' | sed 's/^warn://')
+
+BODY="Tailscale node key expiry check ($(date -Iseconds))"
+[ -n "$URGENT_LINES" ] && BODY="$BODY
+
+URGENT (<= ${URGENT_DAYS}d) — reauth these before they drop off the tailnet:
+$URGENT_LINES"
+[ -n "$WARN_LINES" ] && BODY="$BODY
+
+Heads up (<= ${WARN_DAYS}d):
+$WARN_LINES"
+
+if [ "$TIER" = "URGENT" ]; then
+    SUBJECT="[Tailscale] URGENT: node key(s) expiring soon"
+    NTFY_PRIORITY=high
+    NTFY_TAGS=rotating_light
+else
+    SUBJECT="[Tailscale] node key expiry heads-up"
+    NTFY_PRIORITY=default
+    NTFY_TAGS=warning
+fi
+
+printf 'Subject: %s\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$SUBJECT" "$BODY" | \
+    NTFY_PRIORITY="$NTFY_PRIORITY" \
+    NTFY_TAGS="$NTFY_TAGS" \
+    NTFY_BODY="$BODY" \
+    /usr/local/bin/send-mail
