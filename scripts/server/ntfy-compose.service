@@ -1,7 +1,7 @@
 [Unit]
 Description=ntfy Docker Compose
+After=docker.service tailscale-ready.service arrs-compose.service
 Requires=docker.service tailscale-ready.service
-After=docker.service tailscale-ready.service
 
 [Service]
 Type=oneshot

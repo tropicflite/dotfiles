@@ -1,6 +1,6 @@
 [Unit]
 Description=Pi-hole Docker Compose
-After=wg0.service docker.service
+After=docker.service
 Requires=docker.service
 
 [Service]

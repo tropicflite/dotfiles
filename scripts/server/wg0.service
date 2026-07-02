@@ -1,6 +1,6 @@
 [Unit]
 Description=WireGuard VPN - wg0
-After=network-online.target tailscaled.service
+After=network-online.target tailscaled.service pihole-compose.service
 Wants=network-online.target tailscaled.service
 
 [Service]
@@ -11,15 +11,13 @@ ExecStart=/bin/bash -c '\
   GW=$(cat /run/wg0-gateway) && \
   wg-quick up /etc/wireguard/wg0.conf && \
   ip route add 0.0.0.0/0 dev wg0 metric 100 && \
-  ip route add 154.47.17.158/32 via "$GW" && \
-  printf "nameserver 100.100.100.100\nnameserver 10.2.0.1\n" > /etc/resolv.conf'
+  ip route add 154.47.17.129/32 via "$GW"'
 ExecStartPost=/usr/local/bin/wg0-up-extra.sh
 ExecStopPost=/usr/local/bin/wg0-down-extra.sh
 ExecStop=/bin/bash -c '\
   ip route del 0.0.0.0/0 dev wg0 metric 100 2>/dev/null || true && \
-  ip route del 154.47.17.158/32 2>/dev/null || true && \
-  wg-quick down /etc/wireguard/wg0.conf && \
-  printf "nameserver 100.100.100.100\n" > /etc/resolv.conf'
+  ip route del 154.47.17.129/32 2>/dev/null || true && \
+  wg-quick down /etc/wireguard/wg0.conf'
 
 [Install]
 WantedBy=multi-user.target

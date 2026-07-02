@@ -5,7 +5,10 @@ MAILTO=""
 */5 * * * * /usr/local/bin/temp-monitor.sh
 0 2 * * * /usr/local/bin/health-monitor.sh
 0 3 * * * /home/matt/dotfiles/scripts/server/immich-backup.sh >> /var/log/immich-backup.log 2>&1
-0 3 * * * /home/matt/bin/recyclarr-sync.sh >> /var/log/recyclarr.log 2>&1
 */5 * * * * /home/matt/dotfiles/scripts/server/vpn-diskcheck.sh
 * * * * * /home/matt/bin/update-uptime.py
+0 3 * * * /home/matt/bin/recyclarr-sync.sh >> /var/log/recyclarr.log 2>&1
 0 10 * * 0 /home/matt/bin/check-merlin-update >> /var/log/merlin-update.log 2>&1
+0 8 * * * /home/matt/dotfiles/scripts/server/remind-check >> /var/log/remind-check.log 2>&1
+0 9 * * 0 /usr/local/bin/ups-battery-health.sh
+0 9 * * * /home/matt/dotfiles/scripts/server/tailscale-expiry-check >> /var/log/tailscale-expiry-check.log 2>&1
