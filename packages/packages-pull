@@ -5,17 +5,15 @@ REMOVED_FILE="$DOTFILES_DIR/packages/packages-removed.txt"
 
 # Detect Termux
 if [[ -n "$PREFIX" && "$PREFIX" == *termux* ]]; then
-  MACHINE="$(cat "$PREFIX/etc/machine-name" 2>/dev/null | tr -d '[:space:]')"
-  [[ -z "$MACHINE" ]] && MACHINE="phone"
   PKG_CHECK="dpkg -s"
   PKG_INSTALL="apt install -y"
   PKG_REMOVE="apt remove -y"
 else
-  MACHINE="$(hostname -s | tr '[:upper:]' '[:lower:]')"
   PKG_CHECK="dpkg -s"
 PKG_INSTALL="sudo DEBIAN_FRONTEND=noninteractive apt install -y"
   PKG_REMOVE="sudo DEBIAN_FRONTEND=noninteractive apt remove -y"
 fi
+MACHINE="$("$DOTFILES_DIR/scripts/fleet/machine-name")"
 
 IGNORE_FILE="$DOTFILES_DIR/packages/packages-ignore.$MACHINE"
 echo "==> Syncing packages on $MACHINE..."

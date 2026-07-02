@@ -45,8 +45,7 @@ lns "$DOTFILES/ssh/config" "$HOME/.ssh/config"
 lns "$DOTFILES/tmux/tmux.conf" "$HOME/.tmux.conf"
 
 # Machine-specific .zshrc.local
-MACHINE=$(echo "${HOST%%.*}" | tr '[:upper:]' '[:lower:]')
-$IS_TERMUX && MACHINE=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
+MACHINE=$("$DOTFILES/scripts/fleet/machine-name")
 local_zshrc="$DOTFILES/zsh/.zshrc.local.$MACHINE"
 [[ -f "$local_zshrc" ]] && lns "$local_zshrc" "$HOME/.zshrc.local.$MACHINE"
 

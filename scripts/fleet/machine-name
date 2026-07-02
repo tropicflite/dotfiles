@@ -1,0 +1,26 @@
+#!/bin/sh
+# Canonical machine-name detection — the one source of truth for
+# dotfiles-setup, scripts-link, packages-pull, and .zshrc's _MACHINE.
+# Previously reimplemented independently in all four places (plus a fifth,
+# slightly different variant inline in .zshrc's ssh()/desktop()/fdotl()/
+# fpapl() functions), which is exactly how quest ended up silently getting
+# scripts/phone/* instead of its own directory in scripts-link — the
+# implementations had quietly drifted apart. Written in POSIX sh (not zsh)
+# so any caller, regardless of its own shell, can just run
+# `$(.../scripts/fleet/machine-name)` as a subprocess.
+#
+# Termux devices (phone, quest): read $PREFIX/etc/machine-name, written at
+# bootstrap time (falls back to "phone" if missing — the more common device).
+# Everything else: lowercased $HOST with any domain suffix stripped, or
+# `hostname -s` if $HOST is unset. Termux's own sshd reports "localhost" as
+# the hostname, substituted to "phone" for the same reason as the Termux
+# branch, in case this is ever invoked in a context where $PREFIX isn't set
+# but the machine is still Termux-like.
+if [ -n "$PREFIX" ]; then
+  cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone
+else
+  h="${HOST:-$(hostname -s)}"
+  h="${h%%.*}"
+  [ "$h" = "localhost" ] && h="phone"
+  echo "$h" | tr '[:upper:]' '[:lower:]'
+fi

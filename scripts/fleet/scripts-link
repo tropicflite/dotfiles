@@ -3,8 +3,18 @@
 setopt nullglob
 SCRIPTS_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 BIN_DIR="$HOME/bin"
-MACHINE=$([ -n "$PREFIX" ] && echo phone || echo "${HOST%%.*}")
+MACHINE=$("$SCRIPTS_DIR/fleet/machine-name")
 mkdir -p "$BIN_DIR"
+
+# quest has no scripts/quest/ directory of its own — it deliberately shares
+# phone's Termux scripts (start-crond.sh, termux-upgrade, etc). Previously
+# this happened by accident (MACHINE was hardcoded to "phone" for every
+# Termux device here); now it's explicit so a real scripts/quest/ can be
+# added later without silently losing this fallback.
+DEVICE_DIR="$SCRIPTS_DIR/$MACHINE"
+if [ ! -d "$DEVICE_DIR" ] && [ -n "$PREFIX" ]; then
+  DEVICE_DIR="$SCRIPTS_DIR/phone"
+fi
 
 # Prune stale links left behind by renamed or deleted scripts.
 # Only touch broken links that point back into this scripts dir, so links to
@@ -17,7 +27,7 @@ for link in "$BIN_DIR"/*(N); do
   esac
 done
 
-for dir in "$SCRIPTS_DIR/fleet" "$SCRIPTS_DIR/$MACHINE"; do
+for dir in "$SCRIPTS_DIR/fleet" "$DEVICE_DIR"; do
   [ -d "$dir" ] || continue
   for script in "$dir"/*; do
     [ -f "$script" ] || continue

@@ -30,6 +30,13 @@ if ! pgrep -x ssh-agent > /dev/null; then
 fi
 ssh-add ~/.ssh/id_ed25519 2>/dev/null
 
+# Machine name detection, computed early: the SSH_CHAIN seed block below and
+# several functions further down (ssh, desktop, fdotl, fpapl) all need it.
+# Canonical implementation lives in scripts/fleet/machine-name — see that
+# file's header for why (used to be five separate reimplementations that had
+# quietly drifted apart from each other).
+_MACHINE=$(~/dotfiles/scripts/fleet/machine-name)
+
 ################################################################################
 # ALIASES
 ################################################################################
@@ -107,13 +114,7 @@ alias tl="tmux ls"
 # WSL is invoked explicitly; SSH_CHAIN is passed via -c rather than SendEnv
 # because Windows sshd lands in cmd.exe, not zsh.
 desktop() {
-  local me
-  if [[ -n $PREFIX ]]; then
-    me=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
-  else
-    me="${$(hostname -s)/localhost/phone}"
-  fi
-  local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}"
+  local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${_MACHINE}"
   ssh -t simin@desktop "wsl zsh -l -c 'export SSH_CHAIN=$chain; exec zsh'"
 }
 alias laptop='TERM=xterm-256color ssh matt@laptop'
@@ -171,7 +172,7 @@ function dotl {
 }
 # Fleet-wide dotfiles pull — runs dotl on all machines via SSH.
 fdotl() {
-  local me=${HOST%%.*}
+  local me=$_MACHINE
   # Helper defined inline so it doesn't pollute the global function namespace;
   # unfunction cleans it up when fdotl returns.
   _fdotl_check() {
@@ -200,7 +201,7 @@ fdotl() {
   unfunction _fdotl_check
 }
 fpapl() {
-  local me=${HOST%%.*}
+  local me=$_MACHINE
   _fpapl_check() {
     local host=$1 exit=$2
     if [[ $exit -eq 255 ]]; then
@@ -231,25 +232,13 @@ fpapl() {
 
 # Seed: when we arrive on this machine via SSH and no chain exists yet, start one.
 if [[ -n $SSH_CONNECTION && -z $SSH_CHAIN ]]; then
-  if [[ -n $PREFIX ]]; then
-    export SSH_CHAIN=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
-  else
-    # /localhost/phone: phone's hostname -s returns "localhost"; substitute the
-    # logical fleet name so the chain shows "phone" instead.
-    export SSH_CHAIN=${$(hostname -s)/localhost/phone}
-  fi
+  export SSH_CHAIN=$_MACHINE
 fi
 
 # Wrapper: intercepts all outgoing ssh calls to append this machine to the chain
 # before passing it to the next hop via SendEnv.
 ssh() {
-  local me
-  if [[ -n $PREFIX ]]; then
-    me=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
-  else
-    me="${$(hostname -s)/localhost/phone}"
-  fi
-  local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${me}"
+  local chain="${SSH_CHAIN:+${SSH_CHAIN}:}${_MACHINE}"
   env SSH_CHAIN="$chain" /usr/bin/ssh -o SendEnv=SSH_CHAIN "$@"
 }
 
@@ -274,15 +263,8 @@ build_prompt() {
   prompt_end
 }
 
-# Detect machine name for per-machine zshrc loading.
-# $PREFIX is set in Termux (Android); use "phone" as the logical name there.
-# Otherwise strip the domain suffix from $HOST (e.g. "laptop.local" → "laptop").
-
-if [ -n "$PREFIX" ]; then
-  _MACHINE=$(cat "$PREFIX/etc/machine-name" 2>/dev/null || echo phone)
-else
-  _MACHINE="${HOST%%.*}"
-fi
+# Per-machine zshrc loading. _MACHINE was already computed near the top of
+# this file (before it's needed by the SSH_CHAIN seed block and others).
 [ -f ~/.zshrc.local.$_MACHINE ] && source ~/.zshrc.local.$_MACHINE
 
 # Full system update: update, upgrade, autoremove, then report any held packages.
