@@ -1,0 +1,9 @@
+#!/bin/bash
+LOGFILE=/var/log/ups-charge.log
+data=$(upsc apc1000 2>/dev/null)
+charge=$(echo "$data" | awk -F': ' '/^battery\.charge:/{print $2}')
+status=$(echo "$data" | awk -F': ' '/^ups\.status:/{print $2}' | tr ' ' '_')
+runtime=$(echo "$data" | awk -F': ' '/^battery\.runtime:/{print $2}')
+voltage=$(echo "$data" | awk -F': ' '/^input\.voltage:/{print $2}')
+load=$(echo "$data" | awk -F': ' '/^ups\.load:/{print $2}')
+echo "$(date -Iseconds) charge=${charge} status=${status} runtime=${runtime}s voltage=${voltage}V load=${load}%" >> "$LOGFILE"
