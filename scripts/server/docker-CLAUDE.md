@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Version Control
 
-`~/docker/` is a private git repo. Commit compose file and config changes here after making them:
+`~/docker/` is a private git repo. Commit compose file and config changes here after making them, via the `docp` alias (same pattern as `dotp` for dotfiles):
 
 ```bash
-git -C ~/docker add -A && git -C ~/docker commit -m "message" && git -C ~/docker push
+docp "message"
+# equivalent to: git -C ~/docker add -A && git -C ~/docker commit -m "message" && git -C ~/docker push
 ```
 
-**Note:** runtime files (logs, databases, media covers) may show up as modified in `git status` — these should not be committed.
+**Note:** runtime files (logs, databases, media covers) are excluded via `.gitignore`. `homepage/config/services.yaml` is the one tracked file that legitimately changes on its own (uptime widget, rewritten every minute by cron) — a `docp` run will pick up whatever value it currently holds.
 
 ### Deploying host-level config
 

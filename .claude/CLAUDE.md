@@ -9,6 +9,7 @@
 # Conventions
 
 - Dotfiles managed via `dotp` (commit+push) and `fdotl` (fleet pull on all machines)
+- Docker repo (~/docker) managed via `docp` (same pattern as `dotp`, commit+push)
 - Machine-specific aliases in ~/.zshrc.local.<machine>
 - All scripts go in ~/bin/
 - Deliver all code/configs all-at-once, never piecemeal
@@ -16,6 +17,7 @@
 # Key aliases
 
 - `dotp` — git add -A + commit + push dotfiles
+- `docp` — git add -A + commit + push ~/docker
 - `fdotl` — SSH to all machines and run dotl (fleet sync)
 - `tserver` — SSH to server with tmux auto-attach
 - `bz` — grep .zshrc
