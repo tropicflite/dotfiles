@@ -1,0 +1,79 @@
+#!/bin/bash
+# Check for Asus Merlin firmware updates and alert via ntfy + email.
+# Run via cron: 0 10 * * 0 /home/matt/bin/check-merlin-update >> /var/log/merlin-update.log 2>&1
+
+ROUTER_MODEL="RT-AX86U_PRO"
+NTFY_URL="http://localhost:2586/server-alerts"
+EMAIL="nichols_matt@pm.me"
+STATE_DIR="$HOME/.local/share/merlin-update"
+STATE_FILE="$STATE_DIR/last_notified"
+GITHUB_API="https://api.github.com/repos/RMerl/asuswrt-merlin.ng/tags"
+CHANGELOG_URL="https://www.asuswrt-merlin.net/changelog"
+
+get_router_version() {
+    local firmver buildno extendno
+    read -r firmver buildno extendno < <(
+        ssh -o BatchMode=yes -o ConnectTimeout=5 router \
+            'printf "%s %s %s" "$(nvram get firmver)" "$(nvram get buildno)" "$(nvram get extendno)"' \
+            2>/dev/null
+    )
+    [[ -z "$buildno" ]] && return 1
+    # firmver "3.0.0.6" → "3006"; combined with buildno and extendno matches GitHub tag format
+    # e.g. firmver=3.0.0.6, buildno=102.7, extendno=2 → "3006.102.7_2"
+    printf '%s.%s_%s' "${firmver//./}" "$buildno" "$extendno"
+}
+
+get_latest_version() {
+    # Merlin uses tags (not releases); filter out -beta and other pre-release suffixes
+    curl -sf "${GITHUB_API}?per_page=20" \
+        | jq -r '[.[] | select(.name | test("-") | not)] | .[0].name // empty'
+}
+
+alert() {
+    local title="$1" body="$2"
+    local pass
+    pass=$(cat "$HOME/.config/ntfy/password" 2>/dev/null)
+    if [[ -n "$pass" ]]; then
+        curl -s -u "matt:$pass" \
+            -H "Title: ${title}" \
+            -H "Priority: default" \
+            -H "Tags: white_check_mark,router" \
+            -d "$body" \
+            "$NTFY_URL" > /dev/null
+    fi
+    printf "Subject: %s\nTo: %s\nFrom: matt@wayoffcourse.ca\n\n%s\n" \
+        "$title" "$EMAIL" "$body" | msmtp "$EMAIL"
+}
+
+main() {
+    local current latest last_notified=""
+
+    echo "[$(date -Iseconds)] checking for Merlin updates"
+
+    if ! current=$(get_router_version); then
+        echo "[$(date -Iseconds)] ERROR: could not reach router via SSH"
+        exit 1
+    fi
+
+    if ! latest=$(get_latest_version) || [[ -z "$latest" ]]; then
+        echo "[$(date -Iseconds)] ERROR: could not fetch latest release from GitHub"
+        exit 1
+    fi
+
+    echo "[$(date -Iseconds)] current=${current} latest=${latest}"
+
+    [[ -f "$STATE_FILE" ]] && last_notified=$(cat "$STATE_FILE")
+
+    if [[ "$latest" != "$current" && "$latest" != "$last_notified" ]]; then
+        local body="${ROUTER_MODEL}: ${current} → ${latest} available.
+Changelog: ${CHANGELOG_URL}"
+        alert "[router] Merlin firmware update: ${latest}" "$body"
+        mkdir -p "$STATE_DIR"
+        echo "$latest" > "$STATE_FILE"
+        echo "[$(date -Iseconds)] alert sent (${current} → ${latest})"
+    else
+        echo "[$(date -Iseconds)] no update (current=${current}, latest=${latest})"
+    fi
+}
+
+main "$@"
