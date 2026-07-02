@@ -38,5 +38,3 @@ protonvpn() {
 
 # Network status (combines ProtonVPN + Tailscale)
 alias netstatus='vpnstatus; tsstatus'
-
-export OLLAMA_HOST=http://100.78.51.10:11434

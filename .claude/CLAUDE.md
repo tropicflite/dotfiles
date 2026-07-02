@@ -26,15 +26,15 @@
 |----------|----|-------|
 | laptop | MX Linux 25.1 | Reference machine; i3 + Kitty |
 | mini | MX Linux 25.1 | No AVX, SysVinit, Bay Trail |
-| desktop | Ubuntu 24.04 (WSL2) | Ollama server (100.78.51.10:11434) |
+| desktop | Ubuntu 24.04 (WSL2) | Windows host handles Tailscale |
 | server | Debian 13 trixie | Port 28901; Docker host |
 | phone | GrapheneOS (Termux) | Port 8022 |
 | quest | Meta Quest (Termux) | Port 8022; Tailscale IP 100.74.113.62 |
 
 # Stack
 
-20 Docker containers including Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent,
-Pi-hole, Immich, Homepage, Uptime Kuma, Open WebUI. Tailscale handles HTTPS via
+19 Docker containers including Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent,
+Pi-hole, Immich, Homepage, Uptime Kuma. Tailscale handles HTTPS via
 Serve for all services. ProtonVPN via wg0.service, split tunneling with
 100.64.0.0/10 excluded.
 

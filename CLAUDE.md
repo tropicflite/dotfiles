@@ -18,7 +18,7 @@ dotclean                # delete packed-refs + origin/master ref so git refetche
 
 ### Initial setup on a new machine
 ```bash
-~/dotfiles/scripts/fleet/dotfiles-setup   # creates all symlinks, installs ollama binary if needed
+~/dotfiles/scripts/fleet/dotfiles-setup   # creates all symlinks
 ~/dotfiles/scripts/fleet/scripts-link     # symlinks scripts/ into ~/bin (run after adding new scripts)
 ```
 
@@ -49,9 +49,9 @@ held          # show held packages
 
 **Machine detection:** Scripts use `${HOST%%.*}` lowercased as the machine name. Termux devices (phone, quest) are detected via `$PREFIX`; the logical name is read from `$PREFIX/etc/machine-name` (falls back to `phone` if missing).
 
-**Machine-specific config:** Each machine has `zsh/.zshrc.local.<machine>` for overrides (prompt name, Tailscale aliases, Ollama host, etc.) and `scripts/<machine>/` for machine-specific scripts. Any shell config that only applies to one machine (e.g. NVM on desktop) belongs in the local file, not `.zshrc`.
+**Machine-specific config:** Each machine has `zsh/.zshrc.local.<machine>` for overrides (prompt name, Tailscale aliases, etc.) and `scripts/<machine>/` for machine-specific scripts. Any shell config that only applies to one machine (e.g. NVM on desktop) belongs in the local file, not `.zshrc`.
 
-**Non-APT installs** are handled manually — see `WORKFLOW.md` for the list. Notable: Ollama client binary is auto-installed by `dotfiles-setup` (do NOT use `ollama.com/install.sh` — it installs a full server).
+**Non-APT installs** are handled manually — see `WORKFLOW.md` for the list.
 
 ## Machine Reference
 
@@ -59,8 +59,8 @@ held          # show held packages
 |----------|----|-------|
 | laptop | MX Linux 25.1 | Reference machine; i3 + Kitty |
 | mini | MX Linux 25.1 | No AVX, SysVinit, Bay Trail; i3 + Kitty |
-| desktop | Ubuntu 24.04 (WSL2) | Ollama server (`100.78.51.10:11434`); `fdotl` reaches via `wsl zsh -i -c dotl` |
-| server | Debian 13 trixie | Port 28901; excluded from package sync; runs Open WebUI + Docker |
+| desktop | Ubuntu 24.04 (WSL2) | `fdotl` reaches via `wsl zsh -i -c dotl` |
+| server | Debian 13 trixie | Port 28901; excluded from package sync; runs Docker |
 | phone | GrapheneOS (Termux) | Full `fdotl` member; port 8022; uses `$PREFIX` + machine-name detection |
 | quest | Meta Quest (Termux) | Full `fdotl` member; port 8022; Tailscale IP `100.74.113.62` |
 
@@ -71,7 +71,7 @@ scripts/fleet/      # runs on all machines (dotfiles-setup, scripts-link, dotcle
 scripts/laptop/
 scripts/mini/
 scripts/desktop/
-scripts/server/     # Docker compose files, immich backup, Open WebUI config
+scripts/server/     # Docker compose files, immich backup
 scripts/phone/
 ```
 

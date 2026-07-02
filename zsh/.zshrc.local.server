@@ -28,7 +28,6 @@ vpnstatus() {
   [[ -n "$handshake" ]] && echo "  Last handshake: $handshake"
   [[ -n "$transfer" ]] && echo "  Transfer: $transfer"
 }
-export OLLAMA_HOST=http://100.78.51.10:11434
 # Tailscale Funnel / FileBrowser toggle
 fbon() {
   tailscale funnel reset

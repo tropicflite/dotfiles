@@ -40,7 +40,6 @@ Most stacks are managed by systemd services (so they start on boot). Unit files 
 - `immich-compose` — After docker, wg0, mnt-data
 - `jellyfin-compose` — After docker, tailscaled, mnt-data
 - `ntfy-compose` — After docker, tailscale-ready, arrs-compose
-- `open-webui-compose` — After docker, tailscaled
 - `pihole-compose` — After docker (starts before wg0 so br-pihole exists when wg0-up-extra.sh runs)
 - `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data
 - `radicale-compose` — After docker, tailscale-ready, mnt-data
@@ -118,7 +117,6 @@ Most config and data is bind-mounted, not in named volumes:
 - Immich Postgres: `/var/lib/immich/postgres` on NVMe (set via `DB_DATA_LOCATION` in `immich/.env`; moved off sdb 2026-05-28 after sdb journal recovery wiped the DB)
 - Jellyfin config/cache: `/opt/docker/jellyfin/{config,cache}` (not under `~/docker`)
 - Filebrowser root: `/mnt/data` (entire data mount, mounted as `/srv`)
-- `open-webui` data: named Docker volume `open-webui` (external — must exist before `docker compose up`)
 - Immich ML models: named Docker volume `immich_model-cache` (auto-created by compose, not external)
 - Uptime Kuma data: `/home/matt/docker/uptime-kuma` (compose working dir, not a subdirectory)
 
@@ -131,7 +129,6 @@ Most config and data is bind-mounted, not in named volumes:
 - **Radarr/Sonarr/Prowlarr/Bazarr** publish no host port at all (hardened 2026-06-30 to `127.0.0.1` only, then the loopback binding itself was dropped 2026-07-01 since nothing used it) — reached only via their own tsdproxy hostnames (`radarr.tailc9871d.ts.net`, etc.) or by container name over `arrs`. **Jellyseerr** is the one exception, keeping a LAN-direct binding (`192.168.50.34:5055:5055`) alongside its tsdproxy hostname.
 - **FlareSolverr** provides Cloudflare bypass for Prowlarr; runs on `:8191`.
 - **Jellyfin** uses `/dev/dri/renderD128` for Intel GPU hardware transcoding (group `992` = render group) and is on the `arrs` network so Jellyseerr can reach it by name.
-- **Open WebUI** connects to Ollama on the desktop machine via Tailscale IP `100.78.51.10:11434` (not a local container). TTS is provided by a co-located `openai-edge-tts` sidecar.
 - **Homepage** joins the `arrs` network so it can contact arrs-stack services by container name for its widgets. It also mounts the Docker socket read-only for container status.
 - **Uptime Kuma** is on both `uptime-kuma_default` and `arrs` networks. It uses `host.docker.internal:host-gateway` to probe host-bound ports. Immich joins `uptime-kuma_default` so Kuma can probe it by container name. Homepage reaches the widget API at `http://uptime-kuma:3001` over arrs. Monitors for arr-stack services + qBittorrent + stirling-pdf use container-name URLs over `arrs` (e.g. `http://radarr:7878`), not host-bound ports — those services (except Jellyseerr) publish no host port at all anymore. Editing monitors directly via `kuma.db` requires stopping the container first (matches `~/bin/reset-uptime-kuma.sh`'s pattern) since Kuma only reads monitor config from the DB at startup.
 - **Filebrowser** binds to `127.0.0.1:8081` (Tailscale-Serve-era loopback port, no longer served — kept for local access) and `0.0.0.0:8089` for direct LAN access; reached remotely via its tsdproxy hostname (`filebrowser.tailc9871d.ts.net`).
@@ -163,11 +160,10 @@ Every other service previously on Tailscale Serve (Jellyfin, qBittorrent, Stirli
 ## Non-obvious constraints
 
 - **Immich `.env` is not committed** (contains the Postgres password). It must be present at `immich/.env` before `docker compose up`. The Postgres image is pinned to a specific digest — do not casually bump it; follow Immich's upgrade guide.
-- **`open-webui` named volume must be created before first run:** `docker volume create open-webui`. It is declared `external: true` and compose will fail if it doesn't exist.
 - **Jellyfin config is at `/opt/docker/jellyfin/`**, not under `~/docker/jellyfin/` — only the compose file lives there.
 - **All linuxserver.io images run as PUID/PGID 1000** — the `/mnt/data/media` and `/mnt/data/torrents` trees must be owned by uid/gid 1000.
-- **dotfiles/scripts/server/** contains older or alternate versions of some compose files (open-webui, immich, filebrowser, pihole, homepage). The canonical files are in `~/docker/`. The dotfiles copies are kept for reference/templating; do not run them directly. This CLAUDE.md itself lives at `dotfiles/scripts/server/docker-CLAUDE.md` and is symlinked as `~/docker/CLAUDE.md`.
-- **dotfiles/scripts/server/ systemd unit files are stale** — do not copy them to `/etc/systemd/system/` on a reinstall. The installed canonical versions are in `~/docker/systemd/`. Known divergences: all five `tailscale-serve-*.service` files in dotfiles have a `wg0.service` dependency that was dropped from the installed versions; `homepage-compose.service` and `open-webui-compose.service` differ in their `After=` and `Requires=` lines. Always use `~/docker/systemd/` as the source of truth for systemd units.
+- **dotfiles/scripts/server/** contains older or alternate versions of some compose files (immich, filebrowser, pihole, homepage). The canonical files are in `~/docker/`. The dotfiles copies are kept for reference/templating; do not run them directly. This CLAUDE.md itself lives at `dotfiles/scripts/server/docker-CLAUDE.md` and is symlinked as `~/docker/CLAUDE.md`.
+- **dotfiles/scripts/server/ systemd unit files are stale** — do not copy them to `/etc/systemd/system/` on a reinstall. The installed canonical versions are in `~/docker/systemd/`. Known divergences: all five `tailscale-serve-*.service` files in dotfiles have a `wg0.service` dependency that was dropped from the installed versions; `homepage-compose.service` differs in its `After=` and `Requires=` lines. Always use `~/docker/systemd/` as the source of truth for systemd units.
 - **Immich backup** (`immich-backup.sh`) requires `/mnt/immich-backup` to be a mounted USB drive. It dumps Postgres via `docker exec pg_dumpall | gzip` and rsyncs the library with a monthly `.deleted-YYYYMM` backup dir. Retention: 7 days for DB dumps, 30 days for deleted-file dirs.
 - **Pi-hole** binds to `0.0.0.0:53` — the host must not have `systemd-resolved` stub listener active on port 53.
 - **WireGuard watchdog** (`wg-watchdog.sh`) runs as a background loop and restarts `wg0.service` if the VPN endpoint or Tailscale coordination becomes unreachable.

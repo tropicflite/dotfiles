@@ -65,34 +65,8 @@ These are not tracked by apt and must be handled separately in the init script:
 - **Tailscale** (non-MX machines) — `curl -fsSL https://tailscale.com/install.sh | sh`
 - **fastfetch** (Ubuntu/desktop) — PPA: `sudo add-apt-repository ppa:zhangsongcui3371/fastfetch`
 - **Kitty** (laptop/mini) — downloaded from GitHub releases
-- **Ollama client** (laptop, mini, server) — binary only from GitHub releases tar.zst; handled by `dotfiles-setup`. Do NOT use `ollama.com/install.sh` — it installs a full server.
 - **rofimoji** (laptop/mini) — `pip3 install rofimoji`; emoji picker bound to `$mod+period` in i3
 - **NVM** (desktop only) — `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/HEAD/install.sh | bash`; loaded via `.zshrc.local.desktop`
-
-## Ollama Architecture
-
-- **Server:** Ollama runs on the Windows desktop host (`100.78.51.10:11434`), models on E: drive
-- **Clients:** laptop, mini, server — binary only, no service, no GPU libs
-- **Config:** `OLLAMA_HOST=http://100.78.51.10:11434` in `.zshrc.local` on all client machines
-- **Phone:** deferred — `install.sh` incompatible with Termux, manual install not attempted
-- **Desktop:** is the Ollama server; no client needed
-
-### Usage
-```bash
-ollama list                  # list models on server
-ollama run llama3.2          # interactive chat
-ollama run llama3.2 "prompt" # one-shot
-```
-
-## Open WebUI
-
-- Runs as a Docker container on the server, port 8083 (Tailscale Serve HTTPS)
-- Accessible at `https://server.tailc9871d.ts.net:8083`
-- Points at Ollama on desktop: `OLLAMA_BASE_URL=http://100.78.51.10:11434`
-- TTS sidecar: `openai-edge-tts` (Edge TTS via OpenAI-compatible API)
-- Compose: `~/docker/open-webui/docker-compose.yml` (live config, synced to dotfiles)
-- Data volume: `open-webui` (Docker named volume)
-- **Note:** Tailscale Serve rule persisted via `tailscale-serve-openwebui.service` (systemd, enabled). Survives reboots and Tailscale restarts.
 
 ## Tailscale Serve Rules
 
@@ -101,7 +75,6 @@ All rules are persisted via systemd units and survive reboots and Tailscale rest
 | Service | External URL | Internal Port | systemd unit |
 |---------|-------------|---------------|--------------|
 | Homepage | `https://server.tailc9871d.ts.net` | 3001 | `tailscale-serve-homepage.service` |
-| Open WebUI | `https://server.tailc9871d.ts.net:8083` | 8083 | `tailscale-serve-openwebui.service` |
 
 To add a new rule:
 ```bash
@@ -115,9 +88,9 @@ Then create a matching systemd unit in `/etc/systemd/system/` following the patt
 |----------|----|----------|-------|
 | laptop | MX Linux 25.1 | matt | Reference machine |
 | mini | MX Linux 25.1 | matt | No AVX, SysVinit, Bay Trail |
-| desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale; Ollama server |
+| desktop | Ubuntu 24.04 (WSL2) | matt | Windows host handles Tailscale |
 | server | Debian 13 trixie | matt | Excluded from package sync |
-| phone | GrapheneOS (Termux) | — | Port 8022; prompt override, pkg aliases, Ollama client, batt script |
+| phone | GrapheneOS (Termux) | — | Port 8022; prompt override, pkg aliases, batt script |
 | quest | Meta Quest (Termux) | — | Port 8022; Tailscale IP 100.74.113.62; machine-name file required at bootstrap |
 
 ## VPN Notes

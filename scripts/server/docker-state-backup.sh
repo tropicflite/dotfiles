@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Nightly rsync of Docker container runtime state (bind-mounts and named volumes
 # not captured by git) to /mnt/immich-backup/docker-state/.
-# Runs as root (required for open-webui named volume and uptime-kuma data).
+# Runs as root (required for uptime-kuma data).
 # Containers are left running during sync — SQLite WAL handles concurrent reads;
 # the previous night's snapshot is available as fallback if a backup is inconsistent.
 # Run via root crontab: 0 1 * * * /usr/local/bin/docker-state-backup.sh >> /var/log/docker-state-backup.log 2>&1
@@ -74,9 +74,6 @@ sync_path "$DOCKER/arrs/sonarr/config"     sonarr
 sync_path "$DOCKER/arrs/radarr/config"     radarr
 sync_path "$DOCKER/arrs/bazarr/config"     bazarr
 sync_path "$DOCKER/arrs/jellyseerr/config" jellyseerr
-
-log "open-webui named volume..."
-sync_path /var/lib/docker/volumes/open-webui/_data open-webui
 
 log "uptime-kuma..."
 sync_path "$DOCKER/uptime-kuma" uptime-kuma
