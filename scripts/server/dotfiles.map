@@ -75,17 +75,15 @@ crontab  dotfiles  server-configs/crontab                       matt
 crontab  dotfiles  server-configs/root-crontab                  root
 
 # --- systemd units (all copy: unit changes always need daemon-reload anyway) ---
-copy     dotfiles  scripts/server/homepage-compose.service                /etc/systemd/system/homepage-compose.service
-copy     dotfiles  scripts/server/ntfy-compose.service                    /etc/systemd/system/ntfy-compose.service
-copy     dotfiles  scripts/server/pihole-compose.service                  /etc/systemd/system/pihole-compose.service
-copy     dotfiles  scripts/server/radicale-compose.service                /etc/systemd/system/radicale-compose.service
+# homepage-compose/ntfy-compose/pihole-compose/radicale-compose and the
+# tailscale-serve-{drivetemps,homepage} units are NOT here: their canonical
+# copies live in ~/docker/systemd/ (a separate repo), not this one. Dotfiles
+# used to carry stale duplicates of these (see docker-CLAUDE.md history) —
+# removed 2026-07-02. tailscale-serve-{qbittorrent,stirling-pdf,uptime-kuma}
+# were fully deleted (not just excluded): obsolete post-tsdproxy-migration,
+# not installed live, no recovery value.
 copy     dotfiles  scripts/server/ssh-watchdog.service                    /etc/systemd/system/ssh-watchdog.service
 copy     dotfiles  scripts/server/tailscale-ready.service                 /etc/systemd/system/tailscale-ready.service
-copy     dotfiles  scripts/server/tailscale-serve-drivetemps.service      /etc/systemd/system/tailscale-serve-drivetemps.service
-copy     dotfiles  scripts/server/tailscale-serve-homepage.service        /etc/systemd/system/tailscale-serve-homepage.service
-copy     dotfiles  scripts/server/tailscale-serve-qbittorrent.service     /etc/systemd/system/tailscale-serve-qbittorrent.service
-copy     dotfiles  scripts/server/tailscale-serve-stirling-pdf.service    /etc/systemd/system/tailscale-serve-stirling-pdf.service
-copy     dotfiles  scripts/server/tailscale-serve-uptime-kuma.service     /etc/systemd/system/tailscale-serve-uptime-kuma.service
 copy     dotfiles  scripts/server/wg0.service                             /etc/systemd/system/wg0.service
 copy     dotfiles  scripts/server/docker-health-monitor.service           /etc/systemd/system/docker-health-monitor.service
 copy     dotfiles  scripts/server/wg-watchdog.service                     /etc/systemd/system/wg-watchdog.service
@@ -99,9 +97,15 @@ copy     dotfiles  scripts/server/tailscaled-override.conf                 /etc/
 # --- known-live units NOT managed by this repo, so the unmapped scan skips them ---
 exclude  docker-repo  -  arrs-compose.service
 exclude  docker-repo  -  filebrowser-compose.service
+exclude  docker-repo  -  homepage-compose.service
 exclude  docker-repo  -  immich-compose.service
 exclude  docker-repo  -  jellyfin-compose.service
+exclude  docker-repo  -  ntfy-compose.service
+exclude  docker-repo  -  pihole-compose.service
 exclude  docker-repo  -  qbittorrent-compose.service
+exclude  docker-repo  -  radicale-compose.service
+exclude  docker-repo  -  tailscale-serve-drivetemps.service
+exclude  docker-repo  -  tailscale-serve-homepage.service
 exclude  docker-repo  -  tsdproxy-compose.service
 exclude  docker-repo  -  watchtower-compose.service
 exclude  distro       -  dbus-org.freedesktop.timesync1.service
