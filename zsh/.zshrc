@@ -154,7 +154,19 @@ function mkcd {
 # DOTFILES
 ################################################################################
 function dotp {
-  cd ~/dotfiles && git add -A && git commit -m "${1:-update dotfiles}" && git push
+  cd ~/dotfiles && git add -A
+  local force=0
+  if [[ "$1" == "--force" ]]; then
+    force=1
+    shift
+  fi
+  if [[ "$force" -eq 0 ]] && ! ~/dotfiles/scripts/fleet/dotp-secret-scan; then
+    echo "⚠ dotp: aborting — possible secret(s) in staged changes (above)."
+    echo "  If these are false positives, run: dotp --force \"message\""
+    cd ~/
+    return 1
+  fi
+  git commit -m "${1:-update dotfiles}" && git push
   cd ~/
 }
 # Lints every sh/bash script under scripts/** with shellcheck. Skips
