@@ -32,17 +32,7 @@ vpnstatus() {
 fbon() {
   tailscale funnel reset
   tailscale serve reset
-  tailscale serve --bg --https=8081 http://localhost:8081
-  tailscale serve --bg --https=8082 http://localhost:8080
-  tailscale serve --bg --https=8085 http://localhost:8084
-  tailscale serve --bg --https=8090 http://localhost:8091
-  tailscale serve --bg --https=8097 http://localhost:8096
-  tailscale serve --bg --https=2283 http://localhost:2283
-  tailscale serve --bg --https=3000 http://localhost:3001
   tailscale serve --bg --https=7777 http://localhost:7778
-  tailscale serve --bg --https=8083 http://localhost:8083
-  tailscale serve --bg --https=3003 http://localhost:3003
-  tailscale serve --bg --https=2587 http://localhost:2587
   tailscale funnel --bg --https=443 http://127.0.0.1:8081
   echo "Funnel ON — FileBrowser public on 443"
 }
@@ -50,17 +40,7 @@ fboff() {
   tailscale funnel reset
   tailscale serve reset
   tailscale serve --bg --https=443 http://localhost:3001
-  tailscale serve --bg --https=8081 http://localhost:8081
-  tailscale serve --bg --https=8082 http://localhost:8080
-  tailscale serve --bg --https=8085 http://localhost:8084
-  tailscale serve --bg --https=8090 http://localhost:8091
-  tailscale serve --bg --https=8097 http://localhost:8096
-  tailscale serve --bg --https=2283 http://localhost:2283
-  tailscale serve --bg --https=3000 http://localhost:3001
   tailscale serve --bg --https=7777 http://localhost:7778
-  tailscale serve --bg --https=8083 http://localhost:8083
-  tailscale serve --bg --https=3003 http://localhost:3003
-  tailscale serve --bg --https=2587 http://localhost:2587
   echo "Funnel OFF — Homepage on 443"
 }
 fbstatus() {
