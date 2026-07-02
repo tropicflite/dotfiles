@@ -7,7 +7,7 @@ send_ntfy() {
     curl -s -u "matt:$pass" \
         -H "Title: $1" -H "Priority: $2" -H "Tags: $3" \
         -d "$4" \
-        http://localhost:2586/server-alerts > /dev/null || true
+        http://100.65.250.53:2586/server-alerts > /dev/null || true
 }
 
 case $1 in
