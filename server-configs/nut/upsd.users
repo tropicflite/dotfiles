@@ -85,3 +85,6 @@
 [winnut]
     password = REDACTED
     upsmon secondary
+
+[webgui]
+    password = REDACTED
