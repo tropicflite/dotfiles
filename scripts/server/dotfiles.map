@@ -111,9 +111,3 @@ exclude  distro       -  smartd.service
 exclude  distro       -  sshd.service
 exclude  distro       -  upsd.service
 exclude  distro       -  upsmon.service
-
-# --- known-live /usr/local/bin files pending manual deletion, not migration ---
-# (see audit notes: reboot-check-notify superseded by ntfy-reboot-required;
-# immich-backup.sh copy is unused, crontab calls the repo path directly)
-exclude  dotfiles     -  reboot-check-notify
-exclude  dotfiles     -  immich-backup.sh
