@@ -7,12 +7,11 @@ Wants=network-online.target tailscaled.service
 Type=oneshot
 RemainAfterExit=yes
 ExecStartPre=/usr/local/bin/wg0-prestart.sh
-ExecStart=/bin/bash -c '\
-  GW=$(cat /run/wg0-gateway) && \
-  wg-quick up /etc/wireguard/wg0.conf && \
-  ip route add 0.0.0.0/0 dev wg0 metric 100 && \
-  ip route add 154.47.17.129/32 via "$GW"'
-ExecStartPost=/usr/local/bin/wg0-up-extra.sh
+# Routes + iptables all live in wg0-up-extra.sh, invoked as PostUp in wg0.conf —
+# the single code path shared by boot, systemctl, and wg-watchdog wg-quick
+# bounces. (ExecStart previously added the main-table routes itself; a bare
+# wg-quick bounce then silently lost them — 2026-07-02 incident.)
+ExecStart=/usr/bin/wg-quick up /etc/wireguard/wg0.conf
 ExecStopPost=/usr/local/bin/wg0-down-extra.sh
 ExecStop=/bin/bash -c '\
   ip route del 0.0.0.0/0 dev wg0 metric 100 2>/dev/null || true && \

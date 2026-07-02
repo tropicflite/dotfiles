@@ -68,6 +68,34 @@ else
     # If flag already exists, already alerted — don't spam
 fi
 
+# ── VPN Routing Check ────────────────────────────────────────────────────────
+# The ping above tests the TUNNEL (-I wg0 forces it through). It does NOT test
+# whether traffic actually USES the tunnel: if the main-table default route via
+# wg0 is missing, the tunnel stays green while host + docker-bridge traffic
+# egresses via the ISP and qBittorrent sits dead behind the kill switch. This
+# exact state went undetected on 2026-07-02 (wg-watchdog bare wg-quick bounce).
+# Alert-only: this runs as matt; the fix needs root. wg0-up-extra.sh (PostUp)
+# owns the route — `sudo systemctl restart wg0` or the one-liner below restores it.
+
+ROUTE_FLAG="$RUNTIME_DIR/vpn_route_missing"
+
+if ip link show wg0 > /dev/null 2>&1 && ! ip route show default | grep -q "dev wg0"; then
+    if [[ ! -f "$ROUTE_FLAG" ]]; then
+        touch "$ROUTE_FLAG"
+        logger -t "$LOG_TAG" "wg0 up but main-table default route missing — traffic bypassing VPN"
+        send_email "VPN route missing — traffic bypassing VPN" \
+            "wg0 is up but the main-table default route via wg0 is missing on $(hostname) at $(date).\n\nHost and container traffic is egressing via the ISP; qBittorrent traffic is being dropped by the kill switch.\n\nFix: sudo ip route replace 0.0.0.0/0 dev wg0 metric 100\n(or: sudo systemctl restart wg0 — note this bounces the arrs/immich/filebrowser stacks via Requires=)"
+        send_ntfy "[server] VPN route missing — traffic bypassing VPN" \
+            "wg0 up but default route via wg0 gone. Fix: sudo ip route replace 0.0.0.0/0 dev wg0 metric 100" high rotating_light
+    fi
+else
+    if [[ -f "$ROUTE_FLAG" ]]; then
+        rm -f "$ROUTE_FLAG"
+        send_ntfy "[server] VPN route restored" \
+            "Main-table default route via wg0 is back on $(hostname) at $(date)." default white_check_mark
+    fi
+fi
+
 # ── Disk Space Check ─────────────────────────────────────────────────────────
 
 DISK_FLAG="$RUNTIME_DIR/disk_was_full"

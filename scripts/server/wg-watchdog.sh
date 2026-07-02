@@ -8,13 +8,13 @@ send_ntfy() {
     local title="$1" body="$2" priority="${3:-default}" tags="${4:-warning}"
     local pass
     pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
-    if ! curl -s -u "matt:$pass" \
+    # No public-ntfy.sh fallback (removed 2026-07-02): the topic ID was committed
+    # to dotfiles, making alert contents world-readable. Box-level outage
+    # detection is healthchecks.io's job now; local ntfy failure alone is
+    # covered by email from the other monitors.
+    curl -s -u "matt:$pass" \
         -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
-        -d "$body" http://localhost:2586/server-alerts > /dev/null 2>&1; then
-        curl -s \
-            -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
-            -d "$body" https://ntfy.sh/REDACTED > /dev/null || true
-    fi
+        -d "$body" http://localhost:2586/server-alerts > /dev/null 2>&1 || true
 }
 
 while true; do

@@ -15,6 +15,22 @@
 # (100.65.250.53) is in that range; source routing breaks replies to all Tailscale peers.
 PROTON_ENDPOINT="154.47.17.129"
 LAN_GW="192.168.50.1"
+
+# Main-table routes — moved here from wg0.service ExecStart (2026-07-02) so that
+# EVERY wg-quick up path restores them: boot, systemctl, and wg-watchdog's bare
+# wg-quick bounce. Before this, a watchdog bounce rebuilt iptables + table 200
+# (this script, via PostUp) but silently dropped the main-table default route:
+# tunnel up and green on every check, while host + docker-bridge traffic egressed
+# via the ISP and qBittorrent sat dead behind its own kill switch.
+# Endpoint pin must exist before the default flips to wg0, or the tunnel's own
+# packets try to route through the tunnel. Gateway: prestart's snapshot if
+# present (boot path), else derived live (watchdog path — prestart doesn't run).
+GW=$(cat /run/wg0-gateway 2>/dev/null)
+[ -z "$GW" ] && GW=$(ip route show default | awk '/^default/ && /enp1s0/ {print $3; exit}')
+[ -z "$GW" ] && GW="$LAN_GW"
+ip route replace "${PROTON_ENDPOINT}/32" via "$GW"
+ip route replace 0.0.0.0/0 dev wg0 metric 100
+
 iptables -t mangle -N TS_EXIT_MARK 2>/dev/null || true
 iptables -t mangle -F TS_EXIT_MARK
 iptables -t mangle -A TS_EXIT_MARK -d 100.64.0.0/10 -j RETURN
