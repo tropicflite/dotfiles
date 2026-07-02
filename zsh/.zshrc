@@ -156,12 +156,6 @@ function dotp {
   cd ~/dotfiles && git add -A && git commit -m "${1:-update dotfiles}" && git push
   cd ~/
 }
-# Same pattern as dotp, but for the ~/docker repo (compose files/configs, not dotfiles).
-# .gitignore in ~/docker already excludes runtime noise (logs, DBs, media covers, secrets).
-function docp {
-  cd ~/docker && git add -A && git commit -m "${1:-update docker}" && git push
-  cd ~/
-}
 function dotl {
   cd ~/dotfiles || { echo "⚠ dotl: ~/dotfiles not found"; return 1; }
   # Force a clean re-fetch: delete packed-refs and the origin/master ref (git
