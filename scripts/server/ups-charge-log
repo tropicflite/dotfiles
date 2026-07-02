@@ -1,5 +1,6 @@
 #!/bin/bash
 LOGFILE=/var/log/ups-charge.log
+ONBATT_MARKER=/run/nut/onbatt-time
 data=$(upsc apc1000 2>/dev/null)
 charge=$(echo "$data" | awk -F': ' '/^battery\.charge:/{print $2}')
 status=$(echo "$data" | awk -F': ' '/^ups\.status:/{print $2}' | tr ' ' '_')
@@ -7,3 +8,24 @@ runtime=$(echo "$data" | awk -F': ' '/^battery\.runtime:/{print $2}')
 voltage=$(echo "$data" | awk -F': ' '/^input\.voltage:/{print $2}')
 load=$(echo "$data" | awk -F': ' '/^ups\.load:/{print $2}')
 echo "$(date -Iseconds) charge=${charge} status=${status} runtime=${runtime}s voltage=${voltage}V load=${load}%" >> "$LOGFILE"
+
+# Backstop: upssched's pipe-based IPC has been observed (2026-07-02) to
+# silently drop the ONLINE event under rapid ONBATT->ONLINE transitions, so
+# upssched-cmd's online-notify handler never runs and no "power restored"
+# alert goes out. If the onbatt marker is still present but we're no longer
+# on battery, send the alert ourselves and clean up the marker.
+if [[ -f "$ONBATT_MARKER" && "$status" != *OB* ]]; then
+    start=$(cat "$ONBATT_MARKER")
+    elapsed=$(( $(date +%s) - start ))
+    duration="$(( elapsed / 60 ))m $(( elapsed % 60 ))s"
+    rm -f "$ONBATT_MARKER"
+    logger -t ups-charge-log "backstop: online-notify never fired, sending power-restored alert after ${duration} on battery"
+    printf "Subject: UPS power restored (backstop alert)\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power (detected via ups-charge-log backstop -- the primary upssched online-notify handler did not fire).\nTime on battery: ${duration}.\n" | msmtp nichols_matt@pm.me
+    ntfy_pass=$(cat /etc/nut/ntfy-password 2>/dev/null)
+    if [[ -n "$ntfy_pass" ]]; then
+        curl -s -u "matt:$ntfy_pass" \
+            -H "Title: [server] UPS power restored (backstop)" -H "Priority: default" -H "Tags: white_check_mark" \
+            -d "UPS apc1000 restored to mains power. Time on battery: ${duration}. (Sent by ups-charge-log backstop -- primary handler did not fire.)" \
+            http://100.65.250.53:2586/server-alerts > /dev/null || true
+    fi
+fi
