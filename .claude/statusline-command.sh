@@ -19,25 +19,6 @@ SEP     = f' {DIM}|{RESET} '
 # ── Model ─────────────────────────────────────────────────────
 model = (data.get('model') or {}).get('display_name') or 'unknown'
 
-# ── Session duration (prefer cost.total_duration_ms) ─────────
-duration = ''
-ms = ((data.get('cost') or {}).get('total_duration_ms') or 0)
-if ms:
-    secs = int(ms / 1000)
-    h, m = secs // 3600, (secs % 3600) // 60
-    duration = f'{h}h{m}m' if h > 0 else f'{m}m'
-else:
-    transcript = data.get('transcript_path') or ''
-    if transcript and os.path.exists(transcript):
-        try:
-            st = os.stat(transcript)
-            birth = getattr(st, 'st_birthtime', None) or st.st_ctime
-            elapsed = int(time.time() - birth)
-            h, m = elapsed // 3600, (elapsed % 3600) // 60
-            duration = f'{h}h{m}m' if h > 0 else f'{m}m'
-        except OSError:
-            pass
-
 # ── Git repo + branch ─────────────────────────────────────────
 cwd = (data.get('workspace') or {}).get('current_dir') or data.get('cwd') or ''
 repo = branch = ''
@@ -106,16 +87,16 @@ parts = []
 if repo:   parts.append(f'{BOLD}{YELLOW}{repo}{RESET}')
 if branch: parts.append(f'{BOLD}{CYAN}🌿 ({branch}){RESET}')
 parts.append(ctx)
-if duration:  parts.append(duration)
 if five_pct is not None:
     c = rate_color(five_pct)
-    reset_str = f' ↺{time_until(five_reset)}' if five_reset else ''
+    reset_str = f' {time_until(five_reset)}' if five_reset else ''
     parts.append(f'5h:{c}{round(five_pct)}%{RESET}{reset_str}')
 if week_pct is not None:
     c = rate_color(week_pct)
     if week_reset:
         dt = datetime.fromtimestamp(week_reset)
-        reset_str = f' ↺{time_until(week_reset)} ({dt.strftime("%a %H:%M")})'
+        time_fmt = dt.strftime('%-I%p').lower() if dt.minute == 0 else dt.strftime('%-I:%M%p').lower()
+        reset_str = f' {time_until(week_reset)} ({dt.strftime("%a")} {time_fmt})'
     else:
         reset_str = ''
     parts.append(f'7d:{c}{round(week_pct)}%{RESET}{reset_str}')
