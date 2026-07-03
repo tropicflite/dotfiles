@@ -1,0 +1,14 @@
+[Unit]
+Description=Live capture of routing table changes (diagnosing intermittent wg0 default route loss, see project_vpn_route_blip_20260702)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/sbin/ip -ts monitor route
+StandardOutput=journal
+StandardError=journal
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

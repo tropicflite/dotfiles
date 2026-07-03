@@ -78,11 +78,22 @@ fi
 # owns the route — `sudo systemctl restart wg0` or the one-liner below restores it.
 
 ROUTE_FLAG="$RUNTIME_DIR/vpn_route_missing"
+ROUTE_DIAG_LOG="/var/log/vpn-route-diag.log"
 
 if ip link show wg0 > /dev/null 2>&1 && ! ip route show default | grep -q "dev wg0"; then
     if [[ ! -f "$ROUTE_FLAG" ]]; then
         touch "$ROUTE_FLAG"
         logger -t "$LOG_TAG" "wg0 up but main-table default route missing — traffic bypassing VPN"
+        {
+            echo "===== $(date -Is) ====="
+            echo "--- ip route show table main ---"; ip route show table main
+            echo "--- ip route show table 200 ---"; ip route show table 200
+            echo "--- ip rule show ---"; ip rule show
+            echo "--- ip -s link show wg0 ---"; ip -s link show wg0
+            echo "--- wg show wg0 ---"; sudo wg show wg0 2>&1
+            echo "--- systemctl status wg0 wg-watchdog (no-pager) ---"
+            systemctl status wg0.service wg-watchdog.service --no-pager -l 2>&1
+        } | sudo tee -a "$ROUTE_DIAG_LOG" > /dev/null 2>&1 || true
         send_email "VPN route missing — traffic bypassing VPN" \
             "wg0 is up but the main-table default route via wg0 is missing on $(hostname) at $(date).\n\nHost and container traffic is egressing via the ISP; qBittorrent traffic is being dropped by the kill switch.\n\nFix: sudo ip route replace 0.0.0.0/0 dev wg0 metric 100\n(or: sudo systemctl restart wg0 — note this bounces the arrs/immich/filebrowser stacks via Requires=)"
         send_ntfy "[server] VPN route missing — traffic bypassing VPN" \
