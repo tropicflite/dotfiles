@@ -166,6 +166,12 @@ function dotp {
     cd ~/
     return 1
   fi
+  if [[ "$force" -eq 0 ]] && ! ~/dotfiles/scripts/fleet/dotp-map-check; then
+    echo "⚠ dotp: aborting — new script(s) missing a dotfiles.map entry (above)."
+    echo "  If not deployed yet and intentional, run: dotp --force \"message\""
+    cd ~/
+    return 1
+  fi
   git commit -m "${1:-update dotfiles}" && git push
   cd ~/
 }

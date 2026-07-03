@@ -20,8 +20,11 @@
 # this exact command), the check is skipped and noted rather than reported
 # as false drift.
 #
-# Alerts via send-mail only when something is found; silent + a one-line
-# logger entry otherwise, matching the rest of the server monitoring scripts.
+# Alerts via send-mail only when something is found. Every run — cron or
+# manual — logs to journald via `logger -t dotdrift` regardless of outcome
+# (journalctl -t dotdrift), including each individual finding line on drift,
+# not just a count: a manual run bypasses cron's >> /var/log/dotdrift.log
+# redirect, so journald is the only trail that covers every invocation path.
 #
 # Install: none needed, already symlinked into ~/bin by scripts-link.
 # Cron: 0 6 * * 1 /home/matt/bin/dotdrift >> /var/log/dotdrift.log 2>&1
@@ -137,6 +140,9 @@ if [[ -z "$ALL" ]]; then
 fi
 
 logger -t "$LOG_TAG" "drift found: ${COUNT} item(s)"
+while IFS= read -r line; do
+    [[ -n "$line" ]] && logger -t "$LOG_TAG" "  $line"
+done <<< "$ALL"
 
 BODY="dotdrift found ${COUNT} issue(s) on $(hostname):
 

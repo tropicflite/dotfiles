@@ -1,0 +1,36 @@
+#!/bin/sh
+# dotp-map-check — catches a new deployable script/unit added under
+# scripts/server/ with no matching scripts/server/dotfiles.map entry, before
+# it's committed. Root cause of the 2026-07-03 send-alert incident: a script
+# was added and deployed to /usr/local/bin, but the map was never updated —
+# dotdrift silently flagged it for hours, across three separate sessions,
+# before anyone traced it back to a one-line omission. Only checks ADDED
+# files, so editing/removing existing entries never trips this.
+# Optional $1: repo path to scan (defaults to ~/dotfiles) — same testability
+# pattern as dotp-secret-scan, runnable against a scratch copy.
+
+cd "${1:-$HOME/dotfiles}" || exit 1
+
+MAP="scripts/server/dotfiles.map"
+[ -f "$MAP" ] || exit 0
+
+missing=""
+for f in $(git diff --cached --name-only --diff-filter=A -- 'scripts/server/*'); do
+  [ "$f" = "$MAP" ] && continue
+  case "$f" in
+    *.service|*.timer) : ;;
+    *)
+      mode=$(git ls-files -s -- "$f" | awk '{print $1}')
+      [ "$mode" = "100755" ] || continue
+      ;;
+  esac
+  grep -qF "$f" "$MAP" || missing="${missing}  ${f}\n"
+done
+
+if [ -n "$missing" ]; then
+  echo "dotp-map-check: new script(s)/unit(s) under scripts/server/ with no $MAP entry:"
+  printf "%b" "$missing"
+  echo "Add a row (type + install_path) to $MAP before committing."
+  exit 1
+fi
+exit 0
