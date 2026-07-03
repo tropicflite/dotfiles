@@ -88,7 +88,9 @@ def rate_color(pct):
 def time_until(ts):
     remaining = int(ts - time.time())
     if remaining <= 0: return 'now'
-    h, m = remaining // 3600, (remaining % 3600) // 60
+    d, rem = remaining // 86400, remaining % 86400
+    h, m = rem // 3600, (rem % 3600) // 60
+    if d > 0: return f'{d}d{h}h'
     return f'{h}h{m:02d}m' if h > 0 else f'{m}m'
 
 rate      = data.get('rate_limits') or {}
