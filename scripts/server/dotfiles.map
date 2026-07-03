@@ -26,6 +26,8 @@
 #   upsmon.conf), and /home/matt is mode 700 — `nut` has no traversal rights
 #   into the repo. Symlinking it would require loosening that, which is not
 #   worth it for one file. Kept as a deliberate copy instead.
+#   send-alert (added 2026-07-03): same rationale — upssched-cmd calls it as
+#   the nut user, so it must be traversable without going through /home/matt.
 # Why NUT/msmtp/wg0 config and all systemd units stay "copy":
 #   these are read at daemon startup (or need `daemon-reload`/a coordinated
 #   restart to take effect either way), so a symlink buys no convenience —
@@ -49,8 +51,9 @@ symlink  dotfiles  scripts/server/wg0-prestart.sh              /usr/local/bin/wg
 symlink  dotfiles  scripts/server/wg0-up-extra.sh              /usr/local/bin/wg0-up-extra.sh
 symlink  dotfiles  scripts/server/wg-watchdog.sh                /usr/local/bin/wg-watchdog.sh
 
-# --- one script that must stay a copy: runs as unprivileged `nut` user ---
+# --- scripts that must stay a copy: reached by the unprivileged `nut` user ---
 copy     dotfiles  scripts/server/upssched-cmd                 /usr/bin/upssched-cmd
+copy     dotfiles  scripts/server/send-alert                    /usr/local/bin/send-alert
 
 # --- NUT config: daemon-read at startup, needs coordinated restart ---
 copy     dotfiles  server-configs/nut/nut.conf                 /etc/nut/nut.conf
