@@ -65,6 +65,7 @@ copy     dotfiles  server-configs/nut/sudoers-nut-shutdown         /etc/sudoers.
 copy-secret dotfiles  server-configs/msmtprc                    /etc/msmtprc
 copy-secret dotfiles  server-configs/wg0.conf                    /etc/wireguard/wg0.conf
 copy     dotfiles  server-configs/99nut-safe-upgrade               /etc/apt/apt.conf.d/99nut-safe-upgrade
+copy     dotfiles  server-configs/99ntfy-reboot                     /etc/apt/apt.conf.d/99ntfy-reboot
 copy     dotfiles  server-configs/gitconfig                        /home/matt/.gitconfig
 copy     dotfiles  server-configs/gnupg-agent.conf                  /home/matt/.gnupg/gpg-agent.conf
 copy     dotfiles  server-configs/ssh_allowed_signers                /home/matt/.ssh/allowed_signers
