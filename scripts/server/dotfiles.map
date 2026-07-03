@@ -70,6 +70,17 @@ copy     dotfiles  server-configs/gnupg-agent.conf                  /home/matt/.
 copy     dotfiles  server-configs/ssh_allowed_signers                /home/matt/.ssh/allowed_signers
 copy     dotfiles  scripts/server/logrotate-server-scripts             /etc/logrotate.d/server-scripts
 
+# --- sudoers drop-ins (audit 2026-07-02: matt-nopasswd is the primary rule;
+#     the scoped files are backstops that keep unattended paths alive if it is
+#     ever tightened. A sixth file, /etc/sudoers.d/matt ("service tailscale
+#     restart"), was deleted 2026-07-02: zero uses in the full journal since
+#     install, SysVinit command form, nothing referenced it.) ---
+copy     dotfiles  server-configs/sudoers/matt-nopasswd         /etc/sudoers.d/matt-nopasswd
+copy     dotfiles  server-configs/sudoers/smartctl              /etc/sudoers.d/smartctl
+copy     dotfiles  server-configs/sudoers/matt-wg               /etc/sudoers.d/matt-wg
+copy     dotfiles  server-configs/sudoers/vpn-diag              /etc/sudoers.d/vpn-diag
+copy     dotfiles  server-configs/sudoers/dotdrift              /etc/sudoers.d/dotdrift
+
 # --- crontabs ---
 crontab  dotfiles  server-configs/crontab                       matt
 crontab  dotfiles  server-configs/root-crontab                  root
@@ -92,6 +103,7 @@ copy     dotfiles  scripts/server/router-stats.service                    /etc/s
 copy     dotfiles  scripts/server/router-stats-http.service                /etc/systemd/system/router-stats-http.service
 copy     dotfiles  scripts/server/ups-charge-log.service                   /etc/systemd/system/ups-charge-log.service
 copy     dotfiles  scripts/server/immich-ml-lockfix.service                 /etc/systemd/system/immich-ml-lockfix.service
+copy     dotfiles  scripts/server/route-monitor.service                     /etc/systemd/system/route-monitor.service
 copy     dotfiles  scripts/server/tailscaled-override.conf                 /etc/systemd/system/tailscaled.service.d/override.conf
 
 # --- known-live units NOT managed by this repo, so the unmapped scan skips them ---

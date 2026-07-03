@@ -1,0 +1,4 @@
+# Backstop for the weekly dotdrift run's root-crontab check. dotdrift's
+# root-file cat diffs deliberately have NO scoped rule - they ride on
+# matt-nopasswd and degrade gracefully to SKIP without it (decision 2026-07-02).
+matt ALL=(ALL) NOPASSWD: /usr/bin/crontab -l -u root

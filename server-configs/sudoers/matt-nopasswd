@@ -1,0 +1,5 @@
+# Primary sudo rule: interactive admin + Claude Code sessions (~1,300 distinct
+# commands in the Apr-Jul 2026 journal - not scopeable, and remote sessions
+# hang on password prompts without it). The scoped files alongside this one
+# are deliberate backstops for unattended paths, not redundant with it.
+matt ALL=(ALL) NOPASSWD: ALL

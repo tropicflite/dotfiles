@@ -1,0 +1,4 @@
+# Backstop for temp-monitor.sh's cron (sudo smartctl -A every 5 minutes):
+# keeps unattended drive-temp monitoring alive even if matt-nopasswd is ever
+# tightened.
+matt ALL=(ALL) NOPASSWD: /usr/sbin/smartctl

@@ -1,0 +1,2 @@
+# Manual wg0 bounce workflow: stop watchdog then wg0, start in reverse order.
+matt ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop wg-watchdog wg0, /usr/bin/systemctl start wg0 wg-watchdog
