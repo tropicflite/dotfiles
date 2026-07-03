@@ -74,13 +74,28 @@ fi
 # wg0 is missing, the tunnel stays green while host + docker-bridge traffic
 # egresses via the ISP and qBittorrent sits dead behind the kill switch. This
 # exact state went undetected on 2026-07-02 (wg-watchdog bare wg-quick bounce).
-# Alert-only: this runs as matt; the fix needs root. wg0-up-extra.sh (PostUp)
-# owns the route — `sudo systemctl restart wg0` or the one-liner below restores it.
+#
+# A single `ip route show` snapshot is unreliable: the evening of 2026-07-02
+# saw 5 false-positive firings, all coinciding with the */5 cron burst
+# (temp-monitor.sh's two sudo smartctl calls + router-stats/ups-charge-log
+# systemd timers landing in the same second as this check). route-monitor.service
+# (continuous `ip -ts monitor route`) logged zero real route events during any
+# of them, and the route was already back by the time the diagnostic snapshot
+# below ran a moment later. So: re-check after a short delay and only alert if
+# the route is still missing on the second read.
 
 ROUTE_FLAG="$RUNTIME_DIR/vpn_route_missing"
 ROUTE_DIAG_LOG="/var/log/vpn-route-diag.log"
 
-if ip link show wg0 > /dev/null 2>&1 && ! ip route show default | grep -q "dev wg0"; then
+route_missing() {
+    ip link show wg0 > /dev/null 2>&1 && ! ip route show table main default | grep -q "dev wg0"
+}
+
+if route_missing; then
+    sleep 2
+fi
+
+if route_missing; then
     if [[ ! -f "$ROUTE_FLAG" ]]; then
         touch "$ROUTE_FLAG"
         logger -t "$LOG_TAG" "wg0 up but main-table default route missing — traffic bypassing VPN"
