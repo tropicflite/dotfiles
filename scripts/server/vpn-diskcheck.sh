@@ -9,7 +9,12 @@ ALERT_EMAIL="nichols_matt@pm.me"
 VPN_TEST_IP="1.1.1.1"
 DISK_THRESHOLD=85
 LOG_TAG="vpn-diskcheck"
-RUNTIME_DIR="/run/user/$(id -u)"
+# /tmp, not /run/user/$(id -u) — the latter is torn down by systemd-logind
+# whenever matt's last SSH session closes (Linger=no), which silently wiped
+# these dedup flags between cron runs and caused repeat false-positive alerts
+# (11 duplicate "VPN route missing" emails 2026-07-02/03 for a route that was
+# actually fine). /tmp persists for the whole day regardless of login state.
+RUNTIME_DIR="/tmp"
 
 send_email() {
     local subject="$1"

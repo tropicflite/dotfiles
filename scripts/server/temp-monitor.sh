@@ -8,7 +8,9 @@
 THRESHOLD_CPU=75
 THRESHOLD_NVME=70
 THRESHOLD_HDD=55
-COOLDOWN_FILE="/run/user/$(id -u)/temp-monitor-cooldown"
+# /tmp, not /run/user/$(id -u) — see vpn-diskcheck.sh for why (session-scoped,
+# gets wiped on SSH logout, defeats the cooldown)
+COOLDOWN_FILE="/tmp/temp-monitor-cooldown"
 COOLDOWN_MINUTES=30
 TO="nichols_matt@pm.me"
 HOSTNAME=$(hostname)
