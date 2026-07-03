@@ -43,6 +43,7 @@ lns "$DOTFILES/.config/nvim" "$HOME/.config/nvim"
 lns "$DOTFILES/.config/ranger" "$HOME/.config/ranger"
 lns "$DOTFILES/ssh/config" "$HOME/.ssh/config"
 lns "$DOTFILES/tmux/tmux.conf" "$HOME/.tmux.conf"
+lns "$DOTFILES/.claude/skills" "$HOME/.claude/skills"
 
 # Machine-specific .zshrc.local
 MACHINE=$("$DOTFILES/scripts/fleet/machine-name")
