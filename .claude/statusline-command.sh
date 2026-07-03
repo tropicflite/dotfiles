@@ -109,13 +109,13 @@ parts.append(ctx)
 if duration:  parts.append(duration)
 if five_pct is not None:
     c = rate_color(five_pct)
-    reset_str = f' {DIM}↺{time_until(five_reset)}{RESET}' if five_reset else ''
+    reset_str = f' ↺{time_until(five_reset)}' if five_reset else ''
     parts.append(f'5h:{c}{round(five_pct)}%{RESET}{reset_str}')
 if week_pct is not None:
     c = rate_color(week_pct)
     if week_reset:
         dt = datetime.fromtimestamp(week_reset)
-        reset_str = f' {DIM}↺{time_until(week_reset)} ({dt.strftime("%a %H:%M")}){RESET}'
+        reset_str = f' ↺{time_until(week_reset)} ({dt.strftime("%a %H:%M")})'
     else:
         reset_str = ''
     parts.append(f'7d:{c}{round(week_pct)}%{RESET}{reset_str}')
