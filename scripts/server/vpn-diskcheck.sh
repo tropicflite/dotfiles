@@ -75,20 +75,27 @@ fi
 # egresses via the ISP and qBittorrent sits dead behind the kill switch. This
 # exact state went undetected on 2026-07-02 (wg-watchdog bare wg-quick bounce).
 #
-# A single `ip route show` snapshot is unreliable: the evening of 2026-07-02
-# saw 5 false-positive firings, all coinciding with the */5 cron burst
-# (temp-monitor.sh's two sudo smartctl calls + router-stats/ups-charge-log
-# systemd timers landing in the same second as this check). route-monitor.service
-# (continuous `ip -ts monitor route`) logged zero real route events during any
-# of them, and the route was already back by the time the diagnostic snapshot
-# below ran a moment later. So: re-check after a short delay and only alert if
-# the route is still missing on the second read.
+# A single `ip route show table main default | grep wg0` snapshot walks a full
+# netlink table dump, which raced Docker veth/bridge churn badly enough to
+# produce 10 false-positive firings overnight on 2026-07-02/03 (both before
+# and after the 2s-recheck debounce added that evening — the dump-race, not
+# cron-burst timing, was the real cause). route-monitor.service (continuous
+# `ip -ts monitor route`) logged zero real wg0 route events during any of the
+# 10, and the diagnostic snapshot taken moments after each alert always showed
+# the route present and healthy.
+#
+# `ip route get` instead asks the kernel to resolve one specific destination
+# (a single RTM_GETROUTE FIB lookup, not a table dump), so it can't be caught
+# mid-iteration by unrelated route churn on docker0/br-*. It also matches what
+# we actually care about: which interface real traffic to VPN_TEST_IP would
+# use. Keep the 2s recheck as a cheap second layer in case wg-watchdog is
+# mid-flap.
 
 ROUTE_FLAG="$RUNTIME_DIR/vpn_route_missing"
 ROUTE_DIAG_LOG="/var/log/vpn-route-diag.log"
 
 route_missing() {
-    ip link show wg0 > /dev/null 2>&1 && ! ip route show table main default | grep -q "dev wg0"
+    ip link show wg0 > /dev/null 2>&1 && ! ip route get "$VPN_TEST_IP" | head -1 | grep -q "dev wg0"
 }
 
 if route_missing; then
@@ -101,6 +108,7 @@ if route_missing; then
         logger -t "$LOG_TAG" "wg0 up but main-table default route missing — traffic bypassing VPN"
         {
             echo "===== $(date -Is) ====="
+            echo "--- ip route get $VPN_TEST_IP ---"; ip route get "$VPN_TEST_IP"
             echo "--- ip route show table main ---"; ip route show table main
             echo "--- ip route show table 200 ---"; ip route show table 200
             echo "--- ip rule show ---"; ip rule show
