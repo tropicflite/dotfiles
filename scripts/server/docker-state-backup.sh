@@ -96,6 +96,9 @@ sync_path /opt/docker/jellyfin/config jellyfin
 log "tsdproxy tsnet state..."
 sync_path "$DOCKER/tsdproxy/data" tsdproxy
 
+log "ntfy (auth.db - users/passwords; found unbacked-up in 2026-07-02 rebuild.md audit)..."
+sync_path "$DOCKER/ntfy/data" ntfy
+
 log "cleaning up .deleted-* dirs older than 30 days..."
 find "$BACKUP_BASE" -maxdepth 1 -name '.deleted-*' -mtime +30 -exec rm -rf {} +
 
