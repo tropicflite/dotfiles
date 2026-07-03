@@ -1,0 +1,36 @@
+#!/bin/bash
+# Single point of truth for ntfy-only alerts (no email). For combined
+# email+ntfy alerts, use send-mail instead — it calls this script internally.
+# Install: sudo cp ~/dotfiles/scripts/server/send-alert /usr/local/bin/send-alert && sudo chmod +x /usr/local/bin/send-alert
+# Must be a real copy, not a symlink into ~/dotfiles: /home/matt is 700, so
+# the nut user (upssched-cmd) can't traverse a symlink back into it. Redeploy
+# with the cp command above after editing this file (same pattern as upssched-cmd).
+# Usage: send-alert "<title>" "<body>" [priority] [tags]
+#
+# Password file auto-detects between the two locations in use on this host:
+# ~/.config/ntfy/password (matt/root) and /etc/nut/ntfy-password (nut user —
+# can't read matt's home dir). Override with NTFY_PASS_FILE if needed.
+# URL override: NTFY_URL (default http://localhost:2586/server-alerts).
+TITLE="$1"
+BODY="$2"
+PRIORITY="${3:-default}"
+TAGS="${4:-package}"
+
+URL="${NTFY_URL:-http://localhost:2586/server-alerts}"
+
+if [ -n "${NTFY_PASS_FILE:-}" ]; then
+    PASS=$(cat "$NTFY_PASS_FILE" 2>/dev/null)
+elif [ -r /home/matt/.config/ntfy/password ]; then
+    PASS=$(cat /home/matt/.config/ntfy/password 2>/dev/null)
+else
+    PASS=$(cat /etc/nut/ntfy-password 2>/dev/null)
+fi
+
+[ -z "$PASS" ] && exit 0
+
+curl -s -u "matt:$PASS" \
+    -H "Title: $TITLE" \
+    -H "Priority: $PRIORITY" \
+    -H "Tags: $TAGS" \
+    -d "$BODY" \
+    "$URL" > /dev/null 2>&1

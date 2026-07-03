@@ -14,16 +14,9 @@ echo "$output"
 if [ "$exit_code" -ne 0 ]; then
     logger -t "$LOG_TAG" "recyclarr sync failed (exit ${exit_code})"
 
-    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null)
-    if [ -n "$pass" ]; then
-        curl -s -u "matt:$pass" \
-            -H "Title: [server] recyclarr sync failed" \
-            -H "Priority: high" \
-            -H "Tags: warning" \
-            -d "recyclarr sync failed on $(hostname) at $(date) (exit ${exit_code}). Check /var/log/recyclarr.log." \
-            http://localhost:2586/server-alerts > /dev/null
-    fi
-
+    ntfy_body="recyclarr sync failed on $(hostname) at $(date) (exit ${exit_code}). Check /var/log/recyclarr.log."
     printf "Subject: [server] recyclarr sync failed\nTo: %s\nFrom: matt@wayoffcourse.ca\n\nrecyclarr sync failed on %s at %s (exit code %s).\n\nOutput:\n%s\n" \
-        "$EMAIL" "$(hostname)" "$(date)" "$exit_code" "$output" | msmtp "$EMAIL"
+        "$EMAIL" "$(hostname)" "$(date)" "$exit_code" "$output" | \
+        NTFY_PRIORITY=high NTFY_TAGS=warning NTFY_BODY="$ntfy_body" \
+        /usr/local/bin/send-mail
 fi

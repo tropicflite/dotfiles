@@ -1,13 +1,13 @@
 #!/bin/sh
 # Install: sudo cp ~/dotfiles/scripts/server/upssched-cmd /usr/bin/upssched-cmd && sudo chmod +x /usr/bin/upssched-cmd
 # Requires: /etc/nut/ntfy-password (root:nut 640) — copy from ~/.config/ntfy/password
+# ntfy sends go through /usr/local/bin/send-alert (a real file, not the
+# send-mail symlink — /home/matt is 700 and the nut user can't traverse a
+# symlink back into ~/dotfiles). send-alert auto-detects /etc/nut/ntfy-password
+# when it can't read matt's home dir, so no override is needed here.
 
 send_ntfy() {
-    pass=$(cat /etc/nut/ntfy-password 2>/dev/null) || return 0
-    curl -s -u "matt:$pass" \
-        -H "Title: $1" -H "Priority: $2" -H "Tags: $3" \
-        -d "$4" \
-        http://100.65.250.53:2586/server-alerts > /dev/null || true
+    /usr/local/bin/send-alert "$1" "$4" "$2" "$3"
 }
 
 case $1 in

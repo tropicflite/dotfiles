@@ -8,8 +8,6 @@ SUBJECT=$(printf '%s' "$MAIL" | grep -i '^Subject:' | head -1 | sed 's/^[Ss]ubje
 
 printf '%s' "$MAIL" | msmtp nichols_matt@pm.me
 
-PASS=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || exit 0
-
 PRIORITY="${NTFY_PRIORITY:-default}"
 TAGS="${NTFY_TAGS:-package}"
 BODY="${NTFY_BODY:-See email for details.}"
@@ -18,16 +16,4 @@ if [ -z "$NTFY_PRIORITY" ]; then
     printf '%s' "$SUBJECT" | grep -qi "reboot\|restart" && PRIORITY="high" && TAGS="rotating_light"
 fi
 
-if ! curl -s -u "matt:$PASS" \
-    -H "Title: $SUBJECT" \
-    -H "Priority: $PRIORITY" \
-    -H "Tags: $TAGS" \
-    -d "$BODY" \
-    http://localhost:2586/server-alerts > /dev/null 2>&1; then
-    curl -s \
-        -H "Title: $SUBJECT" \
-        -H "Priority: $PRIORITY" \
-        -H "Tags: $TAGS" \
-        -d "$BODY" \
-        https://ntfy.sh/REDACTED > /dev/null || true
-fi
+/usr/local/bin/send-alert "$SUBJECT" "$BODY" "$PRIORITY" "$TAGS"

@@ -3,7 +3,6 @@
 # Run via cron: 0 10 * * 0 /home/matt/bin/check-merlin-update >> /var/log/merlin-update.log 2>&1
 
 ROUTER_MODEL="RT-AX86U_PRO"
-NTFY_URL="http://localhost:2586/server-alerts"
 EMAIL="nichols_matt@pm.me"
 STATE_DIR="$HOME/.local/share/merlin-update"
 STATE_FILE="$STATE_DIR/last_notified"
@@ -31,18 +30,10 @@ get_latest_version() {
 
 alert() {
     local title="$1" body="$2"
-    local pass
-    pass=$(cat "$HOME/.config/ntfy/password" 2>/dev/null)
-    if [[ -n "$pass" ]]; then
-        curl -s -u "matt:$pass" \
-            -H "Title: ${title}" \
-            -H "Priority: default" \
-            -H "Tags: white_check_mark,router" \
-            -d "$body" \
-            "$NTFY_URL" > /dev/null
-    fi
     printf "Subject: %s\nTo: %s\nFrom: matt@wayoffcourse.ca\n\n%s\n" \
-        "$title" "$EMAIL" "$body" | msmtp "$EMAIL"
+        "$title" "$EMAIL" "$body" | \
+        NTFY_TAGS="white_check_mark,router" NTFY_BODY="$body" \
+        /usr/local/bin/send-mail
 }
 
 main() {

@@ -18,11 +18,7 @@ send_email() {
 }
 
 send_ntfy() {
-    local pass
-    pass=$(cat /home/matt/.config/ntfy/password 2>/dev/null) || return 0
-    curl -s -u "matt:$pass" \
-        -H "Title: $1" -H "Priority: $2" -H "Tags: $3" \
-        -d "$4" http://localhost:2586/server-alerts > /dev/null || true
+    /usr/local/bin/send-alert "$1" "$4" "$2" "$3"
 }
 
 # Read all UPS data in one shot

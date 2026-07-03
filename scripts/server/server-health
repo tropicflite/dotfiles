@@ -142,21 +142,8 @@ if [ "$issues" -eq 0 ]; then
 else
     printf "${RED}${BOLD}${issues} issue(s) found — see above.${NC}\n"
     echo
-    if [[ -z "${NTFY_PASSWORD:-}" ]]; then
-        NTFY_PASSWORD=$(cat ~/.config/ntfy/password 2>/dev/null) || true
-    fi
-    if [[ -z "${NTFY_PASSWORD:-}" ]]; then
-        read -rsp "ntfy password for matt: " NTFY_PASSWORD
-        echo
-    fi
     body=$(printf "%d issue(s) found on %s:\n%s" "$issues" "$(hostname)" "$failures")
-    curl -s \
-        -u "matt:$NTFY_PASSWORD" \
-        -H "Title: [server] Health check failed" \
-        -H "Priority: high" \
-        -H "Tags: rotating_light" \
-        -d "$body" \
-        http://localhost:2586/server-alerts > /dev/null \
+    /usr/local/bin/send-alert "[server] Health check failed" "$body" high rotating_light \
         && printf "  ntfy alert sent.\n"
 fi
 echo
