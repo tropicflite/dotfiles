@@ -82,8 +82,23 @@ done
 SUBJECT="[Fleet] Daily update digest — $TODAY"
 printf '%s' "$OUT" | grep -q '^Reboot required: yes' && SUBJECT="$SUBJECT (reboot required somewhere)"
 
+PRIORITY="default"
+TAGS="package"
+printf '%s' "$OUT" | grep -q '^Reboot required: yes' && PRIORITY="high" && TAGS="rotating_light"
+
+# Deliberately bypasses /usr/local/bin/send-mail here: send-mail calls bare
+# `msmtp`, which resolves via $PATH to the alert-digest queue shim
+# (msmtp-alert-queue) — this digest would get folded into the next 15-min
+# alert-digest-flush under that pipeline's own combined subject, losing its
+# own identity and the reboot-required flag. This is already a controlled,
+# exactly-once-daily send with no duplicate-storm risk, so it goes straight
+# to the real msmtp instead. It still calls send-alert directly for ntfy
+# (same as send-mail does internally), so it counts toward the same 20/day
+# cap tracking in msmtp.log and shows up in the same ntfy topic.
 {
     printf "Subject: %s\r\n" "$SUBJECT"
     printf "\r\n"
     printf '%s' "$OUT"
-} | /usr/local/bin/send-mail
+} | /usr/bin/msmtp nichols_matt@pm.me
+
+/usr/local/bin/send-alert "$SUBJECT" "See email for the full fleet update digest." "$PRIORITY" "$TAGS"
