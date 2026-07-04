@@ -1,0 +1,91 @@
+#!/bin/bash
+# Drains the alert queue built by msmtp-alert-queue (deployed as
+# /usr/local/bin/msmtp) into a single combined digest email, instead of one
+# email per queued alert. If today's successful-send count is already at
+# the throttle line, skips the email entirely (ntfy already delivered each
+# alert in real time when it was queued, so nothing is lost) and clears the
+# queue anyway so a stuck mail server can't cause unbounded growth.
+#
+# Source: ~/dotfiles/scripts/server/alert-digest-flush
+# Deploy: sudo cp ~/dotfiles/scripts/server/alert-digest-flush /usr/local/bin/alert-digest-flush && sudo chmod +x /usr/local/bin/alert-digest-flush
+# Cron: */15 * * * * /usr/local/bin/alert-digest-flush >> /var/log/alert-digest.log 2>&1
+
+REAL_MSMTP="/usr/bin/msmtp"
+STATE_DIR="/var/lib/alert-digest"
+DEDUP_FILE="$STATE_DIR/dedup"
+PENDING_FILE="$STATE_DIR/pending"
+LOCK_FILE="$STATE_DIR/lock"
+TO="nichols_matt@pm.me"
+DAILY_CAP=20
+THROTTLE_AT=18
+MSMTP_LOG="/var/log/msmtp.log"
+
+umask 002
+mkdir -p "$STATE_DIR" 2>/dev/null
+touch "$DEDUP_FILE" "$PENDING_FILE" "$LOCK_FILE" 2>/dev/null
+
+(
+    flock -w 5 200 || exit 0
+
+    [ -s "$PENDING_FILE" ] || exit 0
+
+    TODAY_FMT="$(date '+%b %d')"
+    SENT_TODAY=$(grep -c "^${TODAY_FMT}.*exitcode=EX_OK" "$MSMTP_LOG" 2>/dev/null)
+    SENT_TODAY=${SENT_TODAY:-0}
+
+    if [ "$SENT_TODAY" -ge "$THROTTLE_AT" ]; then
+        N_ALERTS=$(grep -c '^-----BEGIN ALERT-----' "$PENDING_FILE")
+        echo "$(date -Is) throttled: ${SENT_TODAY}/${DAILY_CAP} emails already sent today, skipping digest of ${N_ALERTS} queued alert(s) (ntfy already delivered them)"
+        /usr/local/bin/send-alert \
+            "[server] Email throttled" \
+            "${N_ALERTS} alert(s) queued but not emailed — already at ${SENT_TODAY}/${DAILY_CAP} today. They were already sent via ntfy when they fired." \
+            "default" "warning" 2>/dev/null
+        : > "$PENDING_FILE"
+        exit 0
+    fi
+
+    declare -A dedup_count
+    if [ -s "$DEDUP_FILE" ]; then
+        while IFS=$'\t' read -r k e c; do
+            [ -z "$k" ] && continue
+            dedup_count["$k"]="$c"
+        done < "$DEDUP_FILE"
+    fi
+
+    N_ALERTS=$(grep -c '^-----BEGIN ALERT-----' "$PENDING_FILE")
+    WINDOW_START=$(grep -m1 '^Time:' "$PENDING_FILE" | sed 's/^Time: *//')
+
+    BODY=""
+    CUR_SUBJECT=""
+    while IFS= read -r line; do
+        case "$line" in
+            "-----BEGIN ALERT-----") CUR_SUBJECT="" ;;
+            "-----END ALERT-----")
+                BODY="${BODY}\n"
+                ;;
+            Subject:*)
+                CUR_SUBJECT=$(printf '%s' "$line" | sed 's/^Subject: *//')
+                KEY=$(printf '%s' "$CUR_SUBJECT" | tr '[:upper:]' '[:lower:]' | tr -s '[:space:]' ' ')
+                COUNT="${dedup_count[$KEY]:-1}"
+                if [ "$COUNT" -gt 1 ]; then
+                    BODY="${BODY}=== ${CUR_SUBJECT} (occurred ${COUNT}x since last digest) ===\n"
+                else
+                    BODY="${BODY}=== ${CUR_SUBJECT} ===\n"
+                fi
+                ;;
+            Time:*) BODY="${BODY}${line}\n" ;;
+            To:*|From:*) ;;
+            *) BODY="${BODY}${line}\n" ;;
+        esac
+    done < "$PENDING_FILE"
+
+    SUBJECT="[Server] Alert digest: ${N_ALERTS} alert(s) since ${WINDOW_START}"
+    printf "Subject: %s\n\n%b\n" "$SUBJECT" "$BODY" | "$REAL_MSMTP" "$TO"
+
+    if [ $? -eq 0 ]; then
+        : > "$PENDING_FILE"
+        echo "$(date -Is) sent digest: ${N_ALERTS} alert(s), subject: ${SUBJECT}"
+    else
+        echo "$(date -Is) digest send FAILED, leaving ${N_ALERTS} alert(s) queued for retry"
+    fi
+) 200>"$LOCK_FILE"

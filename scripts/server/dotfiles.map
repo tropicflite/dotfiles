@@ -28,6 +28,9 @@
 #   worth it for one file. Kept as a deliberate copy instead.
 #   send-alert (added 2026-07-03): same rationale — upssched-cmd calls it as
 #   the nut user, so it must be traversable without going through /home/matt.
+#   msmtp-alert-queue (added 2026-07-04, installed as /usr/local/bin/msmtp):
+#   same rationale again — nut invokes bare `msmtp` too (upssched-cmd), so
+#   the shim it resolves to via $PATH can't be a symlink through /home/matt.
 # Why NUT/msmtp/wg0 config and all systemd units stay "copy":
 #   these are read at daemon startup (or need `daemon-reload`/a coordinated
 #   restart to take effect either way), so a symlink buys no convenience —
@@ -35,6 +38,7 @@
 #   with no review step. See feedback_nut_server_restart_danger memory.
 
 # --- scripts: root/matt-invoked, safe to symlink (root bypasses DAC; matt owns $HOME) ---
+symlink  dotfiles  scripts/server/alert-digest-flush          /usr/local/bin/alert-digest-flush
 symlink  dotfiles  scripts/server/docker-health-monitor.sh   /usr/local/bin/docker-health-monitor.sh
 symlink  dotfiles  scripts/server/docker-state-backup.sh     /usr/local/bin/docker-state-backup.sh
 symlink  dotfiles  scripts/server/health-monitor.sh          /usr/local/bin/health-monitor.sh
@@ -54,6 +58,7 @@ symlink  dotfiles  scripts/server/wg-watchdog.sh                /usr/local/bin/w
 # --- scripts that must stay a copy: reached by the unprivileged `nut` user ---
 copy     dotfiles  scripts/server/upssched-cmd                 /usr/bin/upssched-cmd
 copy     dotfiles  scripts/server/send-alert                    /usr/local/bin/send-alert
+copy     dotfiles  scripts/server/msmtp-alert-queue              /usr/local/bin/msmtp
 
 # --- NUT config: daemon-read at startup, needs coordinated restart ---
 copy     dotfiles  server-configs/nut/nut.conf                 /etc/nut/nut.conf

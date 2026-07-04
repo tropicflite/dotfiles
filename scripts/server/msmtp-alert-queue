@@ -1,0 +1,82 @@
+#!/bin/bash
+# Permanent PATH shim for msmtp: queues alert emails for periodic digest
+# batching instead of sending each one immediately, with content-based
+# dedup so a stuck loop (like the 2026-07-02/03 VPN-route duplicate-alert
+# bug) can't multiply into more than one queued entry per cooldown window.
+# ntfy is untouched — every calling script fires it via a separate send-alert
+# call, so real-time awareness is unaffected by anything below.
+#
+# Every alerting script calls bare `msmtp`, resolved via $PATH, and
+# /usr/local/bin precedes /usr/bin for matt/root/nut/systemd alike — same
+# choke point the 2026-07-03 cap-suppression shim used.
+#
+# Source: ~/dotfiles/scripts/server/msmtp-alert-queue
+# Deploy: sudo cp ~/dotfiles/scripts/server/msmtp-alert-queue /usr/local/bin/msmtp && sudo chmod +x /usr/local/bin/msmtp
+# Companion: alert-digest-flush (drains this queue on a cron interval)
+#
+# State dir: /var/lib/alert-digest (root:nut 2775 — matt/root/nut all need
+# read+write; setgid keeps every new file group=nut regardless of creator).
+# Create once: sudo mkdir -p /var/lib/alert-digest && sudo chown root:nut /var/lib/alert-digest && sudo chmod 2775 /var/lib/alert-digest
+
+REAL_MSMTP="/usr/bin/msmtp"
+STATE_DIR="/var/lib/alert-digest"
+DEDUP_FILE="$STATE_DIR/dedup"
+PENDING_FILE="$STATE_DIR/pending"
+LOCK_FILE="$STATE_DIR/lock"
+COOLDOWN_SECONDS=3600
+
+umask 002
+mkdir -p "$STATE_DIR" 2>/dev/null
+touch "$DEDUP_FILE" "$PENDING_FILE" "$LOCK_FILE" 2>/dev/null
+
+TMP="$(mktemp)"
+trap 'rm -f "$TMP"' EXIT
+cat > "$TMP"
+
+SUBJECT=$(grep -m1 -i '^Subject:' "$TMP" | sed 's/^[Ss]ubject: *//' | tr -d '\r')
+KEY=$(printf '%s' "$SUBJECT" | tr '[:upper:]' '[:lower:]' | tr -s '[:space:]' ' ')
+[ -z "$KEY" ] && KEY="(no subject)"
+NOW=$(date +%s)
+
+(
+    flock -w 5 200 || exit 0
+
+    declare -A last_epoch
+    declare -A count
+    if [ -s "$DEDUP_FILE" ]; then
+        while IFS=$'\t' read -r k e c; do
+            [ -z "$k" ] && continue
+            last_epoch["$k"]="$e"
+            count["$k"]="$c"
+        done < "$DEDUP_FILE"
+    fi
+
+    ACTION="queue"
+    if [ -n "${last_epoch[$KEY]:-}" ] && [ $(( NOW - last_epoch[$KEY] )) -lt "$COOLDOWN_SECONDS" ]; then
+        ACTION="suppress"
+        count["$KEY"]=$(( ${count[$KEY]:-1} + 1 ))
+    else
+        count["$KEY"]=1
+    fi
+    last_epoch["$KEY"]="$NOW"
+
+    {
+        for k in "${!last_epoch[@]}"; do
+            printf '%s\t%s\t%s\n' "$k" "${last_epoch[$k]}" "${count[$k]}"
+        done
+    } > "$DEDUP_FILE.tmp" && mv "$DEDUP_FILE.tmp" "$DEDUP_FILE"
+    chmod 664 "$DEDUP_FILE" 2>/dev/null
+
+    if [ "$ACTION" = "queue" ]; then
+        {
+            echo "-----BEGIN ALERT-----"
+            echo "Time: $(date -Is)"
+            echo "Subject: $SUBJECT"
+            cat "$TMP"
+            echo "-----END ALERT-----"
+        } >> "$PENDING_FILE"
+        chmod 664 "$PENDING_FILE" 2>/dev/null
+    fi
+) 200>"$LOCK_FILE"
+
+exit 0
