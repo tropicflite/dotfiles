@@ -14,3 +14,4 @@ MAILTO=""
 0 9 * * * /home/matt/dotfiles/scripts/server/tailscale-expiry-check >> /var/log/tailscale-expiry-check.log 2>&1
 0 6 * * 1 /home/matt/bin/dotdrift >> /var/log/dotdrift.log 2>&1
 */15 * * * * /usr/local/bin/alert-digest-flush >> /var/log/alert-digest.log 2>&1
+15 8 * * * /usr/local/bin/fleet-update-digest >> /var/log/fleet-update-digest.log 2>&1

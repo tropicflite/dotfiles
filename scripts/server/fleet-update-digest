@@ -1,0 +1,89 @@
+#!/bin/bash
+# fleet-update-digest — one daily email+ntfy summarizing OS updates across
+# the whole fleet (server, mini, laptop, desktop, phone, quest), instead of
+# each machine notifying independently.
+#
+# Reads each machine's *today's* unattended-upgrades (or termux-upgrade) log
+# entries over SSH — server itself is read locally, never SSH to self.
+# Companion routine-mail suppression:
+#   - server: Unattended-Upgrade::MailReport set to only-on-error
+#   - mini/laptop/desktop: their built-in Mail already can't send (no local
+#     MTA) so nothing to suppress there
+#   - phone/quest: termux-upgrade only emails on failure, always logs
+# Reboot-required nudges (reboot-check-notify / systemd drop-in) are left
+# alone — those are low-frequency and actionable, not routine noise.
+
+set -o pipefail
+TODAY=$(date +%Y-%m-%d)
+SSH_OPTS=(-o ConnectTimeout=10 -o BatchMode=yes)
+
+APT_REMOTE_SCRIPT='
+TODAY=$(date +%Y-%m-%d)
+sudo grep "^$TODAY" /var/log/unattended-upgrades/unattended-upgrades.log 2>/dev/null \
+    | grep -oE "Packages that will be upgraded: .*|No packages found.*|ERROR.*"
+[ -f /var/run/reboot-required ] && echo "REBOOT_REQUIRED"
+echo "PENDING:$(apt list --upgradable 2>/dev/null | tail -n +2 | wc -l)"
+'
+
+TERMUX_REMOTE_SCRIPT='
+TODAY=$(date +%Y-%m-%d)
+grep "^$TODAY" ~/.termux-upgrade.log 2>/dev/null | tail -5
+'
+
+fmt_section() {
+    local name="$1" body="$2"
+    if [ -z "$body" ]; then
+        printf '== %s ==\nUNREACHABLE (ssh failed or timed out)\n\n' "$name"
+        return
+    fi
+    local pending upgraded reboot rest
+    pending=$(printf '%s\n' "$body" | grep -oE '^PENDING:[0-9]+' | cut -d: -f2)
+    reboot=$(printf '%s\n' "$body" | grep -q '^REBOOT_REQUIRED' && echo yes || echo no)
+    rest=$(printf '%s\n' "$body" | grep -vE '^PENDING:|^REBOOT_REQUIRED')
+    [ -z "$rest" ] && rest="No run recorded today."
+    printf '== %s ==\n%s\nPending (should be 0 or only intentionally-held packages): %s\nReboot required: %s\n\n' \
+        "$name" "$rest" "${pending:-?}" "$reboot"
+}
+
+fmt_termux_section() {
+    local name="$1" body="$2"
+    if [ -z "$body" ]; then
+        printf '== %s ==\nNo run recorded today (or unreachable).\n\n' "$name"
+        return
+    fi
+    printf '== %s ==\n%s\n\n' "$name" "$body"
+}
+
+# --- server (local — never ssh to self) ---
+server_body=$(
+    sudo grep "^$TODAY" /var/log/unattended-upgrades/unattended-upgrades.log 2>/dev/null \
+        | grep -oE "Packages that will be upgraded: .*|No packages found.*|ERROR.*"
+    [ -f /var/run/reboot-required ] && echo "REBOOT_REQUIRED"
+    echo "PENDING:$(apt list --upgradable 2>/dev/null | tail -n +2 | wc -l)"
+)
+OUT="$(fmt_section "SERVER" "$server_body")"$'\n'
+
+# --- mini / laptop (SysVinit, same apt log layout as server) ---
+for host in mini laptop; do
+    body=$(ssh "${SSH_OPTS[@]}" "$host" bash -s <<<"$APT_REMOTE_SCRIPT" 2>/dev/null)
+    OUT+="$(fmt_section "${host^^}" "$body")"$'\n'
+done
+
+# --- desktop (WSL2 — may be off if Windows host is asleep/shut down) ---
+desktop_body=$(ssh "${SSH_OPTS[@]}" desktop "wsl bash -s" <<<"$APT_REMOTE_SCRIPT" 2>/dev/null)
+OUT+="$(fmt_section "DESKTOP" "$desktop_body")"$'\n'
+
+# --- phone / quest (Termux, port 8022, separate log format) ---
+for host in phone quest; do
+    body=$(ssh "${SSH_OPTS[@]}" -p 8022 "$host" bash -s <<<"$TERMUX_REMOTE_SCRIPT" 2>/dev/null)
+    OUT+="$(fmt_termux_section "${host^^}" "$body")"$'\n'
+done
+
+SUBJECT="[Fleet] Daily update digest — $TODAY"
+printf '%s' "$OUT" | grep -q '^Reboot required: yes' && SUBJECT="$SUBJECT (reboot required somewhere)"
+
+{
+    printf "Subject: %s\r\n" "$SUBJECT"
+    printf "\r\n"
+    printf '%s' "$OUT"
+} | /usr/local/bin/send-mail

@@ -57,3 +57,13 @@
     notifempty
     create 644 matt matt
 }
+
+/var/log/fleet-update-digest.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 matt matt
+}
