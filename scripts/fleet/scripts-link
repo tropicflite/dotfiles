@@ -6,15 +6,18 @@ BIN_DIR="$HOME/bin"
 MACHINE=$("$SCRIPTS_DIR/fleet/machine-name")
 mkdir -p "$BIN_DIR"
 
-# quest has no scripts/quest/ directory of its own — it deliberately shares
-# phone's Termux scripts (start-crond.sh, termux-upgrade, etc). Previously
-# this happened by accident (MACHINE was hardcoded to "phone" for every
-# Termux device here); now it's explicit so a real scripts/quest/ can be
-# added later without silently losing this fallback.
-DEVICE_DIR="$SCRIPTS_DIR/$MACHINE"
-if [ ! -d "$DEVICE_DIR" ] && [ -n "$PREFIX" ]; then
-  DEVICE_DIR="$SCRIPTS_DIR/phone"
+# Non-phone Termux devices (quest) share phone's scripts (termux-upgrade,
+# batt, etc.) as a baseline, since they're both Termux and mostly identical.
+# A device dir of its own (e.g. scripts/quest/) is layered on top and linked
+# after, so same-named scripts there override the phone baseline — this is
+# how quest's start-crond.sh (adds a boot-time upgrade stamp gate phone
+# doesn't need) can diverge from phone's plain version while both still
+# share termux-upgrade/batt/etc. from scripts/phone/.
+LINK_DIRS=("$SCRIPTS_DIR/fleet")
+if [ -n "$PREFIX" ] && [ "$MACHINE" != "phone" ]; then
+  LINK_DIRS+=("$SCRIPTS_DIR/phone")
 fi
+[ -d "$SCRIPTS_DIR/$MACHINE" ] && LINK_DIRS+=("$SCRIPTS_DIR/$MACHINE")
 
 # Prune stale links left behind by renamed or deleted scripts.
 # Only touch broken links that point back into this scripts dir, so links to
@@ -27,7 +30,7 @@ for link in "$BIN_DIR"/*(N); do
   esac
 done
 
-for dir in "$SCRIPTS_DIR/fleet" "$DEVICE_DIR"; do
+for dir in "${LINK_DIRS[@]}"; do
   [ -d "$dir" ] || continue
   for script in "$dir"/*; do
     [ -f "$script" ] || continue
