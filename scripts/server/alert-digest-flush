@@ -79,7 +79,7 @@ touch "$DEDUP_FILE" "$PENDING_FILE" "$LOCK_FILE" 2>/dev/null
         esac
     done < "$PENDING_FILE"
 
-    SUBJECT="[Server] Alert digest: ${N_ALERTS} alert(s) since ${WINDOW_START}"
+    SUBJECT="[Server] Alert digest: ${N_ALERTS} alert(s) since ${WINDOW_START} (email $(( SENT_TODAY + 1 ))/${DAILY_CAP} today)"
     printf "Subject: %s\n\n%b\n" "$SUBJECT" "$BODY" | "$REAL_MSMTP" "$TO"
 
     if [ $? -eq 0 ]; then
