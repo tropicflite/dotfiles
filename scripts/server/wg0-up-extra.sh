@@ -13,7 +13,7 @@
 #
 # DO NOT use source-based ip rules (from 100.64/10) — the server's own Tailscale IP
 # (100.65.250.53) is in that range; source routing breaks replies to all Tailscale peers.
-PROTON_ENDPOINT="154.47.17.129"
+PROTON_ENDPOINT="139.28.218.130"
 LAN_GW="192.168.50.1"
 
 # Main-table routes — moved here from wg0.service ExecStart (2026-07-02) so that
