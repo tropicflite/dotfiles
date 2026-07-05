@@ -1,5 +1,5 @@
 #!/bin/bash
-ENDPOINT_IP="154.47.17.129"
+ENDPOINT_IP="139.28.218.130"
 ENDPOINT_NAME="ProtonVPN"
 WG_IFACE="wg0"
 LOG_TAG="wg-watchdog"

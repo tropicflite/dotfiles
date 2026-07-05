@@ -72,6 +72,23 @@ iptables -t nat -I POSTROUTING 1 -s 100.64.0.0/10 -o wg0 -j MASQUERADE
 iptables -D FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP 2>/dev/null || true
 iptables -I FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP
 
+# qBittorrent NAT-PMP inbound port forward (added 2026-07-05): ProtonVPN's NAT-PMP
+# gateway (10.2.0.1) forwards a dynamically-assigned public port to whatever fixed
+# "private port" qbt-natpmp-renew.sh requests (always 6881, matching qBittorrent's
+# listen_port) — so traffic always arrives on wg0 at 6881 regardless of the current
+# public port. Only qBittorrent's announce_port (told to trackers) needs to track
+# the changing public port; this forwarding rule itself is static and never needs
+# to be rebuilt on renewal. qBittorrent's container has no published host port, so
+# it's reached here directly by its container IP on the qbittorrent bridge.
+iptables -t nat -D PREROUTING -i wg0 -p tcp --dport 6881 -j DNAT --to-destination 172.27.0.2:6881 2>/dev/null || true
+iptables -t nat -D PREROUTING -i wg0 -p udp --dport 6881 -j DNAT --to-destination 172.27.0.2:6881 2>/dev/null || true
+iptables -t nat -I PREROUTING 1 -i wg0 -p tcp --dport 6881 -j DNAT --to-destination 172.27.0.2:6881
+iptables -t nat -I PREROUTING 1 -i wg0 -p udp --dport 6881 -j DNAT --to-destination 172.27.0.2:6881
+iptables -D FORWARD -i wg0 -o br-qbittorrent -d 172.27.0.2 -p tcp --dport 6881 -j ACCEPT 2>/dev/null || true
+iptables -D FORWARD -i wg0 -o br-qbittorrent -d 172.27.0.2 -p udp --dport 6881 -j ACCEPT 2>/dev/null || true
+iptables -I FORWARD -i wg0 -o br-qbittorrent -d 172.27.0.2 -p tcp --dport 6881 -j ACCEPT
+iptables -I FORWARD -i wg0 -o br-qbittorrent -d 172.27.0.2 -p udp --dport 6881 -j ACCEPT
+
 # Fix UDP GRO forwarding for Tailscale exit node performance
 ethtool -K enp1s0 rx-udp-gro-forwarding on rx-gro-list off 2>/dev/null || true
 
