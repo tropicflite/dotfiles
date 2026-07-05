@@ -55,6 +55,7 @@ symlink  dotfiles  scripts/server/wg0-down-extra.sh            /usr/local/bin/wg
 symlink  dotfiles  scripts/server/wg0-prestart.sh              /usr/local/bin/wg0-prestart.sh
 symlink  dotfiles  scripts/server/wg0-up-extra.sh              /usr/local/bin/wg0-up-extra.sh
 symlink  dotfiles  scripts/server/wg-watchdog.sh                /usr/local/bin/wg-watchdog.sh
+symlink  dotfiles  scripts/server/qbt-natpmp-renew.sh           /usr/local/bin/qbt-natpmp-renew.sh
 
 # --- scripts that must stay a copy: reached by the unprivileged `nut` user ---
 copy     dotfiles  scripts/server/upssched-cmd                 /usr/bin/upssched-cmd
@@ -108,6 +109,7 @@ copy     dotfiles  scripts/server/tailscale-ready.service                 /etc/s
 copy     dotfiles  scripts/server/wg0.service                             /etc/systemd/system/wg0.service
 copy     dotfiles  scripts/server/docker-health-monitor.service           /etc/systemd/system/docker-health-monitor.service
 copy     dotfiles  scripts/server/wg-watchdog.service                     /etc/systemd/system/wg-watchdog.service
+copy     dotfiles  scripts/server/qbt-natpmp-renew.service                /etc/systemd/system/qbt-natpmp-renew.service
 copy     dotfiles  scripts/server/healthcheck-ping.service                /etc/systemd/system/healthcheck-ping.service
 copy     dotfiles  scripts/server/router-stats.service                    /etc/systemd/system/router-stats.service
 copy     dotfiles  scripts/server/router-stats-http.service                /etc/systemd/system/router-stats-http.service
