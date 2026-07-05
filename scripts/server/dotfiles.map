@@ -39,6 +39,7 @@
 
 # --- scripts: root/matt-invoked, safe to symlink (root bypasses DAC; matt owns $HOME) ---
 symlink  dotfiles  scripts/server/alert-digest-flush          /usr/local/bin/alert-digest-flush
+symlink  dotfiles  scripts/server/arr-pipeline-check.sh        /usr/local/bin/arr-pipeline-check.sh
 symlink  dotfiles  scripts/server/docker-health-monitor.sh   /usr/local/bin/docker-health-monitor.sh
 symlink  dotfiles  scripts/server/docker-state-backup.sh     /usr/local/bin/docker-state-backup.sh
 symlink  dotfiles  scripts/server/health-monitor.sh          /usr/local/bin/health-monitor.sh
