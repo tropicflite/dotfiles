@@ -56,6 +56,7 @@ symlink  dotfiles  scripts/server/wg0-prestart.sh              /usr/local/bin/wg
 symlink  dotfiles  scripts/server/wg0-up-extra.sh              /usr/local/bin/wg0-up-extra.sh
 symlink  dotfiles  scripts/server/wg-watchdog.sh                /usr/local/bin/wg-watchdog.sh
 symlink  dotfiles  scripts/server/qbt-natpmp-renew.sh           /usr/local/bin/qbt-natpmp-renew.sh
+symlink  dotfiles  scripts/server/fleet-update-digest           /usr/local/bin/fleet-update-digest
 
 # --- scripts that must stay a copy: reached by the unprivileged `nut` user ---
 copy     dotfiles  scripts/server/upssched-cmd                 /usr/bin/upssched-cmd
