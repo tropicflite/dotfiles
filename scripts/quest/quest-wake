@@ -1,3 +1,3 @@
 #!/data/data/com.termux/files/usr/bin/bash
 termux-wake-lock
-echo "Wake lock acquired — Quest will not deep-sleep until quest-sleep runs."
+echo "Wake lock acquired — release it from the Termux notification's 'Release wakelock' button."
