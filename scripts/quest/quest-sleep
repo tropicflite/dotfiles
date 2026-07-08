@@ -1,0 +1,3 @@
+#!/data/data/com.termux/files/usr/bin/bash
+termux-wake-unlock
+echo "Wake lock released — Quest can deep-sleep normally."

@@ -10,6 +10,9 @@ alias pku="pkg upgrade"
 # Tailscale (Termux — no tailscale command in PATH)
 alias tsstatus='echo "Tailscale: check Android app (Settings → Tailscale)"'
 alias netstatus='tsstatus && echo "ProtonVPN: check Android app"'
+# Wake lock toggle — hold CPU awake only while actively needed (see quest-wake/quest-sleep)
+alias qw="quest-wake"
+alias qs="quest-sleep"
 # Git SSH key
 export GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519'
 paste-from-clipboard() {
