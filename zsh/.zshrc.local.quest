@@ -10,9 +10,9 @@ alias pku="pkg upgrade"
 # Tailscale (Termux — no tailscale command in PATH)
 alias tsstatus='echo "Tailscale: check Android app (Settings → Tailscale)"'
 alias netstatus='tsstatus && echo "ProtonVPN: check Android app"'
-# Wake lock — qw surfaces the Termux notification; toggle acquire/release from its buttons
+# Wake lock — tw surfaces the Termux notification; toggle acquire/release from its buttons
 # (CLI release via termux-wake-unlock is unreliable on Quest's Android 12L base)
-alias qw="quest-wake"
+alias tw="quest-wake"
 # Git SSH key
 export GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519'
 paste-from-clipboard() {
