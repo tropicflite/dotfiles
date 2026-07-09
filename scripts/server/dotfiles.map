@@ -119,6 +119,7 @@ copy     dotfiles  scripts/server/healthcheck-ping.service                /etc/s
 copy     dotfiles  scripts/server/router-stats.service                    /etc/systemd/system/router-stats.service
 copy     dotfiles  scripts/server/router-stats-http.service                /etc/systemd/system/router-stats-http.service
 copy     dotfiles  scripts/server/ups-charge-log.service                   /etc/systemd/system/ups-charge-log.service
+copy     dotfiles  scripts/server/ups-charge-log.timer                     /etc/systemd/system/ups-charge-log.timer
 copy     dotfiles  scripts/server/immich-ml-lockfix.service                 /etc/systemd/system/immich-ml-lockfix.service
 copy     dotfiles  scripts/server/nut-tailscale-listen.service              /etc/systemd/system/nut-tailscale-listen.service
 copy     dotfiles  scripts/server/tailscale-ready-selfheal.service          /etc/systemd/system/tailscale-ready-selfheal.service
