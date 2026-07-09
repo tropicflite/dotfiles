@@ -1,0 +1,10 @@
+[Unit]
+Description=Run tailscale-ready-selfheal periodically
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=false
+
+[Install]
+WantedBy=timers.target

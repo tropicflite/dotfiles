@@ -57,6 +57,8 @@ symlink  dotfiles  scripts/server/wg0-up-extra.sh              /usr/local/bin/wg
 symlink  dotfiles  scripts/server/wg-watchdog.sh                /usr/local/bin/wg-watchdog.sh
 symlink  dotfiles  scripts/server/qbt-natpmp-renew.sh           /usr/local/bin/qbt-natpmp-renew.sh
 symlink  dotfiles  scripts/server/fleet-update-digest           /usr/local/bin/fleet-update-digest
+symlink  dotfiles  scripts/server/nut-tailscale-listen.sh        /usr/local/bin/nut-tailscale-listen.sh
+symlink  dotfiles  scripts/server/tailscale-ready-selfheal.sh    /usr/local/bin/tailscale-ready-selfheal.sh
 
 # --- scripts that must stay a copy: reached by the unprivileged `nut` user ---
 copy     dotfiles  scripts/server/upssched-cmd                 /usr/bin/upssched-cmd
@@ -71,6 +73,8 @@ copy-secret dotfiles  server-configs/nut/upsd.users             /etc/nut/upsd.us
 copy-secret dotfiles  server-configs/nut/upsmon.conf             /etc/nut/upsmon.conf
 copy     dotfiles  server-configs/nut/upssched.conf               /etc/nut/upssched.conf
 copy     dotfiles  server-configs/nut/sudoers-nut-shutdown         /etc/sudoers.d/nut-shutdown
+copy     dotfiles  server-configs/nut/nut-server.service.d/pidfile.conf    /etc/systemd/system/nut-server.service.d/pidfile.conf
+copy     dotfiles  server-configs/nut/nut-server.service.d/tailscale.conf  /etc/systemd/system/nut-server.service.d/tailscale.conf
 
 # --- other daemon config ---
 copy-secret dotfiles  server-configs/msmtprc                    /etc/msmtprc
@@ -116,6 +120,9 @@ copy     dotfiles  scripts/server/router-stats.service                    /etc/s
 copy     dotfiles  scripts/server/router-stats-http.service                /etc/systemd/system/router-stats-http.service
 copy     dotfiles  scripts/server/ups-charge-log.service                   /etc/systemd/system/ups-charge-log.service
 copy     dotfiles  scripts/server/immich-ml-lockfix.service                 /etc/systemd/system/immich-ml-lockfix.service
+copy     dotfiles  scripts/server/nut-tailscale-listen.service              /etc/systemd/system/nut-tailscale-listen.service
+copy     dotfiles  scripts/server/tailscale-ready-selfheal.service          /etc/systemd/system/tailscale-ready-selfheal.service
+copy     dotfiles  scripts/server/tailscale-ready-selfheal.timer            /etc/systemd/system/tailscale-ready-selfheal.timer
 copy     dotfiles  scripts/server/route-monitor.service                     /etc/systemd/system/route-monitor.service
 copy     dotfiles  scripts/server/tailscaled-override.conf                 /etc/systemd/system/tailscaled.service.d/override.conf
 

@@ -2,6 +2,10 @@
 Description=Wait for Tailscale interface to have an IP address
 After=tailscaled.service
 Requires=tailscaled.service
+# Fires on every successful run (boot, or a tailscale-ready-selfheal restart)
+# so nut-server picks up its Tailscale-bound LISTEN without gating its own
+# startup on it — see scripts/server/nut-tailscale-listen.{sh,service}.
+OnSuccess=nut-tailscale-listen.service
 
 [Service]
 Type=oneshot

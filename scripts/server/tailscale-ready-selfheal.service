@@ -1,0 +1,7 @@
+[Unit]
+Description=Self-heal tailscale-ready/ntfy/radicale if stranded by a transient tailscaled restart
+After=tailscaled.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/tailscale-ready-selfheal.sh

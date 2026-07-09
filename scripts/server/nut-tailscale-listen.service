@@ -1,0 +1,7 @@
+[Unit]
+Description=Restart nut-server once to pick up the Tailscale-bound LISTEN address
+After=tailscale-ready.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nut-tailscale-listen.sh
