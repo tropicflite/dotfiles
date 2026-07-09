@@ -15,7 +15,7 @@ ExecStart=/usr/bin/wg-quick up /etc/wireguard/wg0.conf
 ExecStopPost=/usr/local/bin/wg0-down-extra.sh
 ExecStop=/bin/bash -c '\
   ip route del 0.0.0.0/0 dev wg0 metric 100 2>/dev/null || true && \
-  ip route del 154.47.17.129/32 2>/dev/null || true && \
+  ip route del 139.28.218.130/32 2>/dev/null || true && \
   wg-quick down /etc/wireguard/wg0.conf'
 
 [Install]
