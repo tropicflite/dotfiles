@@ -19,8 +19,18 @@ SSH_OPTS=(-o ConnectTimeout=10 -o BatchMode=yes)
 
 APT_REMOTE_SCRIPT='
 TODAY=$(date +%Y-%m-%d)
-sudo grep "^$TODAY" /var/log/unattended-upgrades/unattended-upgrades.log 2>/dev/null \
-    | grep -oE "Packages that will be upgraded: .*|No packages found.*|ERROR.*"
+LOG=$(sudo grep "^$TODAY" /var/log/unattended-upgrades/unattended-upgrades.log 2>/dev/null)
+ATTEMPTED=$(printf "%s\n" "$LOG" | grep -oE "Packages that will be upgraded: .*|No packages found.*|ERROR.*")
+if printf "%s\n" "$ATTEMPTED" | grep -q "^Packages that will be upgraded"; then
+    if printf "%s\n" "$LOG" | grep -q "All upgrades installed"; then
+        printf "%s\n" "$ATTEMPTED" | sed "s/will be upgraded/were upgraded (confirmed installed)/"
+    else
+        printf "%s\n" "$ATTEMPTED"
+        echo "WARNING: could not confirm these finished installing - check unattended-upgrades.log"
+    fi
+else
+    printf "%s\n" "$ATTEMPTED"
+fi
 [ -f /var/run/reboot-required ] && echo "REBOOT_REQUIRED"
 echo "PENDING:$(apt list --upgradable 2>/dev/null | tail -n +2 | wc -l)"
 '
@@ -55,12 +65,7 @@ fmt_termux_section() {
 }
 
 # --- server (local — never ssh to self) ---
-server_body=$(
-    sudo grep "^$TODAY" /var/log/unattended-upgrades/unattended-upgrades.log 2>/dev/null \
-        | grep -oE "Packages that will be upgraded: .*|No packages found.*|ERROR.*"
-    [ -f /var/run/reboot-required ] && echo "REBOOT_REQUIRED"
-    echo "PENDING:$(apt list --upgradable 2>/dev/null | tail -n +2 | wc -l)"
-)
+server_body=$(bash -c "$APT_REMOTE_SCRIPT")
 OUT="$(fmt_section "SERVER" "$server_body")"$'\n'
 
 # --- mini / laptop (SysVinit, same apt log layout as server) ---
