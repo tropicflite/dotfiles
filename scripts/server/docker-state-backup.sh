@@ -99,6 +99,9 @@ sync_path "$DOCKER/tsdproxy/data" tsdproxy
 log "ntfy (auth.db - users/passwords; found unbacked-up in 2026-07-02 rebuild.md audit)..."
 sync_path "$DOCKER/ntfy/data" ntfy
 
+log "claude memory (institutional memory notes, no git/other backup; found unbacked-up 2026-07-10)..."
+sync_path /home/matt/.claude/projects/-home-matt/memory claude-memory
+
 log "cleaning up .deleted-* dirs older than 30 days..."
 find "$BACKUP_BASE" -maxdepth 1 -name '.deleted-*' -mtime +30 -exec rm -rf {} +
 
