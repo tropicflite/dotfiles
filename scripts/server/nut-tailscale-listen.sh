@@ -17,4 +17,16 @@ TS_IP=$(tailscale ip -4 2>/dev/null) || exit 0
 
 ss -tln "( sport = :3493 )" 2>/dev/null | grep -q "$TS_IP:3493" && exit 0
 
+# Never bounce upsd while upsmon is connected: the broken-pipe disconnect can
+# skip DEADTIME and go straight to SHUTDOWNCMD — a real poweroff (2026-07-02
+# incident; see docker/CLAUDE.md restart-danger bullet). Same stop/start
+# wrapper as nut-apt-hook; the trap guarantees nut-monitor comes back even if
+# the nut-server restart fails.
+STOPPED_MONITOR=0
+if systemctl is-active --quiet nut-monitor.service; then
+    systemctl stop nut-monitor.service
+    STOPPED_MONITOR=1
+fi
+trap 'if [ "$STOPPED_MONITOR" = 1 ]; then systemctl start nut-monitor.service; fi' EXIT
+
 systemctl restart nut-server.service
