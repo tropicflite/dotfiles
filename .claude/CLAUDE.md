@@ -35,7 +35,7 @@
 
 # Stack
 
-26 Docker containers including Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent,
+27 Docker containers including Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent,
 Pi-hole, Immich, Homepage, Uptime Kuma. Most services are exposed via tsdproxy
 on per-service Tailscale hostnames; Tailscale Serve is only used directly for
 Homepage (root domain, :443) and the Drive Temps API (:7777). ProtonVPN via
