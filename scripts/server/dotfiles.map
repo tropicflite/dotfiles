@@ -116,7 +116,9 @@ copy     dotfiles  scripts/server/docker-health-monitor.service           /etc/s
 copy     dotfiles  scripts/server/wg-watchdog.service                     /etc/systemd/system/wg-watchdog.service
 copy     dotfiles  scripts/server/qbt-natpmp-renew.service                /etc/systemd/system/qbt-natpmp-renew.service
 copy     dotfiles  scripts/server/healthcheck-ping.service                /etc/systemd/system/healthcheck-ping.service
+copy     dotfiles  scripts/server/healthcheck-ping.timer                  /etc/systemd/system/healthcheck-ping.timer
 copy     dotfiles  scripts/server/router-stats.service                    /etc/systemd/system/router-stats.service
+copy     dotfiles  scripts/server/router-stats.timer                      /etc/systemd/system/router-stats.timer
 copy     dotfiles  scripts/server/router-stats-http.service                /etc/systemd/system/router-stats-http.service
 copy     dotfiles  scripts/server/ups-charge-log.service                   /etc/systemd/system/ups-charge-log.service
 copy     dotfiles  scripts/server/ups-charge-log.timer                     /etc/systemd/system/ups-charge-log.timer

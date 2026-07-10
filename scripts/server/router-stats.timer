@@ -1,0 +1,9 @@
+[Unit]
+Description=Fetch router stats every minute
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+
+[Install]
+WantedBy=timers.target
