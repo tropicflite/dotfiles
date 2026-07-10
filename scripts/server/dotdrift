@@ -6,7 +6,13 @@
 #   copy        - content diff between repo file and its installed copy
 #   copy-secret - same, but repo copy has secrets deliberately redacted, so
 #                 content will never match live; existence is checked instead
-#   symlink     - installed path must be a symlink resolving to the repo file
+#   symlink     - installed path must be a symlink resolving to the repo file;
+#                 if it installs into /usr/local/bin, the repo target must
+#                 also carry an exec bit — a 644 target means the unit/cron
+#                 calling it dies with 203/EXEC while the link itself looks
+#                 fine (two real incidents: tailscale-ready-selfheal.sh
+#                 2026-07-09, nut-tailscale-listen.sh 2026-07-10). copy rows
+#                 into /usr/local/bin get the same exec-bit assertion.
 #   crontab     - repo file vs that user's live `crontab -l` (comments/blank
 #                 lines stripped from both sides before comparing, since
 #                 `crontab -l` prepends an auto-generated header the repo
@@ -75,6 +81,12 @@ while read -r type owner repo_path install_path; do
             else
                 add_pending "SKIP     $install_path unreadable (no perm, sudo -n failed)"
             fi
+            # Anything installed into a bin dir must be executable (perm-bit
+            # test only — needs no read access, works on root-owned files).
+            if [[ "$install_path" == /usr/local/bin/* && -e "$install_path" ]] && \
+               [[ -z $(find -L "$install_path" -maxdepth 0 -perm /111 2>/dev/null) ]]; then
+                add_drift "NO-EXEC  $install_path  (installed copy has no exec bit — callers get 203/EXEC or 'command not found')"
+            fi
             ;;
         symlink)
             KNOWN_LOCALBIN[$(basename "$install_path")]=1
@@ -83,6 +95,9 @@ while read -r type owner repo_path install_path; do
                 add_drift "NOT-LINK $install_path  should symlink to $repo_path"
             elif [[ "$(readlink -f "$install_path" 2>/dev/null)" != "$expected" ]]; then
                 add_drift "BAD-LINK $install_path -> $(readlink "$install_path")  (expected $repo_path)"
+            elif [[ "$install_path" == /usr/local/bin/* ]] && \
+                 [[ -z $(find -L "$install_path" -maxdepth 0 -perm /111 2>/dev/null) ]]; then
+                add_drift "NO-EXEC  $install_path  (repo target $repo_path has no exec bit — callers get 203/EXEC or 'command not found')"
             fi
             ;;
         crontab)
