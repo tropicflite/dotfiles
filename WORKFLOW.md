@@ -151,6 +151,18 @@ Scripts live in `~/dotfiles/scripts/` with per-machine subdirectories:
 
 Scripts are symlinked into PATH using `scripts-link` (in `scripts/fleet/`). Run `scripts-link` after adding a new script to make it executable from anywhere.
 
+### Laptop/Mini cron jobs (untracked — no dotdrift equivalent)
+
+`dotfiles.map`/`dotdrift` only cover the server (see `CLAUDE.md`'s Drift Detection
+section). Laptop and mini have no drift-detection mechanism at all, so any
+crontab entry installed on them is pure live state — if it's ever wiped
+(`crontab -r`, a reinstall), nothing will notice automatically. Documented
+here instead so a rebuild doesn't lose them silently:
+
+- **laptop, root crontab:** `*/2 * * * * /home/matt/bin/wifi-watchdog.sh`
+  (self-heals WiFi/Tailscale drops — see `scripts/laptop/wifi-watchdog.sh`
+  header for what it does and why. Installed 2026-07-11.)
+
 ## Claude Code Voice Mode (Desktop/WSL2)
 
 Voice mode works on desktop via a fake `arecord` wrapper at `scripts/desktop/arecord` (symlinked into `~/bin` by `scripts-link`).
