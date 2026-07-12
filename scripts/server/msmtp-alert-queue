@@ -71,7 +71,6 @@ NOW=$(date +%s)
         {
             echo "-----BEGIN ALERT-----"
             echo "Time: $(date -Is)"
-            echo "Subject: $SUBJECT"
             cat "$TMP"
             echo "-----END ALERT-----"
         } >> "$PENDING_FILE"
