@@ -8,7 +8,7 @@ EMAIL="nichols_matt@pm.me"
 notify_unhealthy() {
     local name="$1"
     local body="Container $name is unhealthy on $(hostname) at $(date). autoheal will attempt a restart."
-    printf "Subject: [server] Unhealthy container: %s\nTo: %s\nFrom: %s\n\nContainer %s is unhealthy on %s at %s.\n\nautoheal will attempt a restart. Run 'server-check' to verify recovery.\n" \
+    printf "Subject: [server] Unhealthy container: %s\nTo: %s\nFrom: %s\n\nContainer %s is unhealthy on %s at %s.\n\nautoheal will attempt a restart. Run 'server-health' to verify recovery.\n" \
         "$name" "$EMAIL" "$EMAIL" "$name" "$(hostname)" "$(date)" | \
         NTFY_PRIORITY=high NTFY_TAGS=warning NTFY_BODY="$body" /usr/local/bin/send-mail
 }
