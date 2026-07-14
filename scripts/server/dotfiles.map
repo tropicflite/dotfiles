@@ -150,3 +150,7 @@ exclude  distro       -  smartd.service
 exclude  distro       -  sshd.service
 exclude  distro       -  upsd.service
 exclude  distro       -  upsmon.service
+
+# --- $HOME-only scripts: already synced by scripts-link, no root install ---
+exclude  dotfiles  scripts/server/planned-shutdown  scripts-link
+exclude  dotfiles  scripts/server/planned-startup   scripts-link

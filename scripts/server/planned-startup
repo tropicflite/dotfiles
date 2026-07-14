@@ -1,0 +1,55 @@
+#!/bin/bash
+# Bring docker stacks back up after a planned-shutdown, and report status.
+# Usage: planned-startup
+set -uo pipefail
+
+HOSTNAME_SHORT=$(hostname)
+DOCKER=/home/matt/docker
+STATE_DIR=/home/matt/.local/state
+LOG="$STATE_DIR/planned-shutdown.log"
+STACKS_FILE="$STATE_DIR/planned-shutdown-stacks"
+
+mkdir -p "$STATE_DIR"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
+
+log "========== Planned Startup =========="
+
+STACKS=()
+if [ -s "$STACKS_FILE" ]; then
+    log "Bringing back stacks recorded from the last planned-shutdown:"
+    mapfile -t STACKS < "$STACKS_FILE"
+else
+    log "No planned-shutdown-stacks file found -- bringing up every stack under ${DOCKER}"
+    for dir in "$DOCKER"/*/; do
+        [ -f "${dir}docker-compose.yml" ] || continue
+        STACKS+=("$(basename "$dir")")
+    done
+fi
+
+FAILED=()
+for name in "${STACKS[@]}"; do
+    dir="$DOCKER/$name"
+    log "  starting ${name}..."
+    if ! (cd "$dir" && docker compose up -d); then
+        log "  ERROR: ${name} failed to start"
+        FAILED+=("$name")
+    fi
+done
+
+log "Waiting 15s for containers to settle before health check..."
+sleep 15
+
+UNHEALTHY=$(docker ps --filter "health=unhealthy" --format '{{.Names}}' | tr '\n' ' ')
+
+SUMMARY="Stacks started: ${#STACKS[@]}. Failed to start: ${#FAILED[@]}."
+[ "${#FAILED[@]}" -gt 0 ] && SUMMARY="${SUMMARY} Failed: ${FAILED[*]}."
+[ -n "$UNHEALTHY" ] && SUMMARY="${SUMMARY} Unhealthy: ${UNHEALTHY}."
+
+log "$SUMMARY"
+
+printf "Subject: [%s] Planned startup complete\n\n%s\n\nCheck 'docker ps' and Uptime Kuma for full status.\nNote: nut-server/tailscale-ready can take 1-2min to fully settle after boot (known pattern, self-heals via tailscale-ready-selfheal.timer).\n" \
+    "$HOSTNAME_SHORT" "$SUMMARY" \
+    | NTFY_PRIORITY=default NTFY_TAGS=white_check_mark NTFY_BODY="$SUMMARY" \
+      /usr/local/bin/send-mail
+
+rm -f "$STACKS_FILE"

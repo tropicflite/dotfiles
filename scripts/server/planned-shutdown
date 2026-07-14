@@ -1,0 +1,41 @@
+#!/bin/bash
+# Gracefully stop every docker stack and notify before shutting the host down.
+# For deliberate shutdowns (e.g. heat-wave breaker load reduction) -- NOT
+# triggered by NUT/UPS events, see upssched-cmd for the low-battery path.
+# Usage: planned-shutdown ["reason text"]
+# Companion: planned-startup (run after boot to bring stacks back up)
+set -uo pipefail
+
+REASON="${1:-heat wave: reducing electrical load}"
+HOSTNAME_SHORT=$(hostname)
+STOP_TIMEOUT=30
+DOCKER=/home/matt/docker
+STATE_DIR=/home/matt/.local/state
+LOG="$STATE_DIR/planned-shutdown.log"
+STACKS_FILE="$STATE_DIR/planned-shutdown-stacks"
+
+mkdir -p "$STATE_DIR"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
+
+log "========== Planned Shutdown Started =========="
+log "Reason: ${REASON}"
+
+printf "Subject: [%s] Planned shutdown starting\n\n%s is being shut down deliberately.\nReason: %s\nStarted: %s\n\nThis was a planned shutdown, not a crash or power failure.\nRun planned-startup after boot to bring docker stacks back up.\n" \
+    "$HOSTNAME_SHORT" "$HOSTNAME_SHORT" "$REASON" "$(date)" \
+    | NTFY_PRIORITY=high NTFY_TAGS=warning,electric_plug NTFY_BODY="Planned shutdown starting on ${HOSTNAME_SHORT}: ${REASON}" \
+      /usr/local/bin/send-mail
+
+: > "$STACKS_FILE"
+log "Stopping docker compose stacks (timeout ${STOP_TIMEOUT}s each)..."
+for dir in "$DOCKER"/*/; do
+    [ -f "${dir}docker-compose.yml" ] || continue
+    name=$(basename "$dir")
+    echo "$name" >> "$STACKS_FILE"
+    log "  stopping ${name}..."
+    if ! (cd "$dir" && docker compose stop -t "$STOP_TIMEOUT"); then
+        log "  WARNING: ${name} did not stop cleanly, continuing anyway"
+    fi
+done
+
+log "All stacks processed. Handing off to shutdown -h +1 (run 'sudo shutdown -c' within 1 min to abort)"
+sudo /sbin/shutdown -h +1 "${REASON}"
