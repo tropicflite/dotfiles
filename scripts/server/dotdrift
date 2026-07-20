@@ -26,7 +26,11 @@
 # this exact command), the check is skipped and noted rather than reported
 # as false drift.
 #
-# Alerts via send-mail only when something is found. Every run — cron or
+# Alerts via send-mail only when something is found, with BYPASS_DIGEST=1 so
+# it always arrives as its own standalone email — never silently absorbed
+# into a batched "[Server] Alert digest: N alert(s)..." email under a generic
+# subject (happened twice, 2026-07-10 and 2026-07-16, before either was
+# noticed; see feedback_dotdrift_digest_bypass memory). Every run — cron or
 # manual — logs to journald via `logger -t dotdrift` regardless of outcome
 # (journalctl -t dotdrift), including each individual finding line on drift,
 # not just a count: a manual run bypasses cron's >> /var/log/dotdrift.log
@@ -170,4 +174,5 @@ printf 'Subject: [server] dotdrift found drift\nTo: nichols_matt@pm.me\nFrom: ma
     NTFY_PRIORITY=default \
     NTFY_TAGS=warning \
     NTFY_BODY="dotdrift: ${COUNT} issue(s) found on $(hostname) — see email" \
+    BYPASS_DIGEST=1 \
     /usr/local/bin/send-mail

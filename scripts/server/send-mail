@@ -1,12 +1,26 @@
 #!/bin/bash
 # Single point of truth for server email + ntfy alerts.
 # Install: sudo cp ~/dotfiles/scripts/server/send-mail /usr/local/bin/send-mail && sudo chmod +x /usr/local/bin/send-mail
-# Usage: echo -e "Subject: ...\n\nbody" | [NTFY_PRIORITY=high] [NTFY_TAGS=warning] [NTFY_BODY="..."] /usr/local/bin/send-mail
+# Usage: echo -e "Subject: ...\n\nbody" | [NTFY_PRIORITY=high] [NTFY_TAGS=warning] [NTFY_BODY="..."] [BYPASS_DIGEST=1] /usr/local/bin/send-mail
+#
+# BYPASS_DIGEST=1 calls /usr/bin/msmtp directly instead of bare `msmtp`, so
+# the send can't be caught by the /usr/local/bin/msmtp alert-digest-queue
+# shim. Without it, whether an alert gets queued/batched depends entirely on
+# whether /usr/local/bin precedes /usr/bin in the caller's $PATH — true for
+# an interactive shell, false for cron (PATH=/usr/bin:/bin, confirmed
+# 2026-07-20), so the same script could get silently digest-wrapped or not
+# depending on who/what ran it. Use this for alerts that are rare and always
+# worth seeing standalone (e.g. dotdrift) rather than routine noise that's
+# fine getting batched.
 MAIL=$(cat)
 
 SUBJECT=$(printf '%s' "$MAIL" | grep -i '^Subject:' | head -1 | sed 's/^[Ss]ubject: *//' | tr -d '\r')
 
-printf '%s' "$MAIL" | msmtp nichols_matt@pm.me
+if [ -n "${BYPASS_DIGEST:-}" ]; then
+    printf '%s' "$MAIL" | /usr/bin/msmtp nichols_matt@pm.me
+else
+    printf '%s' "$MAIL" | msmtp nichols_matt@pm.me
+fi
 
 PRIORITY="${NTFY_PRIORITY:-default}"
 TAGS="${NTFY_TAGS:-package}"
