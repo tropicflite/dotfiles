@@ -37,6 +37,10 @@ iptables -t mangle -A TS_EXIT_MARK -d 100.64.0.0/10 -j RETURN
 iptables -t mangle -A TS_EXIT_MARK -d 192.168.50.0/24 -j RETURN
 iptables -t mangle -A TS_EXIT_MARK -d 10.0.0.0/24 -j RETURN
 iptables -t mangle -A TS_EXIT_MARK -j MARK --set-mark 0x200
+# Save mark 0x200 onto the connection (ctmark), restricted to that single bit
+# so it can't clobber ts-forward's own 0x40000/0xff0000 mark. Lets the kill
+# switch below flush stale connections by mark on the next wg0 up.
+iptables -t mangle -A TS_EXIT_MARK -j CONNMARK --save-mark --nfmask 0x200 --ctmask 0x200
 iptables -t mangle -D PREROUTING -i tailscale0 -j TS_EXIT_MARK 2>/dev/null || true
 iptables -t mangle -I PREROUTING 1 -i tailscale0 -j TS_EXIT_MARK
 ip rule del fwmark 0x200 lookup 200 2>/dev/null || true
@@ -65,6 +69,37 @@ iptables -t nat -I POSTROUTING 1 -s 172.25.0.0/24 -o wg0 -j MASQUERADE
 iptables -I FORWARD -i tailscale0 -o wg0 -j ACCEPT
 iptables -I FORWARD -i wg0 -o tailscale0 -j ACCEPT
 iptables -t nat -I POSTROUTING 1 -s 100.64.0.0/10 -o wg0 -j MASQUERADE
+
+# Exit-node hard kill switch: packets marked 0x200 (tailscale0-origin traffic
+# from TS_EXIT_MARK above) may only leave via wg0. Without this, if wg0's
+# interface disappears (watchdog bounce, crash, boot race) its route in
+# table 200 is flushed with it, the "fwmark 0x200 lookup 200" ip rule fails
+# to resolve, and the kernel falls through to the main table's real ISP
+# default (dev enp1s0). ts-forward's own ACCEPT (mark 0x40000/0xff0000) and
+# ts-postrouting's MASQUERADE don't check which interface the packet left
+# on — so without this rule, exit-node traffic wouldn't black-hole, it would
+# leak out with the real ISP IP. Must sit ahead of the jump to ts-forward,
+# or ts-forward's blanket ACCEPT wins the race and this rule is never
+# reached — but `tailscale up` re-inserts ts-forward at FORWARD position 1
+# itself (same race documented on the ip6tables REJECT rule below), which
+# would push a FORWARD-table-only copy behind it. Belt and suspenders like
+# that rule: one copy in FORWARD (covers the common case, also runs ahead of
+# DOCKER-USER/DOCKER-FORWARD), one copy inside ts-forward itself ahead of
+# its own MARK/ACCEPT (survives tailscaled reasserting position 1). Neither
+# copy is removed in wg0-down-extra.sh — same fail-closed philosophy as the
+# qBittorrent switch below.
+iptables -D FORWARD -m mark --mark 0x200 ! -o wg0 -j DROP 2>/dev/null || true
+iptables -I FORWARD 1 -m mark --mark 0x200 ! -o wg0 -j DROP
+iptables -D ts-forward -m mark --mark 0x200 ! -o wg0 -j DROP 2>/dev/null || true
+iptables -I ts-forward 1 -m mark --mark 0x200 ! -o wg0 -j DROP
+
+# Flush any conntrack entries still carrying the 0x200 connmark from before
+# this run (e.g. a connection that started leaking out enp1s0 during the gap
+# before this script re-ran). The DROP above already blocks such packets on
+# their very next FORWARD pass — conntrack ESTABLISHED state doesn't skip
+# per-packet routing/filtering — but this clears stale state so nothing
+# lingers half-NATed against the wrong interface.
+conntrack -D -m 0x200 2>/dev/null || true
 
 # qBittorrent hard kill switch: packets from the qbittorrent bridge (172.27.0.0/24)
 # may only leave via wg0. If wg0 is down the kernel drops them immediately, closing
