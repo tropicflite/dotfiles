@@ -102,6 +102,9 @@ sync_path "$DOCKER/ntfy/data" ntfy
 log "claude memory (institutional memory notes, no git/other backup; found unbacked-up 2026-07-10)..."
 sync_path /home/matt/.claude/projects/-home-matt/memory claude-memory
 
+log "radicale collections (contacts + calendar data; users htpasswd covered separately by secrets-backup, found unbacked-up 2026-07-22)..."
+sync_path /mnt/data/radicale/collections radicale-collections
+
 log "cleaning up .deleted-* dirs older than 30 days..."
 find "$BACKUP_BASE" -maxdepth 1 -name '.deleted-*' -mtime +30 -exec rm -rf {} +
 
