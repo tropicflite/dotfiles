@@ -16,6 +16,12 @@ LOG_TAG="vpn-diskcheck"
 # actually fine). /tmp persists for the whole day regardless of login state.
 RUNTIME_DIR="/tmp"
 
+# Set by the VPN-down/recovery branches below so the crash trap can report
+# whether the kill switch actually ran before the script died, instead of guessing.
+VPN_DOWN_THIS_RUN=0
+VPN_RECOVERY_THIS_RUN=0
+KILL_SWITCH_ACTION="n/a"
+
 send_email() {
     local subject="$1"
     local body="$2"
@@ -31,9 +37,18 @@ send_ntfy() {
 # ── Crash trap ───────────────────────────────────────────────────────────────
 trap '_ec=$?
 if [ "$_ec" -ne 0 ]; then
-    /usr/local/bin/send-alert "[server] vpn-diskcheck crashed" \
-        "vpn-diskcheck.sh crashed (exit ${_ec}) on $(hostname) at $(date). VPN kill switch may not have fired." \
-        high rotating_light
+    if [ "$VPN_DOWN_THIS_RUN" -eq 1 ] && [ "$KILL_SWITCH_ACTION" = "stopped" ]; then
+        _msg="vpn-diskcheck.sh crashed (exit ${_ec}) on $(hostname) at $(date) AFTER qBittorrent was stopped — traffic is protected, but a later check (route/disk/alert) failed. Investigate."
+    elif [ "$VPN_DOWN_THIS_RUN" -eq 1 ]; then
+        _msg="vpn-diskcheck.sh crashed (exit ${_ec}) on $(hostname) at $(date) BEFORE qBittorrent could be stopped — kill switch did NOT fire, traffic may be unprotected. Check sudo/systemctl."
+    elif [ "$VPN_RECOVERY_THIS_RUN" -eq 1 ] && [ "$KILL_SWITCH_ACTION" = "started" ]; then
+        _msg="vpn-diskcheck.sh crashed (exit ${_ec}) on $(hostname) at $(date) AFTER qBittorrent was restarted post-VPN-recovery — a later check (route/disk/alert) failed. Investigate."
+    elif [ "$VPN_RECOVERY_THIS_RUN" -eq 1 ]; then
+        _msg="vpn-diskcheck.sh crashed (exit ${_ec}) on $(hostname) at $(date) BEFORE qBittorrent could be restarted after VPN recovery — it is likely still stopped. Check sudo/systemctl."
+    else
+        _msg="vpn-diskcheck.sh crashed (exit ${_ec}) on $(hostname) at $(date); VPN was already up/down with no state change this run, so the kill switch was not involved. Check the route/disk checks or send-alert connectivity."
+    fi
+    /usr/local/bin/send-alert "[server] vpn-diskcheck crashed" "$_msg" high rotating_light
 fi' EXIT
 
 # ── VPN Check ────────────────────────────────────────────────────────────────
@@ -45,7 +60,9 @@ if ping -c 2 -W 5 -I wg0 "$VPN_TEST_IP" > /dev/null 2>&1; then
     if [[ -f "$VPN_FLAG" ]]; then
         # Was down before, now recovered
         rm -f "$VPN_FLAG"
+        VPN_RECOVERY_THIS_RUN=1
         sudo systemctl start qbittorrent-compose.service
+        KILL_SWITCH_ACTION="started"
         send_email "VPN Recovered" \
             "WireGuard VPN is back up on $(hostname) at $(date)."
         send_ntfy "[server] VPN recovered" \
@@ -56,8 +73,10 @@ else
     if [[ ! -f "$VPN_FLAG" ]]; then
         # First time detecting it down — alert and kill qBittorrent
         touch "$VPN_FLAG"
+        VPN_DOWN_THIS_RUN=1
         logger -t "$LOG_TAG" "VPN down — stopping qbittorrent"
         sudo systemctl stop qbittorrent-compose.service
+        KILL_SWITCH_ACTION="stopped"
         send_email "VPN DOWN — qBittorrent stopped" \
             "WireGuard VPN is DOWN on $(hostname) at $(date).\n\nqBittorrent has been stopped to prevent unprotected traffic.\n\nCheck wg0 and wg-watchdog status."
         send_ntfy "[server] VPN DOWN — qBittorrent stopped" \
