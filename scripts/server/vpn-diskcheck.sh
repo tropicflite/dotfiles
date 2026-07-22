@@ -45,7 +45,7 @@ if ping -c 2 -W 5 -I wg0 "$VPN_TEST_IP" > /dev/null 2>&1; then
     if [[ -f "$VPN_FLAG" ]]; then
         # Was down before, now recovered
         rm -f "$VPN_FLAG"
-        systemctl start qbittorrent-compose.service
+        sudo systemctl start qbittorrent-compose.service
         send_email "VPN Recovered" \
             "WireGuard VPN is back up on $(hostname) at $(date)."
         send_ntfy "[server] VPN recovered" \
@@ -57,7 +57,7 @@ else
         # First time detecting it down — alert and kill qBittorrent
         touch "$VPN_FLAG"
         logger -t "$LOG_TAG" "VPN down — stopping qbittorrent"
-        systemctl stop qbittorrent-compose.service
+        sudo systemctl stop qbittorrent-compose.service
         send_email "VPN DOWN — qBittorrent stopped" \
             "WireGuard VPN is DOWN on $(hostname) at $(date).\n\nqBittorrent has been stopped to prevent unprotected traffic.\n\nCheck wg0 and wg-watchdog status."
         send_ntfy "[server] VPN DOWN — qBittorrent stopped" \
