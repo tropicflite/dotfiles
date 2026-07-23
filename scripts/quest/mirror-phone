@@ -1,0 +1,33 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Mirror phone's screen onto Quest via Termux:X11 + scrcpy over wireless adb.
+# Usage: mirror-phone <port>            (uses phone's usual Tailscale IP 100.82.1.81)
+#        mirror-phone <ip:port>         (override, e.g. different device/IP)
+#
+# <port> comes from the phone's Settings > Developer options > Wireless
+# debugging screen — it changes every time wireless debugging is toggled,
+# so it can't be hardcoded.
+
+if [ -z "$1" ]; then
+  echo "Usage: mirror-phone <port|ip:port>"
+  echo "Get the current port from the phone's Settings > Developer options > Wireless debugging screen."
+  exit 1
+fi
+
+case "$1" in
+  *:*) TARGET="$1" ;;
+  *)   TARGET="100.82.1.81:$1" ;;
+esac
+
+adb kill-server >/dev/null 2>&1
+pkill -f "termux-x11 :0" >/dev/null 2>&1
+sleep 1
+
+nohup termux-x11 :0 >"$PREFIX/tmp/x11.log" 2>&1 &
+disown
+sleep 1
+
+am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
+sleep 1
+
+adb connect "$TARGET"
+DISPLAY=:0 scrcpy --no-audio -s "$TARGET"
