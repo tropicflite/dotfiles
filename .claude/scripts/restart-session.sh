@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Kills a claude process and respawns `cld` in the given tmux pane, so the
+# Kills a claude process and respawns it in the given tmux pane, so the
 # next session gets its own auto-generated title instead of /clear muddying
 # the current session's topic history.
+#
+# Runs the full launch command directly rather than the `cld` alias: a
+# long-lived pane's shell only has whatever alias definition was cached at
+# shell startup, so if zshrc changes later (e.g. cld picks up a new flag),
+# a stale pane would silently respawn with the old behavior. Keep this in
+# sync with `alias cld` in zsh/.zshrc.local.{server,desktop}.
 # Usage: restart-session.sh <claude_pid> <tmux_pane>
 # Meant to be run backgrounded+disowned by the caller — this blocks ~2-8s.
 set -uo pipefail
@@ -23,4 +29,4 @@ if [[ "$alive" == "1" ]]; then
   sleep 1
 fi
 
-tmux send-keys -t "$pane" "cld" Enter
+tmux send-keys -t "$pane" "claude --dangerously-skip-permissions --remote-control" Enter
