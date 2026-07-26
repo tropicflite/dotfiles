@@ -8,5 +8,18 @@
     "mode": "hold"
   },
   "skipDangerousModePermissionPrompt": true,
-  "disableClaudeAiConnectors": true
+  "disableClaudeAiConnectors": true,
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/dotfiles/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

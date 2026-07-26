@@ -44,6 +44,8 @@ lns "$DOTFILES/.config/ranger" "$HOME/.config/ranger"
 lns "$DOTFILES/ssh/config" "$HOME/.ssh/config"
 lns "$DOTFILES/tmux/tmux.conf" "$HOME/.tmux.conf"
 lns "$DOTFILES/.claude/skills" "$HOME/.claude/skills"
+lns "$DOTFILES/.claude/commands" "$HOME/.claude/commands"
+lns "$DOTFILES/.claude/hooks" "$HOME/.claude/hooks"
 
 # Machine-specific .zshrc.local
 MACHINE=$("$DOTFILES/scripts/fleet/machine-name")
