@@ -19,6 +19,12 @@ ALERT_REPEAT_SECS=900 # while still down, re-alert at most this often (15 min)
 FAILOVER_THRESHOLD_SECS=300
 PROFILES_DIR="/etc/wireguard/profiles"
 FAILED_OVER_THIS_INCIDENT=0
+# Separate from FAILED_OVER_THIS_INCIDENT (which means "already switched
+# successfully, don't try again"): this only dedupes alerts for the three
+# ways the failover *attempt itself* can go wrong, so each still retries
+# every cycle (in case a switch failure was transient) without re-alerting
+# every ~5min while the same underlying problem persists.
+FAILOVER_ISSUE_ALERTED_THIS_INCIDENT=0
 
 get_endpoint_ip() {
     # Read live rather than hardcode: wg-switch.sh can repoint wg0.conf at a
@@ -55,12 +61,24 @@ failover_if_due() {
         failover) other="primary" ;;
         *)
             logger -t "$LOG_TAG" "Cannot determine current profile, skipping auto-failover"
+            if (( ! FAILOVER_ISSUE_ALERTED_THIS_INCIDENT )); then
+                send_ntfy "[server] wg0 auto-failover blocked" \
+                    "Endpoint down ${down_for}s but the active profile couldn't be determined (wg0.conf's PublicKey matches neither wg0-primary.conf nor wg0-failover.conf) — auto-failover skipped. Needs manual intervention: check /etc/wireguard/wg0.conf and /etc/wireguard/profiles/." \
+                    high rotating_light
+                FAILOVER_ISSUE_ALERTED_THIS_INCIDENT=1
+            fi
             return
             ;;
     esac
 
     if [[ ! -x /usr/local/bin/wg-switch.sh ]]; then
         logger -t "$LOG_TAG" "wg-switch.sh missing/not executable, skipping auto-failover"
+        if (( ! FAILOVER_ISSUE_ALERTED_THIS_INCIDENT )); then
+            send_ntfy "[server] wg0 auto-failover blocked" \
+                "Endpoint down ${down_for}s but /usr/local/bin/wg-switch.sh is missing or not executable — auto-failover skipped. Needs manual intervention." \
+                high rotating_light
+            FAILOVER_ISSUE_ALERTED_THIS_INCIDENT=1
+        fi
         return
     fi
 
@@ -83,6 +101,12 @@ failover_if_due() {
         CUR_BACKOFF=$BASE_SLEEP
     else
         logger -t "$LOG_TAG" "wg-switch.sh $other failed"
+        if (( ! FAILOVER_ISSUE_ALERTED_THIS_INCIDENT )); then
+            send_ntfy "[server] wg0 auto-failover attempt failed" \
+                "Endpoint down ${down_for}s; attempted to switch to the $other profile but wg-switch.sh exited non-zero. wg0 may be in an inconsistent state — check manually (sudo wg show wg0, journalctl -t wg-switch)." \
+                high rotating_light
+            FAILOVER_ISSUE_ALERTED_THIS_INCIDENT=1
+        fi
     fi
 }
 
@@ -144,6 +168,7 @@ record_recovery() {
     CONSEC_FAILS=0
     CUR_BACKOFF=$BASE_SLEEP
     FAILED_OVER_THIS_INCIDENT=0
+    FAILOVER_ISSUE_ALERTED_THIS_INCIDENT=0
 }
 
 while true; do
