@@ -2,7 +2,7 @@
 alias clip='tee /dev/tty | osc52-copy'
 alias ruk='~/bin/reset-uptime-kuma.sh'
 alias cl='claude'
-alias cld='claude --dangerously-skip-permissions'
+alias cld='claude --dangerously-skip-permissions --remote-control'
 alias cdk='cd ~/docker'
 clipf() { cat "${1:--}" > /tmp/clip.txt && ssh -T phone "rm -f ~/storage/downloads/clip.txt && cat > ~/storage/downloads/clip.txt" < /tmp/clip.txt; rm -f /tmp/clip.txt; }
 # Tailscale (server-specific with hostname flag)

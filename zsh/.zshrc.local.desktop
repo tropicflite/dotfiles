@@ -1,4 +1,5 @@
 # Desktop-specific config (WSL2)
+alias cld='claude --dangerously-skip-permissions --remote-control'
 # Tailscale (runs on Windows, not in WSL2)
 alias tsstatus='echo "Tailscale: check Windows system tray"'
 # Desktop-specific locale
