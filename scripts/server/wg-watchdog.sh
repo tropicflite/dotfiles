@@ -153,7 +153,7 @@ current_profile() {
 failover_if_due() {
     local now down_for other
     now=$(date +%s)
-    down_for=$(( now - INCIDENT_START ))
+    down_for=$(( now - TUNNEL_INCIDENT_START ))
     (( down_for < FAILOVER_THRESHOLD_SECS )) && return
     (( FAILED_OVER_THIS_INCIDENT )) && return
 
@@ -197,8 +197,9 @@ failover_if_due() {
         # Reset the incident/backoff bookkeeping so the new endpoint is
         # monitored fresh, without emitting a recovery alert for what was
         # never actually a success against the old endpoint.
-        CUR_FAIL_TYPE=""
-        CONSEC_FAILS=0
+        TUNNEL_FAIL_TYPE=""
+        TUNNEL_CONSEC_FAILS=0
+        TUNNEL_BACKOFF=$BASE_SLEEP
         CUR_BACKOFF=$BASE_SLEEP
     else
         logger -t "$LOG_TAG" "wg-switch.sh $other failed"
@@ -225,51 +226,78 @@ send_ntfy() {
 # forces a full tailscaled rebind each time, and spams an alert per attempt.
 # Back off the retry interval while a given failure persists, and throttle
 # alerts to one on onset + at most one per ALERT_REPEAT_SECS while it continues.
-CUR_FAIL_TYPE=""
-CONSEC_FAILS=0
-INCIDENT_START=0
-LAST_ALERT=0
+#
+# Tracked per channel (TUNNEL vs TS), not in one shared slot: the tunnel and
+# Tailscale coordination checks are independent (see HEALTH_STRIKE_COUNT /
+# TS_STRIKE_COUNT above), but a single shared CUR_FAIL_TYPE meant a failure
+# confirmed on one channel silently overwrote a still-open incident on the
+# other — losing its recovery alert and down-duration entirely. CUR_BACKOFF
+# stays a single loop-pacing variable, set explicitly from the acting
+# channel's backoff at each call site below.
+TUNNEL_FAIL_TYPE=""
+TUNNEL_CONSEC_FAILS=0
+TUNNEL_INCIDENT_START=0
+TUNNEL_LAST_ALERT=0
+TUNNEL_BACKOFF=$BASE_SLEEP
+
+TS_FAIL_TYPE=""
+TS_CONSEC_FAILS=0
+TS_INCIDENT_START=0
+TS_LAST_ALERT=0
+TS_BACKOFF=$BASE_SLEEP
+
 CUR_BACKOFF=$BASE_SLEEP
 
 record_failure() {
-    local type="$1" title="$2" body="$3"
+    local channel="$1" type="$2" title="$3" body="$4"
+    local -n fail_type="${channel}_FAIL_TYPE"
+    local -n consec="${channel}_CONSEC_FAILS"
+    local -n incident_start="${channel}_INCIDENT_START"
+    local -n last_alert="${channel}_LAST_ALERT"
+    local -n backoff="${channel}_BACKOFF"
     local now
     now=$(date +%s)
 
-    if [[ "$CUR_FAIL_TYPE" != "$type" ]]; then
-        CUR_FAIL_TYPE="$type"
-        CONSEC_FAILS=0
-        INCIDENT_START=$now
-        CUR_BACKOFF=$BASE_SLEEP
+    if [[ "$fail_type" != "$type" ]]; then
+        fail_type="$type"
+        consec=0
+        incident_start=$now
+        backoff=$BASE_SLEEP
     fi
-    CONSEC_FAILS=$((CONSEC_FAILS + 1))
+    consec=$((consec + 1))
 
-    if [[ $CONSEC_FAILS -eq 1 ]]; then
+    if [[ $consec -eq 1 ]]; then
         send_ntfy "$title" "$body"
-        LAST_ALERT=$now
-    elif (( now - LAST_ALERT >= ALERT_REPEAT_SECS )); then
-        local down_for=$(( (now - INCIDENT_START) / 60 ))
-        send_ntfy "$title (still down)" "$body Still failing after $CONSEC_FAILS attempts, down ~${down_for}m."
-        LAST_ALERT=$now
+        last_alert=$now
+    elif (( now - last_alert >= ALERT_REPEAT_SECS )); then
+        local down_for=$(( (now - incident_start) / 60 ))
+        send_ntfy "$title (still down)" "$body Still failing after $consec attempts, down ~${down_for}m."
+        last_alert=$now
     fi
 
-    CUR_BACKOFF=$(( CUR_BACKOFF * 2 ))
-    (( CUR_BACKOFF > MAX_BACKOFF )) && CUR_BACKOFF=$MAX_BACKOFF
+    backoff=$(( backoff * 2 ))
+    (( backoff > MAX_BACKOFF )) && backoff=$MAX_BACKOFF
 }
 
 record_recovery() {
-    local title="$1"
-    if [[ -n "$CUR_FAIL_TYPE" && $CONSEC_FAILS -gt 0 ]]; then
+    local channel="$1" title="$2"
+    local -n fail_type="${channel}_FAIL_TYPE"
+    local -n consec="${channel}_CONSEC_FAILS"
+    local -n incident_start="${channel}_INCIDENT_START"
+    local -n backoff="${channel}_BACKOFF"
+    if [[ -n "$fail_type" && $consec -gt 0 ]]; then
         local now down_for
         now=$(date +%s)
-        down_for=$(( now - INCIDENT_START ))
-        send_ntfy "$title" "Recovered after $CONSEC_FAILS attempts, down $(( down_for / 60 ))m $(( down_for % 60 ))s." default white_check_mark
+        down_for=$(( now - incident_start ))
+        send_ntfy "$title" "Recovered after $consec attempts, down $(( down_for / 60 ))m $(( down_for % 60 ))s." default white_check_mark
     fi
-    CUR_FAIL_TYPE=""
-    CONSEC_FAILS=0
-    CUR_BACKOFF=$BASE_SLEEP
-    FAILED_OVER_THIS_INCIDENT=0
-    FAILOVER_ISSUE_ALERTED_THIS_INCIDENT=0
+    fail_type=""
+    consec=0
+    backoff=$BASE_SLEEP
+    if [[ "$channel" == "TUNNEL" ]]; then
+        FAILED_OVER_THIS_INCIDENT=0
+        FAILOVER_ISSUE_ALERTED_THIS_INCIDENT=0
+    fi
 }
 
 while true; do
@@ -279,7 +307,8 @@ while true; do
     if ! ip link show "$WG_IFACE" &>/dev/null; then
         logger -t "$LOG_TAG" "wg0 missing, bringing interface back up"
         wg-quick down "$WG_IFACE" 2>/dev/null; wg-quick up "$WG_IFACE"
-        record_failure "wg0 interface missing" "[server] wg0 interface missing — bounced" "wg0 interface was missing; brought back up at $(date)."
+        record_failure TUNNEL "wg0 interface missing" "[server] wg0 interface missing — bounced" "wg0 interface was missing; brought back up at $(date)."
+        CUR_BACKOFF=$TUNNEL_BACKOFF
         sleep 15
         continue
     fi
@@ -292,12 +321,13 @@ while true; do
     # Decide whether this cycle must prove itself with real traffic rather than
     # accepting a fresh handshake. See the DATAPLANE_EVERY_N comment at the top
     # and tunnel_healthy() for why the strike-count condition is required.
-    # `-n "$CUR_FAIL_TYPE"` is what makes RECOVERY honest: after a bounce that
-    # did not actually fix things, the countdown has been reset, so without it
-    # the very next cycle would accept a fresh handshake, call the tunnel
-    # healthy and emit a "wg0 back up" alert while traffic was still dead.
-    # While any incident is unresolved, recovery must be proven by real egress.
-    if (( DATAPLANE_COUNTDOWN <= 0 || HEALTH_STRIKE_COUNT > 0 )) || [[ -n "$CUR_FAIL_TYPE" ]]; then
+    # `-n "$TUNNEL_FAIL_TYPE"` is what makes RECOVERY honest: after a bounce
+    # that did not actually fix things, the countdown has been reset, so
+    # without it the very next cycle would accept a fresh handshake, call the
+    # tunnel healthy and emit a "wg0 back up" alert while traffic was still
+    # dead. While a tunnel incident is unresolved, recovery must be proven by
+    # real egress.
+    if (( DATAPLANE_COUNTDOWN <= 0 || HEALTH_STRIKE_COUNT > 0 )) || [[ -n "$TUNNEL_FAIL_TYPE" ]]; then
         FORCE_DATAPLANE=1
         DATAPLANE_COUNTDOWN=$DATAPLANE_EVERY_N
     else
@@ -306,8 +336,8 @@ while true; do
     fi
     if [[ -n "$CUR_ENDPOINT_IP" ]] && tunnel_healthy; then
         HEALTH_STRIKE_COUNT=0
-        [[ "$CUR_FAIL_TYPE" == "wg0 interface missing" || "$CUR_FAIL_TYPE" == "WireGuard endpoint unreachable" ]] && \
-            record_recovery "[server] wg0 back up"
+        [[ "$TUNNEL_FAIL_TYPE" == "wg0 interface missing" || "$TUNNEL_FAIL_TYPE" == "WireGuard endpoint unreachable" ]] && \
+            { record_recovery TUNNEL "[server] wg0 back up"; CUR_BACKOFF=$BASE_SLEEP; }
     else
         # Describe *which* signal failed. A fresh handshake with a dead data
         # plane is a materially different fault from an unreachable peer — it
@@ -329,7 +359,8 @@ while true; do
         fi
         logger -t "$LOG_TAG" "Tunnel unhealthy after ${HEALTH_STRIKES} consecutive checks (${FAIL_DETAIL}), bouncing wg0 interface"
         wg-quick down "$WG_IFACE" 2>/dev/null; wg-quick up "$WG_IFACE"
-        record_failure "WireGuard endpoint unreachable" "[server] WireGuard endpoint unreachable — bounced" "$ENDPOINT_NAME tunnel failed ${HEALTH_STRIKES} consecutive health checks through $WG_IFACE: ${FAIL_DETAIL}. Interface bounced at $(date)."
+        record_failure TUNNEL "WireGuard endpoint unreachable" "[server] WireGuard endpoint unreachable — bounced" "$ENDPOINT_NAME tunnel failed ${HEALTH_STRIKES} consecutive health checks through $WG_IFACE: ${FAIL_DETAIL}. Interface bounced at $(date)."
+        CUR_BACKOFF=$TUNNEL_BACKOFF
         HEALTH_STRIKE_COUNT=0
         failover_if_due
         sleep 15
@@ -340,8 +371,8 @@ while true; do
     if ! tailscale status 2>&1 | grep -q "coordination server" ; then
         # No coordination server complaint, Tailscale is healthy
         TS_STRIKE_COUNT=0
-        [[ "$CUR_FAIL_TYPE" == "Tailscale coordination unreachable" ]] && \
-            record_recovery "[server] Tailscale coordination back"
+        [[ "$TS_FAIL_TYPE" == "Tailscale coordination unreachable" ]] && \
+            { record_recovery TS "[server] Tailscale coordination back"; CUR_BACKOFF=$BASE_SLEEP; }
         continue
     fi
 
@@ -364,5 +395,6 @@ while true; do
     tailscale down
     tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server --advertise-exit-node
     TS_STRIKE_COUNT=0
-    record_failure "Tailscale coordination unreachable" "[server] Tailscale coordination unreachable — restarted" "Tailscale coordination server was unreachable for ${TS_STRIKES} consecutive checks; tailscaled bounced at $(date)."
+    record_failure TS "Tailscale coordination unreachable" "[server] Tailscale coordination unreachable — restarted" "Tailscale coordination server was unreachable for ${TS_STRIKES} consecutive checks; tailscaled bounced at $(date)."
+    CUR_BACKOFF=$TS_BACKOFF
 done

@@ -98,10 +98,14 @@ vpn_up() {
 if vpn_up; then
     # VPN is up
     if [[ -f "$VPN_FLAG" ]]; then
-        # Was down before, now recovered
-        rm -f "$VPN_FLAG"
+        # Was down before, now recovered. Flag is cleared only after the
+        # restart succeeds (2026-07-26) — clearing it first meant a failed
+        # systemctl start (which kills the script via set -e/EXIT trap)
+        # left the flag gone, so the next cron run would never retry
+        # restarting qBittorrent and it stayed stopped indefinitely.
         VPN_RECOVERY_THIS_RUN=1
         sudo systemctl start qbittorrent-compose.service
+        rm -f "$VPN_FLAG"
         KILL_SWITCH_ACTION="started"
         send_email "VPN Recovered" \
             "WireGuard VPN is back up on $(hostname) at $(date)."
@@ -111,11 +115,15 @@ if vpn_up; then
 else
     # VPN is down
     if [[ ! -f "$VPN_FLAG" ]]; then
-        # First time detecting it down — alert and kill qBittorrent
-        touch "$VPN_FLAG"
+        # First time detecting it down — alert and kill qBittorrent. Flag is
+        # touched only after the stop succeeds (2026-07-26) — touching it
+        # first meant a failed systemctl stop (which kills the script via
+        # set -e/EXIT trap) left the flag in place, so the next cron run
+        # would see "already handled" and never retry the kill switch.
         VPN_DOWN_THIS_RUN=1
         logger -t "$LOG_TAG" "VPN down — stopping qbittorrent"
         sudo systemctl stop qbittorrent-compose.service
+        touch "$VPN_FLAG"
         KILL_SWITCH_ACTION="stopped"
         send_email "VPN DOWN — qBittorrent stopped" \
             "WireGuard VPN is DOWN on $(hostname) at $(date).\n\nqBittorrent has been stopped to prevent unprotected traffic.\n\nCheck wg0 and wg-watchdog status."
