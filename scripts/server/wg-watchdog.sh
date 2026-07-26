@@ -8,6 +8,30 @@ BASE_SLEEP=30        # normal poll interval when healthy
 MAX_BACKOFF=300       # cap retry interval once a failure is confirmed persistent (5 min)
 ALERT_REPEAT_SECS=900 # while still down, re-alert at most this often (15 min)
 
+# Tunnel health check tuning (rewritten 2026-07-26 — see tunnel_healthy()).
+# HANDSHAKE_MAX_AGE: WireGuard rekeys every ~120s while traffic flows, and
+#   PersistentKeepalive=25 forces a handshake even when idle. 180s gives a
+#   full rekey interval of slack before we call a handshake stale.
+# HEALTH_STRIKES: consecutive confirmed failures required before bouncing.
+#   The old check had no strike rule at all, so a single lost probe pair was
+#   enough to tear down the interface.
+# STRIKE_SLEEP: extra gap between strikes. A strike iteration also pays the
+#   loop's own CUR_BACKOFF sleep, so at the healthy 30s poll interval three
+#   strikes cost roughly 80s of detection latency before a real fault is
+#   acted on — a deliberate trade against the old check's zero-latency,
+#   high-false-positive behaviour.
+HANDSHAKE_MAX_AGE=180
+HEALTH_STRIKES=3
+STRIKE_SLEEP=10
+HEALTH_STRIKE_COUNT=0
+# Probes address hard-coded IPs, never hostnames: Pi-hole itself egresses via
+# wg0, so a DNS-based probe could fail for reasons unrelated to the tunnel.
+# HTTPS rather than plain HTTP because only 1.1.1.1 serves port 80 — all three
+# of these resolvers present a valid cert for their own IP on 443 (verified
+# 2026-07-26). Any single target answering proves the data plane works, so one
+# host's outage can't masquerade as a tunnel fault.
+DATAPLANE_TARGETS=(https://1.1.1.1 https://8.8.8.8 https://9.9.9.9)
+
 # Auto-failover: after the primary endpoint has been continuously unreachable
 # this long, switch to the standby ProtonVPN profile instead of continuing to
 # retry the same dead endpoint. Chosen from the 2026-07-25 outage (2.5h flap,
@@ -32,6 +56,52 @@ get_endpoint_ip() {
     # mean the watchdog keeps pinging (and failing over away from) the wrong
     # server after a switch.
     grep -m1 '^Endpoint' "$WG_CONF" 2>/dev/null | sed -E 's/^Endpoint\s*=\s*([^:]+):.*/\1/'
+}
+
+handshake_age() {
+    # Seconds since the peer last completed a handshake; -1 if never.
+    local hs now
+    hs=$(wg show "$WG_IFACE" latest-handshakes 2>/dev/null | awk 'NR==1{print $2}')
+    if [[ -z "$hs" || "$hs" == "0" ]]; then echo -1; return; fi
+    now=$(date +%s)
+    echo $(( now - hs ))
+}
+
+dataplane_ok() {
+    local h
+    for h in "${DATAPLANE_TARGETS[@]}"; do
+        curl -s --interface "$WG_IFACE" --max-time 8 -o /dev/null "$h" && return 0
+    done
+    return 1
+}
+
+# Replaces the old `ping -c 2 -W 5 -I wg0 <endpoint>` check (2026-07-26).
+# That check was wrong in two independent ways and produced 71 spurious
+# teardowns in a single day (plus 125 ntfy alerts, 10 qBittorrent kill-switch
+# stop/start cycles, and a Migadu daily-cap hit):
+#
+#   1. Wrong target. It pinged the endpoint's PUBLIC IP *through the tunnel* —
+#      a hairpin back to the server's own outer address that Proton has no
+#      obligation to answer — and did it over ICMP, which is routinely
+#      deprioritised and rate-limited on path. Measured 4.5-13% loss to that
+#      target at a moment when 40/40 HTTPS fetches through the same tunnel
+#      succeeded and the handshake was fresh. It measured path ICMP policy,
+#      not tunnel health.
+#   2. No strike rule. `-c 2` means both probes had to survive; one bursty
+#      two-packet loss bounced wg0 immediately.
+#
+# The authoritative liveness signal is WireGuard's own handshake age: a
+# handshake younger than HANDSHAKE_MAX_AGE means the peer is cryptographically
+# proven to be answering us. Only when that looks stale do we spend a real
+# data-plane probe, and only HEALTH_STRIKES consecutive confirmed failures
+# trigger a bounce.
+tunnel_healthy() {
+    local age
+    age=$(handshake_age)
+    (( age >= 0 && age <= HANDSHAKE_MAX_AGE )) && return 0
+    # A stale handshake is necessary but not sufficient evidence of a fault,
+    # so confirm with real traffic before acting on it.
+    dataplane_ok
 }
 
 current_profile() {
@@ -183,19 +253,30 @@ while true; do
         continue
     fi
 
-    # Check if endpoint is reachable through the tunnel
+    # Tunnel health: handshake age first, data-plane probe only as a
+    # tie-breaker, and HEALTH_STRIKES consecutive failures before acting.
+    # An empty CUR_ENDPOINT_IP still counts as a fault — it means wg0.conf is
+    # missing or malformed, which failover_if_due needs to see.
     CUR_ENDPOINT_IP=$(get_endpoint_ip)
-    if [[ -z "$CUR_ENDPOINT_IP" ]] || ! ping -c 2 -W 5 -I "$WG_IFACE" "$CUR_ENDPOINT_IP" &>/dev/null; then
-        logger -t "$LOG_TAG" "Endpoint unreachable, bouncing wg0 interface"
+    if [[ -n "$CUR_ENDPOINT_IP" ]] && tunnel_healthy; then
+        HEALTH_STRIKE_COUNT=0
+        [[ "$CUR_FAIL_TYPE" == "wg0 interface missing" || "$CUR_FAIL_TYPE" == "WireGuard endpoint unreachable" ]] && \
+            record_recovery "[server] wg0 back up"
+    else
+        HEALTH_STRIKE_COUNT=$(( HEALTH_STRIKE_COUNT + 1 ))
+        if (( HEALTH_STRIKE_COUNT < HEALTH_STRIKES )); then
+            logger -t "$LOG_TAG" "Tunnel health check failed (strike ${HEALTH_STRIKE_COUNT}/${HEALTH_STRIKES}), re-checking"
+            sleep "$STRIKE_SLEEP"
+            continue
+        fi
+        logger -t "$LOG_TAG" "Tunnel unhealthy after ${HEALTH_STRIKES} consecutive checks, bouncing wg0 interface"
         wg-quick down "$WG_IFACE" 2>/dev/null; wg-quick up "$WG_IFACE"
-        record_failure "WireGuard endpoint unreachable" "[server] WireGuard endpoint unreachable — bounced" "$ENDPOINT_NAME endpoint unreachable through $WG_IFACE; interface bounced at $(date)."
+        record_failure "WireGuard endpoint unreachable" "[server] WireGuard endpoint unreachable — bounced" "$ENDPOINT_NAME tunnel failed ${HEALTH_STRIKES} consecutive health checks (stale handshake and no data plane through $WG_IFACE); interface bounced at $(date)."
+        HEALTH_STRIKE_COUNT=0
         failover_if_due
         sleep 15
         continue
     fi
-
-    [[ "$CUR_FAIL_TYPE" == "wg0 interface missing" || "$CUR_FAIL_TYPE" == "WireGuard endpoint unreachable" ]] && \
-        record_recovery "[server] wg0 back up"
 
     # Check if Tailscale can reach the coordination server
     if ! tailscale status 2>&1 | grep -q "coordination server" ; then

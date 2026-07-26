@@ -6,7 +6,16 @@ set -euo pipefail
 # Cron: */5 * * * * /home/matt/dotfiles/scripts/server/vpn-diskcheck.sh
 
 ALERT_EMAIL="nichols_matt@pm.me"
+# Still used by the routing check further down (`ip route get`), which asks
+# which interface traffic to this address would actually use. The VPN-up test
+# no longer pings it — see vpn_up().
 VPN_TEST_IP="1.1.1.1"
+# Data-plane probe targets for vpn_up(). Hard-coded IPs, never hostnames:
+# Pi-hole itself egresses via wg0, so a DNS-dependent probe could fail for
+# reasons unrelated to the tunnel. HTTPS rather than plain HTTP because only
+# 1.1.1.1 serves port 80; all three present a valid cert for their own IP.
+VPN_PROBE_URLS=(https://1.1.1.1 https://8.8.8.8 https://9.9.9.9)
+VPN_PROBE_ATTEMPTS=3
 DISK_THRESHOLD=85
 LOG_TAG="vpn-diskcheck"
 # /tmp, not /run/user/$(id -u) — the latter is torn down by systemd-logind
@@ -55,7 +64,38 @@ fi' EXIT
 
 VPN_FLAG="$RUNTIME_DIR/vpn_was_down"
 
-if ping -c 2 -W 5 -I wg0 "$VPN_TEST_IP" > /dev/null 2>&1; then
+# Replaces `ping -c 2 -W 5 -I wg0 1.1.1.1` (2026-07-26). That check measured
+# path ICMP policy, not tunnel health. 1.1.1.1 rate-limits echo aggressively —
+# 63% loss measured through this tunnel at a moment when 40/40 HTTPS fetches
+# through the same tunnel succeeded and the WireGuard handshake was fresh — and
+# requiring both of two probes to survive meant a single bursty loss read as a
+# total VPN failure. It false-fired 11 times on 2026-07-26 alone, each firing
+# stopping qBittorrent and sending an email, a direct contributor to hitting
+# the Migadu daily send cap. wg-watchdog.sh had the same bug, fixed same day.
+#
+# Deliberately still forced through the interface (--interface wg0), preserving
+# the original check's semantics: this tests whether the TUNNEL carries traffic,
+# NOT whether traffic uses it by default. The routing check further below is
+# what covers the latter, and the two must stay independent.
+#
+# Any one URL answering on any attempt proves the data plane works, so neither
+# a single host's outage nor a burst of packet loss can fake a VPN failure.
+# Worst case (genuine outage) this costs VPN_PROBE_ATTEMPTS * 3 * 8s of curl
+# timeout plus 2 sleeps ≈ 78s, well inside the 5-minute cron interval.
+vpn_up() {
+    local attempt url
+    for attempt in $(seq 1 "$VPN_PROBE_ATTEMPTS"); do
+        for url in "${VPN_PROBE_URLS[@]}"; do
+            curl -s --interface wg0 --max-time 8 -o /dev/null "$url" && return 0
+        done
+        if (( attempt < VPN_PROBE_ATTEMPTS )); then
+            sleep 3
+        fi
+    done
+    return 1
+}
+
+if vpn_up; then
     # VPN is up
     if [[ -f "$VPN_FLAG" ]]; then
         # Was down before, now recovered
@@ -86,7 +126,8 @@ else
 fi
 
 # ── VPN Routing Check ────────────────────────────────────────────────────────
-# The ping above tests the TUNNEL (-I wg0 forces it through). It does NOT test
+# The vpn_up() probe above tests the TUNNEL (--interface wg0 forces it
+# through, same as the ping it replaced). It does NOT test
 # whether traffic actually USES the tunnel: if the main-table default route via
 # wg0 is missing, the tunnel stays green while host + docker-bridge traffic
 # egresses via the ISP and qBittorrent sits dead behind the kill switch. This
