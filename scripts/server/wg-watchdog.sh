@@ -1,5 +1,5 @@
 #!/bin/bash
-ENDPOINT_IP="139.28.218.130"
+WG_CONF="/etc/wireguard/wg0.conf"
 ENDPOINT_NAME="ProtonVPN"
 WG_IFACE="wg0"
 LOG_TAG="wg-watchdog"
@@ -7,6 +7,84 @@ LOG_TAG="wg-watchdog"
 BASE_SLEEP=30        # normal poll interval when healthy
 MAX_BACKOFF=300       # cap retry interval once a failure is confirmed persistent (5 min)
 ALERT_REPEAT_SECS=900 # while still down, re-alert at most this often (15 min)
+
+# Auto-failover: after the primary endpoint has been continuously unreachable
+# this long, switch to the standby ProtonVPN profile instead of continuing to
+# retry the same dead endpoint. Chosen from the 2026-07-25 outage (2.5h flap,
+# endpoint was ISP/Proton-side and self-recovered) — long enough to not
+# fail over on a routine few-minute blip, short enough to cut a multi-hour
+# outage down dramatically. No auto-failback: switching back to primary once
+# it recovers is a manual call (`sudo wg-switch primary`) to avoid flapping
+# if the failed endpoint is intermittently flaky rather than fully down.
+FAILOVER_THRESHOLD_SECS=300
+PROFILES_DIR="/etc/wireguard/profiles"
+FAILED_OVER_THIS_INCIDENT=0
+
+get_endpoint_ip() {
+    # Read live rather than hardcode: wg-switch.sh can repoint wg0.conf at a
+    # different profile/endpoint entirely, and a stale hardcoded IP here would
+    # mean the watchdog keeps pinging (and failing over away from) the wrong
+    # server after a switch.
+    grep -m1 '^Endpoint' "$WG_CONF" 2>/dev/null | sed -E 's/^Endpoint\s*=\s*([^:]+):.*/\1/'
+}
+
+current_profile() {
+    # Distinguish primary vs failover by comparing the live peer PublicKey
+    # against each profile file, rather than tracking separate state that
+    # could drift from what's actually loaded.
+    local live_pubkey
+    live_pubkey=$(grep -m1 '^PublicKey' "$WG_CONF" 2>/dev/null)
+    if [[ -f "$PROFILES_DIR/wg0-primary.conf" ]] && grep -qF "$live_pubkey" "$PROFILES_DIR/wg0-primary.conf"; then
+        echo "primary"
+    elif [[ -f "$PROFILES_DIR/wg0-failover.conf" ]] && grep -qF "$live_pubkey" "$PROFILES_DIR/wg0-failover.conf"; then
+        echo "failover"
+    else
+        echo "unknown"
+    fi
+}
+
+failover_if_due() {
+    local now down_for other
+    now=$(date +%s)
+    down_for=$(( now - INCIDENT_START ))
+    (( down_for < FAILOVER_THRESHOLD_SECS )) && return
+    (( FAILED_OVER_THIS_INCIDENT )) && return
+
+    case "$(current_profile)" in
+        primary)  other="failover" ;;
+        failover) other="primary" ;;
+        *)
+            logger -t "$LOG_TAG" "Cannot determine current profile, skipping auto-failover"
+            return
+            ;;
+    esac
+
+    if [[ ! -x /usr/local/bin/wg-switch.sh ]]; then
+        logger -t "$LOG_TAG" "wg-switch.sh missing/not executable, skipping auto-failover"
+        return
+    fi
+
+    logger -t "$LOG_TAG" "Endpoint down ${down_for}s, auto-failing over to $other"
+    if /usr/local/bin/wg-switch.sh "$other"; then
+        # Latched until a genuine recovery (ping success) clears it in
+        # record_recovery — deliberately NOT reset here, so if the new
+        # profile also goes down we bounce/retry/alert on it same as before
+        # this feature existed, rather than flapping back and forth between
+        # the two endpoints every FAILOVER_THRESHOLD_SECS.
+        FAILED_OVER_THIS_INCIDENT=1
+        send_ntfy "[server] wg0 auto-failed over to $other" \
+            "Primary endpoint unreachable for ${down_for}s; switched to the $other ProtonVPN profile. Run 'sudo wg-switch primary' once the original is confirmed healthy — this does not fail back automatically." \
+            high rotating_light
+        # Reset the incident/backoff bookkeeping so the new endpoint is
+        # monitored fresh, without emitting a recovery alert for what was
+        # never actually a success against the old endpoint.
+        CUR_FAIL_TYPE=""
+        CONSEC_FAILS=0
+        CUR_BACKOFF=$BASE_SLEEP
+    else
+        logger -t "$LOG_TAG" "wg-switch.sh $other failed"
+    fi
+}
 
 send_ntfy() {
     local title="$1" body="$2" priority="${3:-default}" tags="${4:-warning}"
@@ -65,6 +143,7 @@ record_recovery() {
     CUR_FAIL_TYPE=""
     CONSEC_FAILS=0
     CUR_BACKOFF=$BASE_SLEEP
+    FAILED_OVER_THIS_INCIDENT=0
 }
 
 while true; do
@@ -80,10 +159,12 @@ while true; do
     fi
 
     # Check if endpoint is reachable through the tunnel
-    if ! ping -c 2 -W 5 -I "$WG_IFACE" "$ENDPOINT_IP" &>/dev/null; then
+    CUR_ENDPOINT_IP=$(get_endpoint_ip)
+    if [[ -z "$CUR_ENDPOINT_IP" ]] || ! ping -c 2 -W 5 -I "$WG_IFACE" "$CUR_ENDPOINT_IP" &>/dev/null; then
         logger -t "$LOG_TAG" "Endpoint unreachable, bouncing wg0 interface"
         wg-quick down "$WG_IFACE" 2>/dev/null; wg-quick up "$WG_IFACE"
         record_failure "WireGuard endpoint unreachable" "[server] WireGuard endpoint unreachable — bounced" "$ENDPOINT_NAME endpoint unreachable through $WG_IFACE; interface bounced at $(date)."
+        failover_if_due
         sleep 15
         continue
     fi

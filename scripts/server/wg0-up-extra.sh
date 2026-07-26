@@ -13,7 +13,13 @@
 #
 # DO NOT use source-based ip rules (from 100.64/10) — the server's own Tailscale IP
 # (100.65.250.53) is in that range; source routing breaks replies to all Tailscale peers.
-PROTON_ENDPOINT="139.28.218.130"
+#
+# PROTON_ENDPOINT is read from the live wg0.conf rather than hardcoded, since
+# wg-switch.sh (see wg0-primary/failover.conf under /etc/wireguard/profiles/)
+# can swap wg0.conf to a different ProtonVPN server/endpoint entirely. A
+# hardcoded value here was the exact foot-gun that broke routing during the
+# 2026-07-05 manual server swap (bypass route pinned to the old, now-wrong IP).
+PROTON_ENDPOINT=$(grep -m1 '^Endpoint' /etc/wireguard/wg0.conf | sed -E 's/^Endpoint\s*=\s*([^:]+):.*/\1/')
 LAN_GW="192.168.50.1"
 
 # Main-table routes — moved here from wg0.service ExecStart (2026-07-02) so that

@@ -55,6 +55,7 @@ symlink  dotfiles  scripts/server/wg0-down-extra.sh            /usr/local/bin/wg
 symlink  dotfiles  scripts/server/wg0-prestart.sh              /usr/local/bin/wg0-prestart.sh
 symlink  dotfiles  scripts/server/wg0-up-extra.sh              /usr/local/bin/wg0-up-extra.sh
 symlink  dotfiles  scripts/server/wg-watchdog.sh                /usr/local/bin/wg-watchdog.sh
+symlink  dotfiles  scripts/server/wg-switch.sh                  /usr/local/bin/wg-switch.sh
 symlink  dotfiles  scripts/server/qbt-natpmp-renew.sh           /usr/local/bin/qbt-natpmp-renew.sh
 symlink  dotfiles  scripts/server/fleet-update-digest           /usr/local/bin/fleet-update-digest
 symlink  dotfiles  scripts/server/nut-tailscale-listen.sh        /usr/local/bin/nut-tailscale-listen.sh
@@ -78,7 +79,14 @@ copy     dotfiles  server-configs/nut/nut-server.service.d/tailscale.conf  /etc/
 
 # --- other daemon config ---
 copy-secret dotfiles  server-configs/msmtprc                    /etc/msmtprc
-copy-secret dotfiles  server-configs/wg0.conf                    /etc/wireguard/wg0.conf
+# /etc/wireguard/wg0.conf itself is no longer independently tracked (added
+# 2026-07-26): it's a generated copy of whichever /etc/wireguard/profiles/
+# wg0-*.conf is currently active, written by wg-switch.sh. Tracking its
+# content separately just drifted silently (server-configs/wg0.conf sat
+# stale at CA#639 for weeks after the 2026-07-05 CA#221 swap, caught here).
+exclude  dotfiles  -                                             /etc/wireguard/wg0.conf
+copy-secret dotfiles  server-configs/wg0-primary.conf             /etc/wireguard/profiles/wg0-primary.conf
+copy-secret dotfiles  server-configs/wg0-failover.conf            /etc/wireguard/profiles/wg0-failover.conf
 copy     dotfiles  server-configs/99nut-safe-upgrade               /etc/apt/apt.conf.d/99nut-safe-upgrade
 copy     dotfiles  server-configs/99ntfy-reboot                     /etc/apt/apt.conf.d/99ntfy-reboot
 copy     dotfiles  server-configs/gitconfig                        /home/matt/.gitconfig
@@ -96,6 +104,7 @@ copy     dotfiles  server-configs/sudoers/smartctl              /etc/sudoers.d/s
 copy     dotfiles  server-configs/sudoers/matt-wg               /etc/sudoers.d/matt-wg
 copy     dotfiles  server-configs/sudoers/vpn-diag              /etc/sudoers.d/vpn-diag
 copy     dotfiles  server-configs/sudoers/dotdrift              /etc/sudoers.d/dotdrift
+copy     dotfiles  server-configs/sudoers/wg-switch              /etc/sudoers.d/wg-switch
 
 # --- crontabs ---
 crontab  dotfiles  server-configs/crontab                       matt

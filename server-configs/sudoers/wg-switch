@@ -1,0 +1,3 @@
+# Manual/backstop failover: swap the active ProtonVPN profile between
+# /etc/wireguard/profiles/wg0-primary.conf and wg0-failover.conf.
+matt ALL=(ALL) NOPASSWD: /usr/local/bin/wg-switch.sh primary, /usr/local/bin/wg-switch.sh failover
