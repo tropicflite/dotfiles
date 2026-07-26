@@ -24,6 +24,18 @@ HANDSHAKE_MAX_AGE=180
 HEALTH_STRIKES=3
 STRIKE_SLEEP=10
 HEALTH_STRIKE_COUNT=0
+# Periodic forced data-plane probe (added 2026-07-26, second pass).
+# Handshake-age-as-primary closed the false-POSITIVE problem but opened a
+# false-NEGATIVE one: if the peer keeps completing handshakes while dropping
+# actual traffic, a fresh handshake alone reads as healthy forever and the
+# watchdog never acts. Every DATAPLANE_EVERY_N cycles we therefore ignore the
+# handshake and require a real data-plane probe to pass. At BASE_SLEEP=30 that
+# is roughly every 5 minutes while healthy. DATAPLANE_COUNTDOWN starts at 0 so
+# the first check after startup is a forced probe — a watchdog restart is
+# exactly when confirming real egress is most worthwhile.
+DATAPLANE_EVERY_N=10
+DATAPLANE_COUNTDOWN=0
+FORCE_DATAPLANE=0
 # Same strike treatment for the Tailscale coordination check further down, with
 # its own counter: the two checks are independent and must not clear each
 # other's strikes. Kept as a separate knob from HEALTH_STRIKES so the tunnel
@@ -101,8 +113,21 @@ dataplane_ok() {
 # proven to be answering us. Only when that looks stale do we spend a real
 # data-plane probe, and only HEALTH_STRIKES consecutive confirmed failures
 # trigger a bounce.
+#
+# A fresh handshake proves the PEER is answering, not that TRAFFIC flows — the
+# two can diverge (peer completing handshakes while dropping or misrouting
+# payload). So when FORCE_DATAPLANE is set the handshake is ignored entirely
+# and only a real data-plane probe counts. The caller sets it every
+# DATAPLANE_EVERY_N cycles, and on every cycle while a failure is being
+# confirmed — without that second condition a periodic probe could never
+# accumulate strikes, because the intervening handshake-only cycles would
+# reset the counter to zero before it ever reached HEALTH_STRIKES.
 tunnel_healthy() {
     local age
+    if (( FORCE_DATAPLANE )); then
+        dataplane_ok
+        return
+    fi
     age=$(handshake_age)
     (( age >= 0 && age <= HANDSHAKE_MAX_AGE )) && return 0
     # A stale handshake is necessary but not sufficient evidence of a fault,
@@ -264,20 +289,47 @@ while true; do
     # An empty CUR_ENDPOINT_IP still counts as a fault — it means wg0.conf is
     # missing or malformed, which failover_if_due needs to see.
     CUR_ENDPOINT_IP=$(get_endpoint_ip)
+    # Decide whether this cycle must prove itself with real traffic rather than
+    # accepting a fresh handshake. See the DATAPLANE_EVERY_N comment at the top
+    # and tunnel_healthy() for why the strike-count condition is required.
+    # `-n "$CUR_FAIL_TYPE"` is what makes RECOVERY honest: after a bounce that
+    # did not actually fix things, the countdown has been reset, so without it
+    # the very next cycle would accept a fresh handshake, call the tunnel
+    # healthy and emit a "wg0 back up" alert while traffic was still dead.
+    # While any incident is unresolved, recovery must be proven by real egress.
+    if (( DATAPLANE_COUNTDOWN <= 0 || HEALTH_STRIKE_COUNT > 0 )) || [[ -n "$CUR_FAIL_TYPE" ]]; then
+        FORCE_DATAPLANE=1
+        DATAPLANE_COUNTDOWN=$DATAPLANE_EVERY_N
+    else
+        FORCE_DATAPLANE=0
+        DATAPLANE_COUNTDOWN=$(( DATAPLANE_COUNTDOWN - 1 ))
+    fi
     if [[ -n "$CUR_ENDPOINT_IP" ]] && tunnel_healthy; then
         HEALTH_STRIKE_COUNT=0
         [[ "$CUR_FAIL_TYPE" == "wg0 interface missing" || "$CUR_FAIL_TYPE" == "WireGuard endpoint unreachable" ]] && \
             record_recovery "[server] wg0 back up"
     else
+        # Describe *which* signal failed. A fresh handshake with a dead data
+        # plane is a materially different fault from an unreachable peer — it
+        # points at routing/egress rather than the tunnel itself — and the
+        # whole point of this session's work was that a misleading health
+        # signal is worse than none.
+        if [[ -z "$CUR_ENDPOINT_IP" ]]; then
+            FAIL_DETAIL="wg0.conf is missing or has no Endpoint= line"
+        elif (( FORCE_DATAPLANE )); then
+            FAIL_DETAIL="data-plane probe failed with handshake age $(handshake_age)s — peer may be handshaking while traffic is dropped or misrouted"
+        else
+            FAIL_DETAIL="handshake stale (age $(handshake_age)s) and data-plane probe failed"
+        fi
         HEALTH_STRIKE_COUNT=$(( HEALTH_STRIKE_COUNT + 1 ))
         if (( HEALTH_STRIKE_COUNT < HEALTH_STRIKES )); then
-            logger -t "$LOG_TAG" "Tunnel health check failed (strike ${HEALTH_STRIKE_COUNT}/${HEALTH_STRIKES}), re-checking"
+            logger -t "$LOG_TAG" "Tunnel health check failed (strike ${HEALTH_STRIKE_COUNT}/${HEALTH_STRIKES}): ${FAIL_DETAIL}"
             sleep "$STRIKE_SLEEP"
             continue
         fi
-        logger -t "$LOG_TAG" "Tunnel unhealthy after ${HEALTH_STRIKES} consecutive checks, bouncing wg0 interface"
+        logger -t "$LOG_TAG" "Tunnel unhealthy after ${HEALTH_STRIKES} consecutive checks (${FAIL_DETAIL}), bouncing wg0 interface"
         wg-quick down "$WG_IFACE" 2>/dev/null; wg-quick up "$WG_IFACE"
-        record_failure "WireGuard endpoint unreachable" "[server] WireGuard endpoint unreachable — bounced" "$ENDPOINT_NAME tunnel failed ${HEALTH_STRIKES} consecutive health checks (stale handshake and no data plane through $WG_IFACE); interface bounced at $(date)."
+        record_failure "WireGuard endpoint unreachable" "[server] WireGuard endpoint unreachable — bounced" "$ENDPOINT_NAME tunnel failed ${HEALTH_STRIKES} consecutive health checks through $WG_IFACE: ${FAIL_DETAIL}. Interface bounced at $(date)."
         HEALTH_STRIKE_COUNT=0
         failover_if_due
         sleep 15
