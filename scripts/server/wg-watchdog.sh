@@ -24,6 +24,12 @@ HANDSHAKE_MAX_AGE=180
 HEALTH_STRIKES=3
 STRIKE_SLEEP=10
 HEALTH_STRIKE_COUNT=0
+# Same strike treatment for the Tailscale coordination check further down, with
+# its own counter: the two checks are independent and must not clear each
+# other's strikes. Kept as a separate knob from HEALTH_STRIKES so the tunnel
+# and coordination checks can be tuned apart if one proves noisier.
+TS_STRIKES=3
+TS_STRIKE_COUNT=0
 # Probes address hard-coded IPs, never hostnames: Pi-hole itself egresses via
 # wg0, so a DNS-based probe could fail for reasons unrelated to the tunnel.
 # HTTPS rather than plain HTTP because only 1.1.1.1 serves port 80 — all three
@@ -281,13 +287,30 @@ while true; do
     # Check if Tailscale can reach the coordination server
     if ! tailscale status 2>&1 | grep -q "coordination server" ; then
         # No coordination server complaint, Tailscale is healthy
+        TS_STRIKE_COUNT=0
         [[ "$CUR_FAIL_TYPE" == "Tailscale coordination unreachable" ]] && \
             record_recovery "[server] Tailscale coordination back"
         continue
     fi
 
-    logger -t "$LOG_TAG" "Tailscale coordination server unreachable, restarting tailscaled"
+    # Strike rule added 2026-07-26, same reasoning as the tunnel check above and
+    # matching ssh-watchdog.sh's existing FAIL_COUNT/MAX_FAILS convention.
+    # `tailscale down`/`up` is not a free retry: it forces a full re-registration
+    # with control and re-inserts ts-forward at FORWARD position 1, churning the
+    # iptables rules wg0-up-extra.sh installs (documented race, see that script).
+    # A genuine 35s WAN blip on 2026-07-26 was enough to fire it, and the restart
+    # produced a knock-on spurious qBittorrent NAT-PMP down/recovered pair —
+    # the blip itself would have self-healed with no intervention at all.
+    TS_STRIKE_COUNT=$(( TS_STRIKE_COUNT + 1 ))
+    if (( TS_STRIKE_COUNT < TS_STRIKES )); then
+        logger -t "$LOG_TAG" "Tailscale coordination unreachable (strike ${TS_STRIKE_COUNT}/${TS_STRIKES}), re-checking"
+        sleep "$STRIKE_SLEEP"
+        continue
+    fi
+
+    logger -t "$LOG_TAG" "Tailscale coordination unreachable after ${TS_STRIKES} consecutive checks, restarting tailscaled"
     tailscale down
     tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server --advertise-exit-node
-    record_failure "Tailscale coordination unreachable" "[server] Tailscale coordination unreachable — restarted" "Tailscale coordination server was unreachable; tailscaled bounced at $(date)."
+    TS_STRIKE_COUNT=0
+    record_failure "Tailscale coordination unreachable" "[server] Tailscale coordination unreachable — restarted" "Tailscale coordination server was unreachable for ${TS_STRIKES} consecutive checks; tailscaled bounced at $(date)."
 done
