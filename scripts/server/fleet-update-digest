@@ -1,7 +1,8 @@
 #!/bin/bash
-# fleet-update-digest — one daily email+ntfy summarizing OS updates across
-# the whole fleet (server, mini, laptop, desktop, phone, quest), instead of
-# each machine notifying independently.
+# fleet-update-digest — checks OS updates across the whole fleet (server,
+# mini, laptop, desktop, phone, quest) once daily, instead of each machine
+# notifying independently. Silent on a clean run; only sends (email+ntfy)
+# when a machine doesn't upgrade as expected -- see the PROBLEM check below.
 #
 # Reads each machine's *today's* unattended-upgrades (or termux-upgrade) log
 # entries over SSH — server itself is read locally, never SSH to self.
@@ -84,19 +85,33 @@ for host in phone quest; do
     OUT+="$(fmt_termux_section "${host^^}" "$body")"$'\n'
 done
 
-SUBJECT="[Fleet] Daily update digest — $TODAY"
-printf '%s' "$OUT" | grep -q '^Reboot required: yes' && SUBJECT="$SUBJECT (reboot required somewhere)"
+# 2026-07-27: Matt only wants to hear about this when a machine *doesn't*
+# upgrade as expected -- assume success otherwise. "Not as expected" means:
+# unreachable, an ERROR in the log, the "could not confirm installed"
+# warning, or no unattended-upgrades/termux-upgrade run recorded at all today
+# (the exact silent-failure mode already seen once on mini, see
+# project_mini_shim_signed_unattended_upgrades_20260714 in memory). Reboot-
+# required is deliberately NOT a trigger here -- that's already its own
+# separate low-frequency nudge (ntfy-reboot-required), so this digest would
+# just be duplicating it.
+PROBLEM=false
+printf '%s' "$OUT" | grep -qE 'UNREACHABLE \(ssh failed or timed out\)|ERROR|WARNING: could not confirm these finished installing|No run recorded today' \
+    && PROBLEM=true
 
-PRIORITY="default"
-TAGS="package"
-printf '%s' "$OUT" | grep -q '^Reboot required: yes' && PRIORITY="high" && TAGS="rotating_light"
+if ! $PROBLEM; then
+    echo "$TODAY: all machines upgraded cleanly, nothing to report"
+    exit 0
+fi
+
+SUBJECT="[Fleet] Update digest — $TODAY (needs attention)"
+printf '%s' "$OUT" | grep -q '^Reboot required: yes' && SUBJECT="$SUBJECT, reboot required somewhere"
 
 # Deliberately bypasses /usr/local/bin/send-mail here: send-mail calls bare
 # `msmtp`, which resolves via $PATH to the alert-digest queue shim
 # (msmtp-alert-queue) — this digest would get folded into the next 15-min
 # alert-digest-flush under that pipeline's own combined subject, losing its
 # own identity and the reboot-required flag. This is already a controlled,
-# exactly-once-daily send with no duplicate-storm risk, so it goes straight
+# at-most-once-daily send with no duplicate-storm risk, so it goes straight
 # to the real msmtp instead. It still calls send-alert directly for ntfy
 # (same as send-mail does internally), so it counts toward the same 20/day
 # cap tracking in msmtp.log and shows up in the same ntfy topic.
@@ -106,4 +121,4 @@ printf '%s' "$OUT" | grep -q '^Reboot required: yes' && PRIORITY="high" && TAGS=
     printf '%s' "$OUT"
 } | /usr/bin/msmtp nichols_matt@pm.me
 
-/usr/local/bin/send-alert "$SUBJECT" "See email for the full fleet update digest." "$PRIORITY" "$TAGS"
+/usr/local/bin/send-alert "$SUBJECT" "See email for the full fleet update digest." high rotating_light
