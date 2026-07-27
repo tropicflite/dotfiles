@@ -86,16 +86,32 @@ for host in phone quest; do
 done
 
 # 2026-07-27: Matt only wants to hear about this when a machine *doesn't*
-# upgrade as expected -- assume success otherwise. "Not as expected" means:
-# unreachable, an ERROR in the log, the "could not confirm installed"
-# warning, or no unattended-upgrades/termux-upgrade run recorded at all today
-# (the exact silent-failure mode already seen once on mini, see
-# project_mini_shim_signed_unattended_upgrades_20260714 in memory). Reboot-
-# required is deliberately NOT a trigger here -- that's already its own
-# separate low-frequency nudge (ntfy-reboot-required), so this digest would
-# just be duplicating it.
+# upgrade as expected -- assume success otherwise. Deliberately narrow about
+# what counts as "not as expected", confirmed against a live (non-sending)
+# dry run before this shipped:
+#   - An ERROR in the log, or the "could not confirm installed" warning:
+#     always a real problem.
+#   - An apt host (server/mini/laptop/desktop) reachable but with no
+#     unattended-upgrades log entry at all today: the exact silent-failure
+#     mode already seen once on mini (project_mini_shim_signed_unattended_
+#     upgrades_20260714 in memory) -- worth catching if it recurs. Matched on
+#     the exact fmt_section fallback string so it can't accidentally match
+#     the termux one below.
+#   - Plain UNREACHABLE (ssh failed/timed out) is NOT a trigger for anyone --
+#     that's always been "probably asleep", by original design, not an error.
+#   - Termux's "No run recorded today (or unreachable)" is NOT a trigger
+#     either: it can't distinguish quest being routinely powered off (normal
+#     -- it's a VR headset, off most days) from a real termux-upgrade
+#     failure, and a real failure there already pages independently via
+#     termux-upgrade's own on-failure email, so this digest doesn't need to
+#     be the safety net for phone/quest.
+# Reboot-required is also NOT a trigger -- that's its own separate
+# low-frequency nudge (ntfy-reboot-required), this digest would just
+# duplicate it.
 PROBLEM=false
-printf '%s' "$OUT" | grep -qE 'UNREACHABLE \(ssh failed or timed out\)|ERROR|WARNING: could not confirm these finished installing|No run recorded today' \
+printf '%s' "$OUT" | grep -qE 'ERROR|WARNING: could not confirm these finished installing' \
+    && PROBLEM=true
+printf '%s' "$OUT" | grep -q '^No run recorded today\.$' \
     && PROBLEM=true
 
 if ! $PROBLEM; then
