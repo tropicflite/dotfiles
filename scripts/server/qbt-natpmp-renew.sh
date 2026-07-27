@@ -54,9 +54,18 @@ set_announce_port() {
     return $result
 }
 
+# Alerting is deliberately patient: a single failed renewal right at lease
+# expiry self-heals on the very next 15s retry most of the time (3 down/up
+# pairs in 2 days, each resolving in ~15s per Matt's report of noise) --
+# same "don't alert on a blip that fixes itself" lesson as the wg0 and
+# wifi-watchdog health checks. Require NATPMP_ALERT_STRIKES consecutive
+# failed cycles (each ~15s) past lease expiry before notifying DOWN.
+NATPMP_ALERT_STRIKES=2
+
 LAST_SUCCESS_EPOCH=0
 LAST_LIFETIME=60
 ALERTED=false
+FAIL_STRIKES=0
 
 while true; do
     UDP_OUT=$(natpmpc -g "$GATEWAY" -a "$PORT" "$PORT" udp 60 2>&1)
@@ -68,11 +77,14 @@ while true; do
 
     if [ -z "$TCP_PORT" ] || [ -z "$UDP_PORT" ]; then
         logger -t "$LOG_TAG" "natpmpc request failed (udp: ${UDP_OUT##*$'\n'}; tcp: ${TCP_OUT##*$'\n'})"
-        if ! $ALERTED && [ "$(date +%s)" -gt "$((LAST_SUCCESS_EPOCH + LAST_LIFETIME))" ]; then
-            send_ntfy "[server] qBittorrent NAT-PMP forwarding down" \
-                "natpmpc has failed to renew the port mapping and the previous lease has expired — qBittorrent is back to outbound-only. Check ProtonVPN/wg0 connectivity." \
-                high warning
-            ALERTED=true
+        if [ "$(date +%s)" -gt "$((LAST_SUCCESS_EPOCH + LAST_LIFETIME))" ]; then
+            FAIL_STRIKES=$((FAIL_STRIKES + 1))
+            if ! $ALERTED && [ "$FAIL_STRIKES" -ge "$NATPMP_ALERT_STRIKES" ]; then
+                send_ntfy "[server] qBittorrent NAT-PMP forwarding down" \
+                    "natpmpc has failed to renew the port mapping ${FAIL_STRIKES} consecutive times and the previous lease has expired — qBittorrent is back to outbound-only. Check ProtonVPN/wg0 connectivity." \
+                    high warning
+                ALERTED=true
+            fi
         fi
         sleep 15
         continue
@@ -84,6 +96,7 @@ while true; do
 
     LAST_SUCCESS_EPOCH=$(date +%s)
     LAST_LIFETIME="${TCP_LIFETIME:-60}"
+    FAIL_STRIKES=0
 
     if $ALERTED; then
         send_ntfy "[server] qBittorrent NAT-PMP forwarding recovered" \
