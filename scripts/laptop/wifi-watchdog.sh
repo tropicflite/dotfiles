@@ -21,15 +21,27 @@
 # Must run as root (nmcli radio/connection changes and `service` restarts
 # need it; cron has no polkit agent to prompt for auth).
 #
-# NOTE: verify WIFI_CONN and the network-manager/tailscaled init script names
-# against the live box before relying on this — written while laptop was
-# offline and unreachable, so untested against the actual machine.
+# 2026-07-27 UPDATE: gateway-ping-only detection was itself the problem — 81
+# "gateway unreachable" blips and 5 disruptive radio bounces in ~20h, but
+# NetworkManager/wpa_supplicant logs showed zero organic disassociation
+# events except the ones the radio bounces caused themselves. Same class of
+# bug as the 2026-07-26 wg0 fix: ICMP to the gateway isn't a reliable
+# liveness signal (drops/delays for reasons unrelated to WiFi association).
+# Now checks NetworkManager's own device state for wlan0 first — a real,
+# zero-network-cost signal, like using WireGuard handshake age instead of
+# ICMP-through-tunnel. A gateway ping failure while still "connected" is
+# treated as likely transient ICMP noise: tracked separately, remedied only
+# with a gentle soft reconnect, and never escalated to a radio bounce or
+# NetworkManager restart — those are now reserved for confirmed association
+# loss.
 
 LOG_TAG="wifi-watchdog"
 WIFI_CONN="NachoWiFi"
+WIFI_IFACE="wlan0"
 TS_PEER="100.65.250.53"  # server
 PING_TIMEOUT=5
 GW_STATE_FILE="/var/tmp/wifi-watchdog.gwfails"
+SOFT_STATE_FILE="/var/tmp/wifi-watchdog.softfails"
 TS_STATE_FILE="/var/tmp/wifi-watchdog.tsfails"
 
 LOCK="/var/tmp/wifi-watchdog.lock"
@@ -37,6 +49,12 @@ exec 9>"$LOCK"
 flock -n 9 || exit 0
 
 read_count() { [ -r "$1" ] && cat "$1" || echo 0; }
+
+assoc_ok() {
+    local state
+    state=$(nmcli -t -f DEVICE,STATE dev status 2>/dev/null | awk -F: -v d="$WIFI_IFACE" '$1==d{print $2}')
+    [ "$state" = "connected" ]
+}
 
 gw=$(ip route show default | awk '{print $3; exit}')
 gw_ok=false
@@ -73,9 +91,29 @@ if $gw_ok; then
     exit 0
 fi
 
+if assoc_ok; then
+    # wlan0 is still connected per NetworkManager -- the gateway ping failure
+    # is most likely transient ICMP loss, not a real WiFi problem. Track
+    # separately and remedy gently; never escalate to a radio bounce or
+    # NetworkManager restart off this signal alone.
+    echo 0 > "$GW_STATE_FILE"
+    soft_fails=$(($(read_count "$SOFT_STATE_FILE") + 1))
+    echo "$soft_fails" > "$SOFT_STATE_FILE"
+    logger -t "$LOG_TAG" "Gateway ping failed but wlan0 still connected, likely transient ICMP loss (${soft_fails})"
+
+    if [ "$soft_fails" -eq 5 ]; then
+        logger -t "$LOG_TAG" "Soft reconnect (associated but unreachable): nmcli connection up ${WIFI_CONN}"
+        nmcli connection up "$WIFI_CONN" &>/dev/null
+    fi
+    exit 0
+fi
+
+# wlan0 is not connected at all per NetworkManager -- this is a real WiFi
+# problem, escalate as before.
+echo 0 > "$SOFT_STATE_FILE"
 gw_fails=$(($(read_count "$GW_STATE_FILE") + 1))
 echo "$gw_fails" > "$GW_STATE_FILE"
-logger -t "$LOG_TAG" "No default gateway reachable (${gw_fails})"
+logger -t "$LOG_TAG" "wlan0 not connected, no default gateway reachable (${gw_fails})"
 
 if [ "$gw_fails" -eq 2 ]; then
     logger -t "$LOG_TAG" "Soft reconnect: nmcli connection up ${WIFI_CONN}"
