@@ -34,6 +34,25 @@
 # with a gentle soft reconnect, and never escalated to a radio bounce or
 # NetworkManager restart — those are now reserved for confirmed association
 # loss.
+#
+# 2026-08-01 UPDATE: the above fix introduced a dead-code bug. SOFT_STATE_FILE
+# was only ever reset to 0 in the "real WiFi problem" branch, never when the
+# gateway ping genuinely recovered — so once it climbed past 5 (which happens
+# fast) the `-eq 5` exact-match trigger could never fire again until a full
+# disassociation reset it. Confirmed via laptop's own syslog: 427 "transient
+# ICMP loss" log lines since 07-26, counter reaching 327, zero "Soft
+# reconnect" actions ever logged. This was a real, sustained failure mode
+# (wlan0 stuck "connected" per NetworkManager but not actually passing
+# traffic — a zombie association, plausibly the Broadcom `wl` driver quirk
+# flagged as an unruled-out risk in the 07-27 note) that the watchdog
+# silently did nothing about for hours, only cleared by a manual reboot.
+# Fixed by (1) resetting SOFT_STATE_FILE in the healthy-gateway branch too,
+# and (2) replacing the one-shot trigger with a repeating ladder that
+# eventually escalates to a radio bounce / NetworkManager restart if gentle
+# reconnects don't clear a sustained (not transient) condition. Thresholds
+# are longer than the confirmed-disassociation ladder's on purpose — this
+# path must still tolerate brief real ICMP noise without bouncing, per the
+# original 07-27 fix's reasoning; it just can no longer go silent forever.
 
 LOG_TAG="wifi-watchdog"
 WIFI_CONN="NachoWiFi"
@@ -64,6 +83,10 @@ if $gw_ok; then
     gw_fails=$(read_count "$GW_STATE_FILE")
     [ "$gw_fails" -gt 0 ] && logger -t "$LOG_TAG" "Gateway recovered after ${gw_fails} failed check(s)"
     echo 0 > "$GW_STATE_FILE"
+
+    soft_fails=$(read_count "$SOFT_STATE_FILE")
+    [ "$soft_fails" -gt 0 ] && logger -t "$LOG_TAG" "Transient-ICMP-loss state cleared after ${soft_fails} check(s)"
+    echo 0 > "$SOFT_STATE_FILE"
 
     ts_ok=false
     ping -c2 -W "$PING_TIMEOUT" "$TS_PEER" &>/dev/null && ts_ok=true
@@ -101,8 +124,18 @@ if assoc_ok; then
     echo "$soft_fails" > "$SOFT_STATE_FILE"
     logger -t "$LOG_TAG" "Gateway ping failed but wlan0 still connected, likely transient ICMP loss (${soft_fails})"
 
-    if [ "$soft_fails" -eq 5 ]; then
+    if [ "$soft_fails" -eq 5 ] || [ "$soft_fails" -eq 15 ]; then
         logger -t "$LOG_TAG" "Soft reconnect (associated but unreachable): nmcli connection up ${WIFI_CONN}"
+        nmcli connection up "$WIFI_CONN" &>/dev/null
+    elif [ "$soft_fails" -eq 30 ]; then
+        logger -t "$LOG_TAG" "Radio bounce (sustained transient-ICMP state, soft reconnects didn't clear it)"
+        nmcli radio wifi off
+        sleep 3
+        nmcli radio wifi on
+    elif [ "$soft_fails" -eq 60 ] || { [ "$soft_fails" -gt 60 ] && [ $((soft_fails % 60)) -eq 0 ]; }; then
+        logger -t "$LOG_TAG" "Restarting NetworkManager (sustained transient-ICMP state)"
+        service network-manager restart &>/dev/null
+        sleep 5
         nmcli connection up "$WIFI_CONN" &>/dev/null
     fi
     exit 0
