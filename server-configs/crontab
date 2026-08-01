@@ -16,4 +16,3 @@ MAILTO=""
 */15 * * * * /usr/local/bin/alert-digest-flush >> /var/log/alert-digest.log 2>&1
 15 8 * * * /usr/local/bin/fleet-update-digest >> /var/log/fleet-update-digest.log 2>&1
 0 7 * * * /usr/local/bin/arr-pipeline-check.sh >> /var/log/arr-pipeline-check.log 2>&1
-*/5 * * * * /home/matt/dotfiles/scripts/server/laptop-online-watch.sh >> /var/log/laptop-online-watch.log 2>&1
