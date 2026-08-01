@@ -12,10 +12,13 @@
 # project_laptop_wifi_flake_20260701) from the watchdog's own escalation
 # ladder still grinding.
 #
-# NOTE: server has never SSH'd to laptop before (no prior known_hosts entry
-# for it) — this is TOFU-accepted here since the host+IP pairing is already
-# fixed in ~/.ssh/config. Whether laptop's authorized_keys actually trusts
-# this server's key is unverified until this fires for real.
+# NOTE: server had never SSH'd to laptop before this script (no prior
+# known_hosts entry) — TOFU-accepted via the fixed host+IP pairing already in
+# ~/.ssh/config. Confirmed working 2026-08-01: key auth succeeded, and
+# passwordless sudo on laptop works over that same non-interactive session
+# (needed because /var/log/syslog there is root:adm 0640, not
+# world-readable — the capture below must use sudo or it silently returns
+# nothing).
 #
 # Self-disabling: after a successful capture it strips its own line from
 # the crontab, so it only ever fires once per install. Re-add the crontab
@@ -37,9 +40,15 @@ mkdir -p "$CAPTURE_DIR"
 OUT="$CAPTURE_DIR/wifi-watchdog-$(date +%Y%m%d-%H%M%S).log"
 
 ssh "${SSH_OPTS[@]}" laptop \
-    "grep wifi-watchdog /var/log/syslog /var/log/syslog.1 2>/dev/null" > "$OUT" 2>/dev/null
+    "sudo grep -a wifi-watchdog /var/log/syslog /var/log/syslog.1 2>/dev/null" > "$OUT" 2>/dev/null
 
-if grep -q "WRONG_KEY" "$OUT" 2>/dev/null; then
+if [ ! -s "$OUT" ]; then
+    # laptop's /var/log/syslog is root:adm 0640 — unprivileged grep silently
+    # returns nothing there. If this happens even with sudo in the command
+    # above, sudo itself is the thing to check (passwordless sudo confirmed
+    # working 2026-08-01, but don't assume it stays that way).
+    VERDICT="Capture came back empty — check sudo/syslog permissions on laptop before trusting this as a real 'no WRONG_KEY' result."
+elif grep -q "WRONG_KEY" "$OUT" 2>/dev/null; then
     VERDICT="WRONG_KEY PSK rejection found in the log — matches the known needs-physical-presence failure mode, watchdog cannot self-heal this."
 else
     VERDICT="No WRONG_KEY in the watchdog log — likely just the escalation ladder (soft reconnect / radio bounce / NM restart) grinding through a real association drop. See the capture for detail."
