@@ -69,9 +69,9 @@ check_usb
 DOCKER=/home/matt/docker
 
 log "arrs stack..."
-sync_path "$DOCKER/arrs/prowlarr/config"   prowlarr
-sync_path "$DOCKER/arrs/sonarr/config"     sonarr
-sync_path "$DOCKER/arrs/radarr/config"     radarr
+sync_path "$DOCKER/arrs/prowlarr/config"   prowlarr --exclude=Sentry
+sync_path "$DOCKER/arrs/sonarr/config"     sonarr   --exclude=Sentry
+sync_path "$DOCKER/arrs/radarr/config"     radarr   --exclude=Sentry
 sync_path "$DOCKER/arrs/bazarr/config"     bazarr
 sync_path "$DOCKER/arrs/jellyseerr/config" jellyseerr
 
