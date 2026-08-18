@@ -74,7 +74,7 @@ while read -r type owner repo_path install_path; do
                 /etc/systemd/system/*) KNOWN_UNITS[$(basename "$install_path")]=1 ;;
                 /usr/local/bin/*) KNOWN_LOCALBIN[$(basename "$install_path")]=1 ;;
             esac
-            if [[ ! -e "$install_path" ]]; then
+            if [[ ! -e "$install_path" ]] && ! sudo -n test -e "$install_path" 2>/dev/null; then
                 add_drift "MISSING  $install_path  (repo: $repo_path not installed)"
             elif [[ "$type" == "copy-secret" ]]; then
                 : # exists is enough — content deliberately redacted in repo

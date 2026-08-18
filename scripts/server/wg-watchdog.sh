@@ -338,6 +338,23 @@ while true; do
         HEALTH_STRIKE_COUNT=0
         [[ "$TUNNEL_FAIL_TYPE" == "wg0 interface missing" || "$TUNNEL_FAIL_TYPE" == "WireGuard endpoint unreachable" ]] && \
             { record_recovery TUNNEL "[server] wg0 back up"; CUR_BACKOFF=$BASE_SLEEP; }
+        # Bug fixed 2026-08-18: failover_if_due() blanks TUNNEL_FAIL_TYPE right
+        # after a successful switch (so the new endpoint is monitored fresh and
+        # no misleading "recovered" alert fires for the OLD endpoint) — but that
+        # was the only signal record_recovery used to clear FAILED_OVER_THIS_INCIDENT.
+        # With TUNNEL_FAIL_TYPE already blank, the guard above can never match
+        # again, so record_recovery never ran and the latch stayed 1 forever
+        # after a device's first auto-failover — permanently disabling
+        # auto-failover until the watchdog itself restarted. Confirmed: the
+        # latch set 2026-08-13 03:57 sat unresettable through a 758s-down
+        # incident on 2026-08-18 that should have triggered a second failover
+        # and silently didn't. Clear it here, independent of the alert-suppression
+        # logic above, the first time the (possibly-new) endpoint proves healthy.
+        if (( FAILED_OVER_THIS_INCIDENT )); then
+            FAILED_OVER_THIS_INCIDENT=0
+            FAILOVER_ISSUE_ALERTED_THIS_INCIDENT=0
+            logger -t "$LOG_TAG" "Post-failover endpoint confirmed healthy, auto-failover latch cleared"
+        fi
     else
         # Describe *which* signal failed. A fresh handshake with a dead data
         # plane is a materially different fault from an unreachable peer — it
