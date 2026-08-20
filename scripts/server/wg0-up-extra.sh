@@ -60,17 +60,44 @@ ip route add 0.0.0.0/0 dev wg0 table 200
 ip route add 172.25.0.0/24 dev br-pihole table 200
 ip rule add fwmark 0x200 lookup 200 priority 100
 
+# Pi-hole's own upstream DNS resolution: route direct via the ISP instead of
+# through ProtonVPN (added 2026-08-20). It previously inherited the host's
+# blanket default route (0.0.0.0/0 dev wg0 above), which meant EVERY device on
+# the LAN's DNS resolution silently degraded whenever ProtonVPN had one of its
+# flaky stretches — confirmed live: a single upstream lookup took 7+ seconds
+# while wg0 was reading ~5 bytes/s, well after wg0's handshake still looked
+# fresh. Pi-hole is shared, always-on infrastructure for the whole household,
+# unlike qBittorrent/exit-node traffic (opt-in, privacy-sensitive) — reliability
+# wins here; Matt's call. Source-based routing is safe for this bridge
+# specifically (unlike the CGNAT warning above): br-pihole's /24 doesn't
+# overlap with the server's own Tailscale IP or any other traffic class.
+ip rule del from 172.25.0.0/24 lookup 201 2>/dev/null || true
+ip route flush table 201 2>/dev/null || true
+ip route add default via "$LAN_GW" dev enp1s0 table 201
+# Same foot-gun as the CGNAT warning above, different range: br-pihole's own
+# gateway IP (172.25.0.1, the HOST's address on that bridge) is itself inside
+# 172.25.0.0/24. Without this route, the host's own traffic TO Pi-hole
+# (source 172.25.0.1) also matches the source-based rule below and gets sent
+# out via the WAN default instead of staying on the local bridge — breaking
+# host-to-container DNS queries entirely. Caught live 2026-08-20: `dig
+# @172.25.0.2` from the host timed out completely until this route was added.
+ip route add 172.25.0.0/24 dev br-pihole table 201
+ip rule add from 172.25.0.0/24 lookup 201 priority 150
+
 iptables -D FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o br-pihole -j ACCEPT 2>/dev/null || true
+iptables -D FORWARD -i br-pihole -o enp1s0 -j ACCEPT 2>/dev/null || true
+iptables -D FORWARD -i enp1s0 -o br-pihole -j ACCEPT 2>/dev/null || true
 iptables -t nat -D POSTROUTING -s 172.25.0.0/24 -o wg0 -j MASQUERADE 2>/dev/null || true
+iptables -t nat -D POSTROUTING -s 172.25.0.0/24 -o enp1s0 -j MASQUERADE 2>/dev/null || true
 iptables -t nat -D POSTROUTING -s 172.21.0.0/24 -o wg0 -j MASQUERADE 2>/dev/null || true
 iptables -D FORWARD -i tailscale0 -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o tailscale0 -j ACCEPT 2>/dev/null || true
 iptables -t nat -D POSTROUTING -s 100.64.0.0/10 -o wg0 -j MASQUERADE 2>/dev/null || true
 
-iptables -I FORWARD -i br-pihole -o wg0 -j ACCEPT
-iptables -I FORWARD -i wg0 -o br-pihole -j ACCEPT
-iptables -t nat -I POSTROUTING 1 -s 172.25.0.0/24 -o wg0 -j MASQUERADE
+iptables -I FORWARD -i br-pihole -o enp1s0 -j ACCEPT
+iptables -I FORWARD -i enp1s0 -o br-pihole -j ACCEPT
+iptables -t nat -I POSTROUTING 1 -s 172.25.0.0/24 -o enp1s0 -j MASQUERADE
 # Exit node: forward Tailscale CGNAT traffic through ProtonVPN
 iptables -I FORWARD -i tailscale0 -o wg0 -j ACCEPT
 iptables -I FORWARD -i wg0 -o tailscale0 -j ACCEPT
