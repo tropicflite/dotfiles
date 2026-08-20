@@ -144,6 +144,23 @@ iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -
 iptables -t nat -I PREROUTING 1 -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j DNAT --to-destination 172.25.0.2
 iptables -t nat -I PREROUTING 2 -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 172.25.0.2
 
+# Hairpin-NAT fix for the DNS redirect above (found + fixed 2026-08-20). Exit-node
+# clients query the server's own Tailscale IP (100.65.250.53:53, what Tailscale
+# hands out as the tailnet's nameserver) — the DNAT above rewrites the destination
+# to Pi-hole (172.25.0.2) correctly and the query arrives fine, but without a source
+# rewrite too, conntrack tracked the reply's expected destination as the br-pihole
+# bridge gateway (172.25.0.1) instead of un-NATing back to the real client. Pi-hole's
+# answer would silently vanish and the client would retry the query forever — from
+# an exit-node client's perspective this presents as "no internet at all", not a DNS
+# error, since nothing else can resolve either. MASQUERADE makes Pi-hole reply to the
+# host (172.25.0.1) instead of trying to reach the real client directly; the host's
+# own conntrack entry (from the DNAT above) then correctly un-NATs it back out to
+# whichever tailscale0 client actually asked.
+iptables -t nat -D POSTROUTING -o br-pihole -d 172.25.0.2 -p udp --dport 53 -j MASQUERADE 2>/dev/null || true
+iptables -t nat -D POSTROUTING -o br-pihole -d 172.25.0.2 -p tcp --dport 53 -j MASQUERADE 2>/dev/null || true
+iptables -t nat -A POSTROUTING -o br-pihole -d 172.25.0.2 -p udp --dport 53 -j MASQUERADE
+iptables -t nat -A POSTROUTING -o br-pihole -d 172.25.0.2 -p tcp --dport 53 -j MASQUERADE
+
 # MSS clamping for exit node TCP: prevents large packet drops through the
 # tailscale0 (MTU 1280) <-> wg0 (MTU 1420) path
 iptables -t mangle -D FORWARD -i tailscale0 -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
