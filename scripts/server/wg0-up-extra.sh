@@ -2,31 +2,23 @@
 # Idempotent: delete any existing rules before inserting to prevent duplicates on wg0 restart
 
 # Policy routing: exit-node traffic (arriving on tailscale0, destined for internet)
-# routes DIRECT via the ISP (enp1s0), bypassing ProtonVPN. Table = off in wg0.conf
-# means wg-quick adds no routes.
-#
-# Changed 2026-08-20: ProtonVPN was found flapping between full speed and near-zero
-# throughput second-to-second on BOTH the primary and failover endpoints, confirmed
-# via repeated back-to-back curl tests through wg0 (not an MTU or endpoint issue —
-# see session notes). Direct-via-ISP tested rock solid (178Mbps, sub-second) at the
-# same time. Matt chose to bypass the VPN for exit-node (phone browsing) traffic
-# specifically, in exchange for losing VPN protection/anonymization on that traffic.
-# qBittorrent's own hard kill switch (still pinned to wg0 further below) is untouched
-# by this — torrent traffic still requires the VPN, only exit-node browsing doesn't.
+# routes through ProtonVPN (wg0). Table = off in wg0.conf means wg-quick adds no routes.
 #
 # Custom chain TS_EXIT_MARK marks packets by incoming interface (tailscale0), with
-# early RETURN for destinations that should NOT go through the exit-node path:
+# early RETURN for destinations that should NOT go through wg0:
 #   - 100.64.0.0/10: Tailscale CGNAT (peer traffic + server's own Tailscale IP 100.65.250.53)
 #   - 192.168.50.0/24, 10.0.0.0/24: server's advertised Tailscale subnets → stay on LAN
-# Marked packets use table 200 (default via enp1s0/LAN gateway).
+# Marked packets use table 200 (default via wg0). ProtonVPN endpoint pinned via LAN
+# in table 200 to avoid routing loop.
 #
 # DO NOT use source-based ip rules (from 100.64/10) — the server's own Tailscale IP
 # (100.65.250.53) is in that range; source routing breaks replies to all Tailscale peers.
 #
-# PROTON_ENDPOINT is still read for the main-table routes below (qBittorrent/host
-# traffic still goes via ProtonVPN) — wg-switch.sh can swap wg0.conf to a different
-# ProtonVPN server/endpoint entirely, and a hardcoded value here was the exact
-# foot-gun that broke routing during the 2026-07-05 manual server swap.
+# PROTON_ENDPOINT is read from the live wg0.conf rather than hardcoded, since
+# wg-switch.sh (see wg0-primary/failover.conf under /etc/wireguard/profiles/)
+# can swap wg0.conf to a different ProtonVPN server/endpoint entirely. A
+# hardcoded value here was the exact foot-gun that broke routing during the
+# 2026-07-05 manual server swap (bypass route pinned to the old, now-wrong IP).
 PROTON_ENDPOINT=$(grep -m1 '^Endpoint' /etc/wireguard/wg0.conf | sed -E 's/^Endpoint\s*=\s*([^:]+):.*/\1/')
 LAN_GW="192.168.50.1"
 
@@ -59,11 +51,12 @@ iptables -t mangle -D PREROUTING -i tailscale0 -j TS_EXIT_MARK 2>/dev/null || tr
 iptables -t mangle -I PREROUTING 1 -i tailscale0 -j TS_EXIT_MARK
 ip rule del fwmark 0x200 lookup 200 2>/dev/null || true
 ip route flush table 200 2>/dev/null || true
-ip route add default via "$LAN_GW" dev enp1s0 table 200
+ip route add "${PROTON_ENDPOINT}/32" via "$LAN_GW" table 200
+ip route add 0.0.0.0/0 dev wg0 table 200
 # Pi-hole must be reachable in table 200: mangle PREROUTING (TS_EXIT_MARK) runs before
 # nat PREROUTING (DNAT), so DNS queries to internet IPs get marked 0x200 before the DNAT
 # redirect changes their destination to 172.25.0.2. Without this route, marked DNS
-# packets follow the default (now enp1s0) instead of reaching Pi-hole on br-pihole.
+# packets follow the default (wg0) instead of reaching Pi-hole on br-pihole.
 ip route add 172.25.0.0/24 dev br-pihole table 200
 ip rule add fwmark 0x200 lookup 200 priority 100
 
@@ -71,48 +64,40 @@ iptables -D FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o br-pihole -j ACCEPT 2>/dev/null || true
 iptables -t nat -D POSTROUTING -s 172.25.0.0/24 -o wg0 -j MASQUERADE 2>/dev/null || true
 iptables -t nat -D POSTROUTING -s 172.21.0.0/24 -o wg0 -j MASQUERADE 2>/dev/null || true
-iptables -D FORWARD -i tailscale0 -o enp1s0 -j ACCEPT 2>/dev/null || true
-iptables -D FORWARD -i enp1s0 -o tailscale0 -j ACCEPT 2>/dev/null || true
+iptables -D FORWARD -i tailscale0 -o wg0 -j ACCEPT 2>/dev/null || true
+iptables -D FORWARD -i wg0 -o tailscale0 -j ACCEPT 2>/dev/null || true
 iptables -t nat -D POSTROUTING -s 100.64.0.0/10 -o wg0 -j MASQUERADE 2>/dev/null || true
 
 iptables -I FORWARD -i br-pihole -o wg0 -j ACCEPT
 iptables -I FORWARD -i wg0 -o br-pihole -j ACCEPT
 iptables -t nat -I POSTROUTING 1 -s 172.25.0.0/24 -o wg0 -j MASQUERADE
-# Exit node: forward Tailscale CGNAT traffic direct via the ISP (see 2026-08-20
-# note above). ts-postrouting already MASQUERADEs all tailscale0-origin forwarded
-# traffic generically (mark 0x40000/0xff0000, interface-agnostic), so no separate
-# MASQUERADE rule is needed here for the enp1s0 path.
-iptables -I FORWARD -i tailscale0 -o enp1s0 -j ACCEPT
-iptables -I FORWARD -i enp1s0 -o tailscale0 -j ACCEPT
+# Exit node: forward Tailscale CGNAT traffic through ProtonVPN
+iptables -I FORWARD -i tailscale0 -o wg0 -j ACCEPT
+iptables -I FORWARD -i wg0 -o tailscale0 -j ACCEPT
+iptables -t nat -I POSTROUTING 1 -s 100.64.0.0/10 -o wg0 -j MASQUERADE
 
 # Exit-node hard kill switch: packets marked 0x200 (tailscale0-origin traffic
-# from TS_EXIT_MARK above) may only leave via enp1s0 (see 2026-08-20 note above —
-# this used to pin to wg0/ProtonVPN, now pins to the direct ISP path instead).
-# Without this, if enp1s0's route in table 200 were ever wrong/missing, the
-# "fwmark 0x200 lookup 200" ip rule would fail to resolve and the kernel would
-# fall through to the main table's default (dev wg0) — silently routing
-# exit-node traffic back through the VPN instead of failing closed the way this
-# rule intends. ts-forward's own ACCEPT (mark 0x40000/0xff0000) and
+# from TS_EXIT_MARK above) may only leave via wg0. Without this, if wg0's
+# interface disappears (watchdog bounce, crash, boot race) its route in
+# table 200 is flushed with it, the "fwmark 0x200 lookup 200" ip rule fails
+# to resolve, and the kernel falls through to the main table's real ISP
+# default (dev enp1s0). ts-forward's own ACCEPT (mark 0x40000/0xff0000) and
 # ts-postrouting's MASQUERADE don't check which interface the packet left
 # on — so without this rule, exit-node traffic wouldn't black-hole, it would
-# silently go out whatever interface table 200 (or its main-table fallback)
-# resolved to. Must sit ahead of the jump to ts-forward, or ts-forward's
-# blanket ACCEPT wins the race and this rule is never reached — but
-# `tailscale up` re-inserts ts-forward at FORWARD position 1 itself (same race
-# documented on the ip6tables REJECT rule below), which would push a
-# FORWARD-table-only copy behind it. Belt and suspenders like that rule: one
-# copy in FORWARD (covers the common case, also runs ahead of
+# leak out with the real ISP IP. Must sit ahead of the jump to ts-forward,
+# or ts-forward's blanket ACCEPT wins the race and this rule is never
+# reached — but `tailscale up` re-inserts ts-forward at FORWARD position 1
+# itself (same race documented on the ip6tables REJECT rule below), which
+# would push a FORWARD-table-only copy behind it. Belt and suspenders like
+# that rule: one copy in FORWARD (covers the common case, also runs ahead of
 # DOCKER-USER/DOCKER-FORWARD), one copy inside ts-forward itself ahead of
 # its own MARK/ACCEPT (survives tailscaled reasserting position 1). Neither
 # copy is removed in wg0-down-extra.sh — same fail-closed philosophy as the
-# qBittorrent switch below. The matching tailscaled.service ExecStartPost
-# override (dotfiles: scripts/server/tailscaled-override.conf) must be kept
-# in sync with whichever interface this points at — it re-applies the same
-# rule on tailscaled-only restarts, which don't trigger this script.
-iptables -D FORWARD -m mark --mark 0x200 ! -o enp1s0 -j DROP 2>/dev/null || true
-iptables -I FORWARD 1 -m mark --mark 0x200 ! -o enp1s0 -j DROP
-iptables -D ts-forward -m mark --mark 0x200 ! -o enp1s0 -j DROP 2>/dev/null || true
-iptables -I ts-forward 1 -m mark --mark 0x200 ! -o enp1s0 -j DROP
+# qBittorrent switch below.
+iptables -D FORWARD -m mark --mark 0x200 ! -o wg0 -j DROP 2>/dev/null || true
+iptables -I FORWARD 1 -m mark --mark 0x200 ! -o wg0 -j DROP
+iptables -D ts-forward -m mark --mark 0x200 ! -o wg0 -j DROP 2>/dev/null || true
+iptables -I ts-forward 1 -m mark --mark 0x200 ! -o wg0 -j DROP
 
 # Flush any conntrack entries still carrying the 0x200 connmark from before
 # this run (e.g. a connection that started leaking out enp1s0 during the gap
@@ -160,13 +145,11 @@ iptables -t nat -I PREROUTING 1 -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53
 iptables -t nat -I PREROUTING 2 -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 172.25.0.2
 
 # MSS clamping for exit node TCP: prevents large packet drops through the
-# tailscale0 (MTU 1280) <-> enp1s0 (MTU 1500) path (was <-> wg0 MTU 1420 before
-# the 2026-08-20 ISP-bypass change above; kept for whichever interface is
-# currently in the exit-node path).
-iptables -t mangle -D FORWARD -i tailscale0 -o enp1s0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
-iptables -t mangle -D FORWARD -i enp1s0 -o tailscale0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
-iptables -t mangle -I FORWARD 1 -i tailscale0 -o enp1s0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
-iptables -t mangle -I FORWARD 2 -i enp1s0 -o tailscale0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+# tailscale0 (MTU 1280) <-> wg0 (MTU 1420) path
+iptables -t mangle -D FORWARD -i tailscale0 -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
+iptables -t mangle -D FORWARD -i wg0 -o tailscale0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
+iptables -t mangle -I FORWARD 1 -i tailscale0 -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+iptables -t mangle -I FORWARD 2 -i wg0 -o tailscale0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
 # REJECT IPv6 exit node forwarding (no IPv6 path through ProtonVPN wg0).
 # Must fire before tailscale's ts-forward chain ACCEPTs the traffic.
