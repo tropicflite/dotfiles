@@ -60,29 +60,24 @@ ip route add 0.0.0.0/0 dev wg0 table 200
 ip route add 172.25.0.0/24 dev br-pihole table 200
 ip rule add fwmark 0x200 lookup 200 priority 100
 
-# Pi-hole's own upstream DNS resolution: route direct via the ISP instead of
-# through ProtonVPN (added 2026-08-20). It previously inherited the host's
-# blanket default route (0.0.0.0/0 dev wg0 above), which meant EVERY device on
-# the LAN's DNS resolution silently degraded whenever ProtonVPN had one of its
-# flaky stretches — confirmed live: a single upstream lookup took 7+ seconds
-# while wg0 was reading ~5 bytes/s, well after wg0's handshake still looked
-# fresh. Pi-hole is shared, always-on infrastructure for the whole household,
-# unlike qBittorrent/exit-node traffic (opt-in, privacy-sensitive) — reliability
-# wins here; Matt's call. Source-based routing is safe for this bridge
-# specifically (unlike the CGNAT warning above): br-pihole's /24 doesn't
-# overlap with the server's own Tailscale IP or any other traffic class.
+# Pi-hole's own upstream DNS resolution routes through ProtonVPN — privacy over
+# reliability, Matt's explicit call (reaffirmed 2026-08-21, reverting a
+# 2026-08-20 detour). That detour routed this traffic direct via the ISP
+# instead (source-based routing, table 201) after a live-confirmed incident:
+# a Proton flaky stretch made a single upstream lookup take 7+ seconds (wg0
+# reading ~5 bytes/s at the time), degrading DNS — and therefore perceived
+# internet speed — for the whole household, not just exit-node clients. That
+# fix worked, but Matt decided he'd rather accept the occasional Proton-flake
+# slowness than have Quad9/Cloudflare see the household's DNS queries arriving
+# from the home IP instead of Proton's IP. Reverted 2026-08-21: no dedicated
+# table needed for this direction — it just inherits the blanket wg0 default
+# route (0.0.0.0/0 dev wg0, set above), same as pre-2026-08-20. If this ever
+# needs to change again, table 201 (ISP-direct) is documented in
+# [[project_phone_exitnode_investigation_20260820]] and the git history of
+# this file. Cleanup below removes the now-unused rule/table from any host
+# that still has it live from before this revert.
 ip rule del from 172.25.0.0/24 lookup 201 2>/dev/null || true
 ip route flush table 201 2>/dev/null || true
-ip route add default via "$LAN_GW" dev enp1s0 table 201
-# Same foot-gun as the CGNAT warning above, different range: br-pihole's own
-# gateway IP (172.25.0.1, the HOST's address on that bridge) is itself inside
-# 172.25.0.0/24. Without this route, the host's own traffic TO Pi-hole
-# (source 172.25.0.1) also matches the source-based rule below and gets sent
-# out via the WAN default instead of staying on the local bridge — breaking
-# host-to-container DNS queries entirely. Caught live 2026-08-20: `dig
-# @172.25.0.2` from the host timed out completely until this route was added.
-ip route add 172.25.0.0/24 dev br-pihole table 201
-ip rule add from 172.25.0.0/24 lookup 201 priority 150
 
 iptables -D FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o br-pihole -j ACCEPT 2>/dev/null || true
@@ -95,9 +90,9 @@ iptables -D FORWARD -i tailscale0 -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o tailscale0 -j ACCEPT 2>/dev/null || true
 iptables -t nat -D POSTROUTING -s 100.64.0.0/10 -o wg0 -j MASQUERADE 2>/dev/null || true
 
-iptables -I FORWARD -i br-pihole -o enp1s0 -j ACCEPT
-iptables -I FORWARD -i enp1s0 -o br-pihole -j ACCEPT
-iptables -t nat -I POSTROUTING 1 -s 172.25.0.0/24 -o enp1s0 -j MASQUERADE
+iptables -I FORWARD -i br-pihole -o wg0 -j ACCEPT
+iptables -I FORWARD -i wg0 -o br-pihole -j ACCEPT
+iptables -t nat -I POSTROUTING 1 -s 172.25.0.0/24 -o wg0 -j MASQUERADE
 # Exit node: forward Tailscale CGNAT traffic through ProtonVPN
 iptables -I FORWARD -i tailscale0 -o wg0 -j ACCEPT
 iptables -I FORWARD -i wg0 -o tailscale0 -j ACCEPT
@@ -162,31 +157,47 @@ ethtool -K enp1s0 rx-udp-gro-forwarding on rx-gro-list off 2>/dev/null || true
 
 # Redirect DNS from Tailscale clients to Pi-hole: carrier DNS (e.g. Telus 75.156.200.x)
 # only responds to queries from their own subscriber IPs, not from ProtonVPN's IP.
-# Pi-hole (172.25.0.2) uses Quad9 upstream and routes out through wg0, solving that.
 # This also gives all Tailscale clients ad-blocking via Pi-hole.
+#
+# Bypass DNAT entirely rather than redirect-and-hairpin (fixed 2026-08-21, second
+# time this exact bug class bit us — see history below). Tailscale clients query
+# the server's own Tailscale IP (100.65.250.53:53, what Tailscale hands out as
+# the tailnet's nameserver); RETURN here skips DNAT and lets the packet fall
+# through to plain local delivery, handled by docker-proxy (bound 0.0.0.0:53)
+# exactly like LAN queries to Pi-hole already are — no NAT trickery, no hairpin
+# to get wrong. Trade-off: Pi-hole's query log shows these as 127.0.0.1 instead
+# of the real client IP, so per-client attribution is lost for Tailscale-sourced
+# devices (LAN queries already had this same limitation via docker-proxy, so
+# nothing new there).
 iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j DNAT --to-destination 1.1.1.1 2>/dev/null || true
 iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 1.1.1.1 2>/dev/null || true
 iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j DNAT --to-destination 172.25.0.2 2>/dev/null || true
 iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 172.25.0.2 2>/dev/null || true
-iptables -t nat -I PREROUTING 1 -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j DNAT --to-destination 172.25.0.2
-iptables -t nat -I PREROUTING 2 -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j DNAT --to-destination 172.25.0.2
+iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j RETURN 2>/dev/null || true
+iptables -t nat -D PREROUTING -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j RETURN 2>/dev/null || true
+iptables -t nat -I PREROUTING 1 -i tailscale0 -s 100.64.0.0/10 -p udp --dport 53 -j RETURN
+iptables -t nat -I PREROUTING 2 -i tailscale0 -s 100.64.0.0/10 -p tcp --dport 53 -j RETURN
 
-# Hairpin-NAT fix for the DNS redirect above (found + fixed 2026-08-20). Exit-node
-# clients query the server's own Tailscale IP (100.65.250.53:53, what Tailscale
-# hands out as the tailnet's nameserver) — the DNAT above rewrites the destination
-# to Pi-hole (172.25.0.2) correctly and the query arrives fine, but without a source
-# rewrite too, conntrack tracked the reply's expected destination as the br-pihole
-# bridge gateway (172.25.0.1) instead of un-NATing back to the real client. Pi-hole's
-# answer would silently vanish and the client would retry the query forever — from
-# an exit-node client's perspective this presents as "no internet at all", not a DNS
-# error, since nothing else can resolve either. MASQUERADE makes Pi-hole reply to the
-# host (172.25.0.1) instead of trying to reach the real client directly; the host's
-# own conntrack entry (from the DNAT above) then correctly un-NATs it back out to
-# whichever tailscale0 client actually asked.
+# Remove the 2026-08-20 hairpin-NAT MASQUERADE — no longer needed, the RETURN
+# above bypasses the DNAT it was patching around.
 iptables -t nat -D POSTROUTING -o br-pihole -d 172.25.0.2 -p udp --dport 53 -j MASQUERADE 2>/dev/null || true
 iptables -t nat -D POSTROUTING -o br-pihole -d 172.25.0.2 -p tcp --dport 53 -j MASQUERADE 2>/dev/null || true
-iptables -t nat -A POSTROUTING -o br-pihole -d 172.25.0.2 -p udp --dport 53 -j MASQUERADE
-iptables -t nat -A POSTROUTING -o br-pihole -d 172.25.0.2 -p tcp --dport 53 -j MASQUERADE
+
+# History, in case this regresses a third time: the 2026-08-20 fix (DNAT to
+# 172.25.0.2 + a POSTROUTING MASQUERADE hairpin, so Pi-hole's reply lands on
+# the host at 172.25.0.1 and the host's own conntrack entry un-NATs it back to
+# the real client) looked correct and was believed fixed, but was found broken
+# again by 2026-08-21 — conntrack never actually correlated Pi-hole's reply
+# back to the original connection (confirmed via packet capture: the reply
+# left the container correctly addressed, but never reappeared on tailscale0;
+# `conntrack -L` showed the flow permanently unreplied). *Why* the hairpin
+# correlation fails was never fully isolated despite deep live tracing (ruled
+# out: conntrack table exhaustion, NOTRACK rules, an iptables-legacy/nftables
+# split, a simple rule-ordering collision with Docker's own equivalent DNAT in
+# its DOCKER chain). Bypassing DNAT/hairpin entirely, rather than getting the
+# hairpin right, is the fix that actually held — don't reintroduce the
+# DNAT+MASQUERADE approach without a much more solid understanding of why
+# hairpin correlation fails here specifically.
 
 # MSS clamping for exit node TCP: prevents large packet drops through the
 # tailscale0 (MTU 1280) <-> wg0 (MTU 1420) path
