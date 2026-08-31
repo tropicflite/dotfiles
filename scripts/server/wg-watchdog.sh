@@ -411,6 +411,16 @@ while true; do
     logger -t "$LOG_TAG" "Tailscale coordination unreachable after ${TS_STRIKES} consecutive checks, restarting tailscaled"
     tailscale down
     tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server --advertise-exit-node
+    # Close the race documented above: `tailscale up` just recreated ts-forward
+    # from scratch, which wipes the ts-forward-internal copies of the exit-node
+    # kill switch and IPv6 REJECT rule that wg0-up-extra.sh installs (it only
+    # runs on a wg0-triggered PostUp, not a Tailscale-triggered restart like
+    # this one). Without this, exit-node traffic loses its actual protection —
+    # ts-forward's own MARK/ACCEPT terminates traversal before the FORWARD-chain
+    # copy is ever reached — silently, until the next wg0 bounce happened to
+    # reinsert it. Found live via vpn-dns-regression-check.sh, 2026-08-30.
+    # Idempotent and safe with wg0 already up (see that script's own header).
+    /usr/local/bin/wg0-up-extra.sh
     TS_STRIKE_COUNT=0
     record_failure TS "Tailscale coordination unreachable" "[server] Tailscale coordination unreachable — restarted" "Tailscale coordination server was unreachable for ${TS_STRIKES} consecutive checks; tailscaled bounced at $(date)."
     CUR_BACKOFF=$TS_BACKOFF

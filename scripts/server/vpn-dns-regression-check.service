@@ -1,0 +1,13 @@
+[Unit]
+Description=VPN/Tailscale/DNS routing stack regression check
+After=wg0.service tailscaled.service pihole-compose.service
+
+[Service]
+Type=oneshot
+# Leading '-': a detected regression (exit 1) is real information, already
+# alerted via ntfy inside the script -- it must not also mark this systemd
+# unit "failed", or every alert would double as a false hit in `systemctl
+# --failed` (which server-health and dotdrift both treat as a clean-state
+# signal). Only a genuine crash (missing binary, permission error) should
+# ever leave this unit itself in a failed state.
+ExecStart=-/usr/local/bin/vpn-dns-regression-check.sh

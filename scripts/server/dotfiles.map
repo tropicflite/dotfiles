@@ -56,6 +56,7 @@ symlink  dotfiles  scripts/server/wg0-prestart.sh              /usr/local/bin/wg
 symlink  dotfiles  scripts/server/wg0-up-extra.sh              /usr/local/bin/wg0-up-extra.sh
 symlink  dotfiles  scripts/server/wg-watchdog.sh                /usr/local/bin/wg-watchdog.sh
 symlink  dotfiles  scripts/server/wg-switch.sh                  /usr/local/bin/wg-switch.sh
+symlink  dotfiles  scripts/server/vpn-dns-regression-check.sh    /usr/local/bin/vpn-dns-regression-check.sh
 symlink  dotfiles  scripts/server/qbt-natpmp-renew.sh           /usr/local/bin/qbt-natpmp-renew.sh
 symlink  dotfiles  scripts/server/fleet-update-digest           /usr/local/bin/fleet-update-digest
 symlink  dotfiles  scripts/server/nut-tailscale-listen.sh        /usr/local/bin/nut-tailscale-listen.sh
@@ -136,6 +137,8 @@ copy     dotfiles  scripts/server/nut-tailscale-listen.service              /etc
 copy     dotfiles  scripts/server/tailscale-ready-selfheal.service          /etc/systemd/system/tailscale-ready-selfheal.service
 copy     dotfiles  scripts/server/tailscale-ready-selfheal.timer            /etc/systemd/system/tailscale-ready-selfheal.timer
 copy     dotfiles  scripts/server/route-monitor.service                     /etc/systemd/system/route-monitor.service
+copy     dotfiles  scripts/server/vpn-dns-regression-check.service           /etc/systemd/system/vpn-dns-regression-check.service
+copy     dotfiles  scripts/server/vpn-dns-regression-check.timer             /etc/systemd/system/vpn-dns-regression-check.timer
 copy     dotfiles  scripts/server/tailscaled-override.conf                 /etc/systemd/system/tailscaled.service.d/override.conf
 
 # --- known-live units NOT managed by this repo, so the unmapped scan skips them ---
