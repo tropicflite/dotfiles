@@ -38,6 +38,12 @@ LAN_GW="192.168.50.1"
 STATE_DIR="/var/tmp/vpn-dns-regression-check"
 FAILING_FILE="$STATE_DIR/failing_checks"
 LAST_ALERT_FILE="$STATE_DIR/last_alert_time"
+LOCK_FILE="$STATE_DIR/lock"
+# Real newline for building alert bodies. Plain "\n" inside a double-quoted
+# bash string is never interpreted (that's zsh's/echo -e's job, not bash's) —
+# found 2026-08-31 via code review, confirmed against an alert already sent:
+# the body was literal backslash-n text end to end, not line breaks.
+NL=$'\n'
 ALERT_REPEAT_SECS=3600   # re-alert on an unresolved failure at most hourly
 LOG_TAG="vpn-dns-regression-check"
 
@@ -61,6 +67,7 @@ add_check exitnode_ks_forward   "Exit-node kill switch (FORWARD)"
 add_check exitnode_ks_tsforward "Exit-node kill switch (inside ts-forward)"
 add_check qbt_ks_forward        "qBittorrent kill switch (FORWARD)"
 add_check ts_exit_mark_wired    "TS_EXIT_MARK chain wired from mangle PREROUTING"
+add_check ts_exit_mark_exempt   "TS_EXIT_MARK exempts Tailscale mesh/LAN traffic (not just exit-node)"
 add_check fwmark_ip_rule        "fwmark 0x200 -> table 200 ip rule"
 add_check table200_default      "table 200 default route via wg0"
 add_check table200_pihole       "table 200 route to Pi-hole (br-pihole)"
@@ -98,6 +105,20 @@ check_qbt_ks_forward() {
 
 check_ts_exit_mark_wired() {
     iptables -t mangle -C PREROUTING -i tailscale0 -j TS_EXIT_MARK 2>/dev/null
+}
+
+# Added 2026-08-31 (code review finding): check_ts_exit_mark_wired only
+# proved the chain is reached, not that its own contents are still correct.
+# Without these three RETURN lines, TS_EXIT_MARK would mark and force into
+# table 200 (via wg0) EVERY packet arriving on tailscale0 -- including
+# Tailscale mesh/peer traffic and the server's own replies, not just
+# exit-node traffic -- breaking normal Tailscale connectivity while every
+# other check here (fwmark_ip_rule, table200_default, etc.) still reports
+# PASS, since the mark and the routing table both still exist and work.
+check_ts_exit_mark_exempt() {
+    iptables -t mangle -C TS_EXIT_MARK -d 100.64.0.0/10 -j RETURN 2>/dev/null && \
+    iptables -t mangle -C TS_EXIT_MARK -d 192.168.50.0/24 -j RETURN 2>/dev/null && \
+    iptables -t mangle -C TS_EXIT_MARK -d 10.0.0.0/24 -j RETURN 2>/dev/null
 }
 
 check_fwmark_ip_rule() {
@@ -205,6 +226,7 @@ detail_for() {
         exitnode_ks_tsforward) echo "Missing: iptables -I ts-forward 1 -m mark --mark 0x200 ! -o wg0 -j DROP -- ts-forward's own MARK/ACCEPT (0x40000) terminates traversal before the FORWARD-chain copy is ever reached, so THIS copy is the one that actually matters whenever a packet's input interface is tailscale0. A 'tailscale down; tailscale up' (wg-watchdog's coordination-restart path included) recreates ts-forward from scratch and wipes this; only a wg0-triggered PostUp (wg0-up-extra.sh) re-inserts it." ;;
         qbt_ks_forward)        echo "Missing: iptables -I FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP -- qBittorrent traffic could leak if wg0 is down." ;;
         ts_exit_mark_wired)    echo "mangle PREROUTING is not jumping tailscale0 traffic into TS_EXIT_MARK -- exit-node traffic won't get marked 0x200 at all, silently defeating the whole policy-routing setup." ;;
+        ts_exit_mark_exempt)   echo "TS_EXIT_MARK is missing one or more of its RETURN exemptions (100.64.0.0/10, 192.168.50.0/24, 10.0.0.0/24). Without them, ALL tailscale0-origin traffic gets marked 0x200 and forced via wg0 -- not just exit-node traffic -- breaking Tailscale mesh/peer connectivity and the server's own replies to peers." ;;
         fwmark_ip_rule)        echo "ip rule 'fwmark 0x200 lookup 200' is missing -- marked packets fall through to the main table instead of being forced via wg0." ;;
         table200_default)      echo "table 200 has no 'default dev wg0' route -- exit-node traffic marked 0x200 has nowhere to go." ;;
         table200_pihole)       echo "table 200 has no route to 172.25.0.0/24 dev br-pihole -- DNS queries from Tailscale clients (marked 0x200 before the Pi-hole DNAT/RETURN rule sees them) would try to exit via wg0 instead of reaching Pi-hole." ;;
@@ -257,6 +279,17 @@ done
 #    most hourly while still failing, alert once on recovery, never spam a
 #    steady state either way) ────────────────────────────────────────────
 
+# flock-guarded: a manual run (per this script's own header, expected after
+# any config edit) can overlap the timer's own run. Without a lock, two
+# concurrent read-modify-writes of FAILING_FILE/LAST_ALERT_FILE can clobber
+# each other into a duplicate or missed alert. Non-blocking — if another
+# instance holds the lock, this run skips its own alert-diffing silently
+# (the checks above still ran and logged); the next timer tick reconciles
+# whatever the true state is, same tolerance-for-a-skipped-beat philosophy
+# as the dedup logic itself.
+exec 200>"$LOCK_FILE"
+if flock -n 200; then
+
 mapfile -t prev_failing < <([[ -f "$FAILING_FILE" ]] && sort "$FAILING_FILE" || true)
 mapfile -t cur_failing < <(printf '%s\n' "${failed_ids[@]:-}" | grep -v '^$' | sort)
 
@@ -264,9 +297,9 @@ new_failures=(); for id in "${cur_failing[@]:-}"; do [[ -z "$id" ]] && continue;
 recovered=(); for id in "${prev_failing[@]:-}"; do [[ -z "$id" ]] && continue; printf '%s\n' "${cur_failing[@]:-}" | grep -qxF "$id" || recovered+=("$id"); done
 
 if [[ ${#new_failures[@]} -gt 0 ]]; then
-    body="New failure(s) in the VPN/DNS routing regression check on $(hostname) at $(date):\n\n"
+    body="New failure(s) in the VPN/DNS routing regression check on $(hostname) at $(date):${NL}${NL}"
     for id in "${cur_failing[@]}"; do
-        body+="- ${LABEL[$id]}\n  ${DETAIL[$id]}\n\n"
+        body+="- ${LABEL[$id]}${NL}  ${DETAIL[$id]}${NL}${NL}"
     done
     /usr/local/bin/send-alert "[server] VPN/DNS regression check FAILED" "$body" high rotating_light
     date +%s > "$LAST_ALERT_FILE"
@@ -274,9 +307,9 @@ elif [[ ${#cur_failing[@]} -gt 0 ]]; then
     now=$(date +%s)
     last=$(cat "$LAST_ALERT_FILE" 2>/dev/null || echo 0)
     if (( now - last >= ALERT_REPEAT_SECS )); then
-        body="Still failing (${#cur_failing[@]} check(s)) on $(hostname) at $(date):\n\n"
+        body="Still failing (${#cur_failing[@]} check(s)) on $(hostname) at $(date):${NL}${NL}"
         for id in "${cur_failing[@]}"; do
-            body+="- ${LABEL[$id]}\n"
+            body+="- ${LABEL[$id]}${NL}"
         done
         /usr/local/bin/send-alert "[server] VPN/DNS regression check still failing" "$body" high rotating_light
         date +%s > "$LAST_ALERT_FILE"
@@ -284,9 +317,9 @@ elif [[ ${#cur_failing[@]} -gt 0 ]]; then
 fi
 
 if [[ ${#recovered[@]} -gt 0 ]]; then
-    body="Recovered on $(hostname) at $(date):\n\n"
+    body="Recovered on $(hostname) at $(date):${NL}${NL}"
     for id in "${recovered[@]}"; do
-        body+="- ${LABEL[$id]}\n"
+        body+="- ${LABEL[$id]}${NL}"
     done
     /usr/local/bin/send-alert "[server] VPN/DNS regression check recovered" "$body" default white_check_mark
 fi
@@ -296,5 +329,8 @@ if [[ ${#cur_failing[@]} -eq 0 ]]; then
 else
     printf '%s\n' "${cur_failing[@]}" > "$FAILING_FILE"
 fi
+
+fi   # flock
+flock -u 200
 
 [[ ${#failed_ids[@]} -eq 0 ]]

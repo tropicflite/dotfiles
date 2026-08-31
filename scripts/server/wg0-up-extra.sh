@@ -1,6 +1,25 @@
 #!/bin/bash
 # Idempotent: delete any existing rules before inserting to prevent duplicates on wg0 restart
 
+# Wait for a chain to exist before targeting it. Added 2026-08-31 (code review
+# finding) after wg-watchdog.sh gained a call site (TS-coordination-restart
+# path) that runs this script immediately after `tailscale up` returns from a
+# fresh restart — tailscaled recreates ts-forward itself, and if its CLI
+# returns before the daemon finishes rebuilding the chain, `iptables -I
+# ts-forward ...` below would error "No chain by that name" and (no set -e)
+# the script would silently move on, leaving the ts-forward-internal kill
+# switch/REJECT copies un-reinserted until the next timer cycle catches it.
+# Same wait-then-proceed idiom as wg0-prestart.sh / tailscaled-override.conf.
+wait_for_chain() {
+    local bin="$1" chain="$2" i
+    for i in $(seq 1 10); do
+        "$bin" -L "$chain" -n >/dev/null 2>&1 && return 0
+        sleep 1
+    done
+    logger -t wg0-up-extra "WARNING: $chain never appeared in $bin after 10s — ts-forward-internal rules for it may not get (re)inserted this run"
+    return 1
+}
+
 # Policy routing: exit-node traffic (arriving on tailscale0, destined for internet)
 # routes through ProtonVPN (wg0). Table = off in wg0.conf means wg-quick adds no routes.
 #
@@ -118,6 +137,7 @@ iptables -t nat -I POSTROUTING 1 -s 100.64.0.0/10 -o wg0 -j MASQUERADE
 # qBittorrent switch below.
 iptables -D FORWARD -m mark --mark 0x200 ! -o wg0 -j DROP 2>/dev/null || true
 iptables -I FORWARD 1 -m mark --mark 0x200 ! -o wg0 -j DROP
+wait_for_chain iptables ts-forward
 iptables -D ts-forward -m mark --mark 0x200 ! -o wg0 -j DROP 2>/dev/null || true
 iptables -I ts-forward 1 -m mark --mark 0x200 ! -o wg0 -j DROP
 
@@ -213,6 +233,7 @@ iptables -t mangle -I FORWARD 2 -i wg0 -o tailscale0 -p tcp --tcp-flags SYN,RST 
 # ts-forward insertion survives that race.
 ip6tables -D FORWARD -i tailscale0 ! -o tailscale0 -j REJECT 2>/dev/null || true
 ip6tables -I FORWARD 1 -i tailscale0 ! -o tailscale0 -j REJECT
+wait_for_chain ip6tables ts-forward
 ip6tables -D ts-forward -i tailscale0 ! -o tailscale0 -j REJECT 2>/dev/null || true
 ip6tables -I ts-forward 1 -i tailscale0 ! -o tailscale0 -j REJECT
 
