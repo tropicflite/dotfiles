@@ -1,0 +1,12 @@
+[Unit]
+Description=Alert on any failed systemd unit
+
+[Service]
+Type=oneshot
+User=matt
+# Leading '-': a detected failure (exit 1) is real information, already
+# alerted via ntfy inside the script -- it must not also mark this systemd
+# unit "failed", or every alert would double as a false hit in `systemctl
+# --failed` itself (which this very check treats as a clean-state signal).
+# Same reasoning as vpn-dns-regression-check.service.
+ExecStart=-/usr/local/bin/systemd-failed-check.sh
