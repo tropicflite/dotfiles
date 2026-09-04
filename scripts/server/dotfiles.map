@@ -143,6 +143,7 @@ copy     dotfiles  scripts/server/vpn-dns-regression-check.timer             /et
 copy     dotfiles  scripts/server/systemd-failed-check.service               /etc/systemd/system/systemd-failed-check.service
 copy     dotfiles  scripts/server/systemd-failed-check.timer                 /etc/systemd/system/systemd-failed-check.timer
 copy     dotfiles  scripts/server/tailscaled-override.conf                 /etc/systemd/system/tailscaled.service.d/override.conf
+copy     dotfiles  scripts/server/docker-override.conf                     /etc/systemd/system/docker.service.d/override.conf
 
 # --- known-live units NOT managed by this repo, so the unmapped scan skips them ---
 exclude  docker-repo  -  arrs-compose.service
