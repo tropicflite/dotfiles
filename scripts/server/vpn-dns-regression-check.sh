@@ -296,12 +296,30 @@ mapfile -t cur_failing < <(printf '%s\n' "${failed_ids[@]:-}" | grep -v '^$' | s
 new_failures=(); for id in "${cur_failing[@]:-}"; do [[ -z "$id" ]] && continue; printf '%s\n' "${prev_failing[@]:-}" | grep -qxF "$id" || new_failures+=("$id"); done
 recovered=(); for id in "${prev_failing[@]:-}"; do [[ -z "$id" ]] && continue; printf '%s\n' "${cur_failing[@]:-}" | grep -qxF "$id" || recovered+=("$id"); done
 
+# Email + ntfy in one call (send-mail calls send-alert internally for the
+# ntfy side). Added 2026-09-04: this check had been ntfy-only since 08-30,
+# and its 09-04 catch (docker.service restart wiping the table-200 Pi-hole
+# route) sat unread on ntfy for ~12h before anyone looked -- see
+# [[project_vpn_dns_regression_check_20260830]] in memory. BYPASS_DIGEST=1
+# because this is exactly the "rare and always actionable" case the digest
+# shim's own doc comment calls out for bypassing it (monitoring.md) -- a
+# VPN/DNS routing regression is a potential privacy leak, not routine noise
+# that's fine getting batched/deduped for up to 15-60 min. Unlike the daily
+# health-monitor.sh digest or docker-health-monitor.sh's per-container
+# flapping, this check firing at all is rare; the hourly ALERT_REPEAT_SECS
+# gate already caps worst-case volume well under the 20/day Migadu limit.
+send_regression_alert() {
+    local subject="$1" body="$2" priority="$3" tags="$4"
+    printf 'Subject: %s\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$subject" "$body" | \
+        NTFY_PRIORITY="$priority" NTFY_TAGS="$tags" NTFY_BODY="$body" BYPASS_DIGEST=1 /usr/local/bin/send-mail
+}
+
 if [[ ${#new_failures[@]} -gt 0 ]]; then
     body="New failure(s) in the VPN/DNS routing regression check on $(hostname) at $(date):${NL}${NL}"
     for id in "${cur_failing[@]}"; do
         body+="- ${LABEL[$id]}${NL}  ${DETAIL[$id]}${NL}${NL}"
     done
-    /usr/local/bin/send-alert "[server] VPN/DNS regression check FAILED" "$body" high rotating_light
+    send_regression_alert "[server] VPN/DNS regression check FAILED" "$body" high rotating_light
     date +%s > "$LAST_ALERT_FILE"
 elif [[ ${#cur_failing[@]} -gt 0 ]]; then
     now=$(date +%s)
@@ -311,7 +329,7 @@ elif [[ ${#cur_failing[@]} -gt 0 ]]; then
         for id in "${cur_failing[@]}"; do
             body+="- ${LABEL[$id]}${NL}"
         done
-        /usr/local/bin/send-alert "[server] VPN/DNS regression check still failing" "$body" high rotating_light
+        send_regression_alert "[server] VPN/DNS regression check still failing" "$body" high rotating_light
         date +%s > "$LAST_ALERT_FILE"
     fi
 fi
@@ -321,7 +339,7 @@ if [[ ${#recovered[@]} -gt 0 ]]; then
     for id in "${recovered[@]}"; do
         body+="- ${LABEL[$id]}${NL}"
     done
-    /usr/local/bin/send-alert "[server] VPN/DNS regression check recovered" "$body" default white_check_mark
+    send_regression_alert "[server] VPN/DNS regression check recovered" "$body" default white_check_mark
 fi
 
 if [[ ${#cur_failing[@]} -eq 0 ]]; then
