@@ -15,7 +15,12 @@ set -euo pipefail
 TS_IP=$(tailscale ip -4 2>/dev/null) || exit 0
 [ -z "$TS_IP" ] && exit 0
 
-ss -tln "( sport = :3493 )" 2>/dev/null | grep -q "$TS_IP:3493" && exit 0
+# Capture + here-string, not `ss ... | grep -q`: under pipefail, grep -q
+# exiting on match can SIGPIPE `ss` (rc 141) -> pipefail propagates it ->
+# `&& exit 0` is skipped -> spurious nut-server bounce. Same race/fix as
+# vpn-dns-regression-check.sh (2026-09-10).
+ss_out=$(ss -tln "( sport = :3493 )" 2>/dev/null) || ss_out=""
+grep -q "$TS_IP:3493" <<<"$ss_out" && exit 0
 
 # Never bounce upsd while upsmon is connected: the broken-pipe disconnect can
 # skip DEADTIME and go straight to SHUTDOWNCMD — a real poweroff (2026-07-02

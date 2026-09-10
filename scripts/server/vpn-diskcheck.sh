@@ -161,7 +161,16 @@ ROUTE_FLAG="$RUNTIME_DIR/vpn_route_missing"
 ROUTE_DIAG_LOG="/var/log/vpn-route-diag.log"
 
 route_missing() {
-    ip link show wg0 > /dev/null 2>&1 && ! ip route get "$VPN_TEST_IP" | head -1 | grep -q "dev wg0"
+    ip link show wg0 > /dev/null 2>&1 || return 1
+    # Capture + here-string, not `ip route get ... | grep -q`: under pipefail,
+    # grep -q exiting on match can SIGPIPE `ip route get` (rc 141), which
+    # pipefail then propagates, and `! <pipeline>` flips that into a spurious
+    # "route missing" -> false VPN-bypass alert. This check already has the
+    # worst false-positive history in the repo (see comment block above);
+    # don't hand it another race. Same fix as vpn-dns-regression-check.sh
+    # (2026-09-10).
+    local out; out=$(ip route get "$VPN_TEST_IP" 2>/dev/null)
+    ! grep -q "dev wg0" <<<"${out%%$'\n'*}"
 }
 
 if route_missing; then
