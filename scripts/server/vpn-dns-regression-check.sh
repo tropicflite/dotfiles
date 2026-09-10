@@ -121,36 +121,62 @@ check_ts_exit_mark_exempt() {
     iptables -t mangle -C TS_EXIT_MARK -d 10.0.0.0/24 -j RETURN 2>/dev/null
 }
 
+# NOTE: every check that greps command output does so via a captured
+# variable + here-string ( grep ... <<<"$out" ), never `cmd | grep -q`.
+# Under this script's `set -o pipefail`, `cmd | grep -q PATTERN` is a race:
+# grep -q exits the instant it matches, closing the pipe while `cmd` (ip,
+# iptables, dig) may still be writing -> cmd dies with SIGPIPE (141) ->
+# pipefail propagates 141 as the pipeline's status -> the check reports
+# FAIL even though the pattern WAS present. Measured ~10% hit rate under
+# load; `table200_default` flaked most (its match is line 1 of 3 -> widest
+# window with `ip` still writing). Found 2026-09-10 after a spurious
+# `table200_default` FAIL with the live route table provably intact
+# (route-monitor logged zero table-200 changes in the preceding 6 days).
+# A here-string's producer is bash itself and is not part of a pipeline,
+# so pipefail never sees a SIGPIPE from it. The must-NOT-match checks
+# (no_source_based_rule, no_table201_leftover) were the worse hazard: a
+# SIGPIPE there flips a real regression into a false PASS.
+
 check_fwmark_ip_rule() {
-    ip rule show | grep -q "fwmark 0x200 lookup 200"
+    local out; out=$(ip rule show)
+    grep -q "fwmark 0x200 lookup 200" <<<"$out"
 }
 
 check_table200_default() {
-    ip route show table 200 2>/dev/null | grep -q "^default dev wg0"
+    local out; out=$(ip route show table 200 2>/dev/null)
+    grep -q "^default dev wg0" <<<"$out"
 }
 
 check_table200_pihole() {
-    ip route show table 200 2>/dev/null | grep -q "172\.25\.0\.0/24 dev br-pihole"
+    local out; out=$(ip route show table 200 2>/dev/null)
+    grep -q "172\.25\.0\.0/24 dev br-pihole" <<<"$out"
 }
 
 check_table200_endpoint_pin() {
-    [[ -n "$PROTON_ENDPOINT" ]] && ip route show table 200 2>/dev/null | grep -q "^${PROTON_ENDPOINT} via ${LAN_GW}"
+    [[ -n "$PROTON_ENDPOINT" ]] || return 1
+    local out; out=$(ip route show table 200 2>/dev/null)
+    grep -q "^${PROTON_ENDPOINT} via ${LAN_GW}" <<<"$out"
 }
 
 check_maintable_endpoint_pin() {
-    [[ -n "$PROTON_ENDPOINT" ]] && ip route show table main 2>/dev/null | grep -q "^${PROTON_ENDPOINT} via"
+    [[ -n "$PROTON_ENDPOINT" ]] || return 1
+    local out; out=$(ip route show table main 2>/dev/null)
+    grep -q "^${PROTON_ENDPOINT} via" <<<"$out"
 }
 
 check_maintable_default_wg0() {
-    ip route get 1.1.1.1 2>/dev/null | head -1 | grep -q "dev wg0"
+    local out; out=$(ip route get 1.1.1.1 2>/dev/null)
+    grep -q "dev wg0" <<<"${out%%$'\n'*}"
 }
 
 check_no_source_based_rule() {
-    ! ip rule show | grep -q "from 100\.64\.0\.0/10"
+    local out; out=$(ip rule show)
+    ! grep -q "from 100\.64\.0\.0/10" <<<"$out"
 }
 
 check_no_table201_leftover() {
-    ! ip rule show | grep -q "lookup 201" && [[ -z "$(ip route show table 201 2>/dev/null)" ]]
+    local out; out=$(ip rule show)
+    ! grep -q "lookup 201" <<<"$out" && [[ -z "$(ip route show table 201 2>/dev/null)" ]]
 }
 
 check_dns_bypass_return() {
@@ -169,7 +195,8 @@ check_dns_no_hairpin() {
 
 check_dns_functional() {
     command -v dig >/dev/null 2>&1 || return 0   # dig missing: can't test, don't fail the whole suite over tooling
-    dig +time=3 +tries=1 "@${TS_IP}" example.com +short 2>/dev/null | grep -qE '^[0-9]'
+    local out; out=$(dig +time=3 +tries=1 "@${TS_IP}" example.com +short 2>/dev/null)
+    grep -qE '^[0-9]' <<<"$out"
 }
 
 check_ipv6_reject_forward() {
