@@ -41,7 +41,7 @@ Most stacks are managed by systemd services (so they start on boot). Unit files 
 - `immich-compose` — After docker, wg0, mnt-data (Requires docker + mnt-data only; wg0 dropped from Requires 2026-07-02 — a VPN bounce shouldn't take the photo library down)
 - `jellyfin-compose` — After docker, tailscaled, mnt-data (tailscaled is a Serve-era fossil, harmless)
 - `ntfy-compose` — After docker, tailscale-ready, arrs-compose (arrs-compose creates the `arrs` network ntfy joins)
-- `pihole-compose` — After docker (starts before wg0 so br-pihole exists when wg0-up-extra.sh runs)
+- `pihole-compose` — After docker (starts before wg0 so br-pihole exists when wg0-up-extra.sh runs). Carries an `ExecStartPost` that re-runs `wg0-up-extra.sh` whenever wg0 is *already* up, to restore table 200's `172.25.0.0/24 dev br-pihole` route. This unit creates the bridge, so it is the only correct hook point — added 2026-09-16 to replace a 2026-09-04 `docker.service` `ExecStartPost` that could never have worked (that unit must fully start before this one can run, so the bridge is guaranteed absent there; waiting for it deadlocks). The guard is why boot is unaffected: wg0 is absent then, the hook no-ops, and wg0's own PostUp does the full apply
 - `qbittorrent-compose` — After docker, tailscaled, wg0, mnt-data (deliberately does NOT Require wg0 — its VPN coupling is enforced by the kill switch + vpn-diskcheck instead, so wg0 bounces don't churn it)
 - `radicale-compose` — After docker, tailscale-ready, mnt-data
 - `tsdproxy-compose` — After docker, arrs-compose, immich-compose (needs both external networks to exist)

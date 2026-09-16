@@ -76,7 +76,24 @@ ip route add 0.0.0.0/0 dev wg0 table 200
 # nat PREROUTING (DNAT), so DNS queries to internet IPs get marked 0x200 before the DNAT
 # redirect changes their destination to 172.25.0.2. Without this route, marked DNS
 # packets follow the default (wg0) instead of reaching Pi-hole on br-pihole.
-ip route add 172.25.0.0/24 dev br-pihole table 200
+# br-pihole is created by pihole-compose.service, NOT by dockerd itself. That
+# unit is After=docker.service Requires=docker.service, so it cannot start
+# until docker.service has fully started — which includes waiting for
+# docker.service.d/override.conf's ExecStartPost, i.e. this script. When
+# called from that path the bridge is therefore *guaranteed* absent, and no
+# amount of waiting here can help: a 2026-09-16 attempt to wait for it
+# deadlocked on its own precondition and delayed every compose unit by the
+# full timeout. Proven from the journal: wait times out -> "Started
+# docker.service" -> "Starting pihole-compose.service" -> bridge appears.
+#
+# So skip the route rather than erroring, and let whatever brings the bridge
+# up re-run this script. Never make this a silent skip — a silent failure
+# here is exactly what let the 2026-09-04 incident sit unnoticed for ~12h.
+if ip link show br-pihole >/dev/null 2>&1; then
+    ip route add 172.25.0.0/24 dev br-pihole table 200
+else
+    logger -t wg0-up-extra "NOTE: br-pihole absent — skipped its table-200 route; expected when called from docker.service ExecStartPost (pihole-compose starts later and re-runs this script)"
+fi
 ip rule add fwmark 0x200 lookup 200 priority 100
 
 # Pi-hole's own upstream DNS resolution routes through ProtonVPN — privacy over
