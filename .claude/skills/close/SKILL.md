@@ -4,12 +4,11 @@ description: >-
   Close out the current working session on Matt's homelab: fold durable
   learnings into the file-based memory system, correct or retire stale
   memory notes found along the way, check for uncommitted changes across
-  any repos touched (dotfiles, docker, others), close out any open session
-  tasks, then report a short session summary, close stats, and an honest
+  any repos touched (dotfiles, docker, others), then report a short session summary, close stats, and an honest
   prioritized debrief (audit? confidence? likely bugs? blast radius? what
   we missed?). Use whenever the user says "/close", "close the session",
   "close this out", "wrap up", "end of session", "session close", or asks
-  to make sure memory/tasks/commits are squared away before stopping. Not
+  to make sure memory/commits are squared away before stopping. Not
   for closing files, windows, PRs, or GitHub issues.
 ---
 
@@ -19,7 +18,7 @@ Land everything this session learned into the memory system at
 `/home/matt/.claude/projects/-home-matt/memory/`, make sure nothing's left
 half-done across the repos touched, and debrief honestly. There's no MCP
 memory server here — memory is plain markdown files plus `MEMORY.md` as the
-index, edited directly with Read/Write/Edit. There's also no wiki, no task
+index, edited as plain files. There's also no wiki, no task
 board, and no single project repo: work this session may have spanned
 `~/dotfiles`, `~/docker`, live server state, or other fleet machines.
 
@@ -68,10 +67,6 @@ live state (name the file/command that confirmed it), versus which were read
 and trusted without re-checking. This is the same spirit as citing evidence
 for a claim — don't imply a note is fresh if it was only skimmed.
 
-**Tasks.** If `TaskCreate`/`TaskUpdate` were used this session, make sure
-nothing is left `in_progress` — mark done, or explicitly note what's still
-open and why it wasn't finished.
-
 **Repos.** Leave commits to the user's explicit ask, same as always — this
 skill never runs `dotp`/`docp`/`git commit`/`git push` on its own. If a repo
 was left dirty or committed-but-unpushed, that's a stats line and a debrief
@@ -79,8 +74,7 @@ item, not something to silently fix.
 
 ## Phase 3 — Nothing pending
 
-Before reporting, check: no memory file left known-wrong, no orphaned
-`in_progress` task, no plan or finding that only exists in chat when it
+Before reporting, check: no memory file left known-wrong, no plan or finding that only exists in chat when it
 clearly should be a memory note per the criteria above. Fix what a direct
 edit can fix now; report what genuinely needs the user's input.
 
@@ -97,7 +91,6 @@ Short bulleted counts — only lines that are nonzero/relevant:
 - Memory: notes written / edited / retired (name them)
 - Verified vs trusted: memory notes re-confirmed against current state this
   session (with what confirmed them) · notes read but not re-verified
-- Tasks: closed / left open (and why)
 - Repos: commits made · pushed vs local-only · anything left dirty, per repo
 - Fleet: any `dotl`/`fdotl`/`scripts-link` sync run, and which machines
 

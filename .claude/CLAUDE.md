@@ -8,17 +8,15 @@
 
 # Conventions
 
-- Dotfiles managed via `dotp` (commit+push) and `fdotl` (fleet pull on all machines)
-- Docker repo (~/docker, server-only) managed via `docp` (same pattern as `dotp`, commit+push) — defined in `~/.zshrc.local.server`, not the shared `.zshrc`, since `~/docker` only exists there
+- Scripts live in the dotfiles repo (`~/dotfiles/scripts/<machine>/` or `scripts/fleet/`) and are symlinked into ~/bin by `scripts-link` — never create an untracked file directly in ~/bin. Server scripts installed outside `$HOME` (e.g. /usr/local/bin) also need a `scripts/server/dotfiles.map` entry in the same session
 - Machine-specific aliases in ~/.zshrc.local.<machine>
-- All scripts go in ~/bin/
 - Deliver all code/configs all-at-once, never piecemeal
 
 # Key aliases
 
 - `dotp` — git add -A + commit + push dotfiles
-- `docp` — git add -A + commit + push ~/docker (server-only, `~/.zshrc.local.server`)
-- `fdotl` — SSH to all machines and run dotl (fleet sync)
+- `dotl` / `fdotl` — pull dotfiles on this machine / SSH to all machines and run dotl (fleet sync)
+- `docp` — git add -A + commit + push ~/docker (server-only; defined in `~/.zshrc.local.server`, not the shared `.zshrc`, since `~/docker` only exists there)
 - `tserver` — SSH to server with tmux auto-attach
 - `bz` — bat ~/.zshrc
 
@@ -26,9 +24,9 @@
 
 | Hostname | OS | Notes |
 |----------|----|-------|
-| laptop | MX Linux 25.1 | Reference machine; i3 + Kitty |
-| mini | MX Linux 25.1 | No AVX, SysVinit, Bay Trail |
-| desktop | Ubuntu 24.04 (WSL2) | Windows host handles Tailscale |
+| laptop | MX Linux 25.1 | Reference machine; i3 + Kitty; SysVinit |
+| mini | MX Linux 25.1 | No AVX, SysVinit, Bay Trail; i3 + Kitty |
+| desktop | Ubuntu 24.04 (WSL2) | Port 22; Windows host handles Tailscale |
 | server | Debian 13 trixie | Port 28901; Docker host |
 | phone | GrapheneOS (Termux) | Port 8022 |
 | quest | Meta Quest (Termux) | Port 8022; Tailscale IP 100.74.113.62 |
