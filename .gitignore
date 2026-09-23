@@ -11,3 +11,9 @@
 # allowlist is machine-local too (and may contain secrets).
 .claude/settings.json
 .claude/settings.local.json
+
+# Claude Code: runtime-synced Anthropic skill bundles, cached per account/session
+# under a UUID-named dir. Machine-local and rewritten by Claude at runtime, so
+# same reasoning as settings.json above — tracking it would churn the repo and
+# `dotl`'s hard reset would fight Claude's own writes on every fleet sync.
+.claude/skills/synced/

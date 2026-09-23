@@ -35,6 +35,11 @@ WG_WATCHDOG_SRC="/usr/local/bin/wg-watchdog.sh"
 VPN_DISKCHECK_SRC="/home/matt/dotfiles/scripts/server/vpn-diskcheck.sh"
 PROFILES_DIR="/etc/wireguard/profiles"
 LAN_GW="192.168.50.1"
+# Server's own LAN address, derived rather than hardcoded — the SMTP-bypass
+# check below asserts on the source address the kernel picks, and a stale
+# hardcoded value would make that check fail for the wrong reason.
+LAN_IP=$(ip -4 -o addr show enp1s0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1)
+[[ -z "$LAN_IP" ]] && LAN_IP="192.168.50.34"
 STATE_DIR="/var/tmp/vpn-dns-regression-check"
 FAILING_FILE="$STATE_DIR/failing_checks"
 LAST_ALERT_FILE="$STATE_DIR/last_alert_time"
@@ -88,6 +93,10 @@ add_check wg_profile_resolvable "wg0.conf's active profile identifiable (primary
 add_check watchdog_latch_fix    "wg-watchdog.sh: auto-failover latch-clear fix (2026-08-18) present"
 add_check mainroute_in_postup   "wg0-up-extra.sh: main-table route restore (2026-07-02 fix) present"
 add_check diskcheck_tmp_dedup   "vpn-diskcheck.sh: dedup flags in /tmp, not /run/user (2026-07-02/03 fix)"
+add_check smtp_bypass_rule      "SMTP bypass: ip rule (tcp dport 587 -> table 202)"
+add_check smtp_bypass_route     "SMTP bypass: table 202 default via LAN gateway"
+add_check smtp_bypass_resolves  "SMTP bypass: port-587 route resolves out enp1s0 with the LAN source IP"
+add_check smtp_bypass_in_postup "wg0-up-extra.sh: SMTP bypass (2026-09-23 fix) present in source"
 
 # ── Individual checks ─────────────────────────────────────────────────────
 
@@ -245,6 +254,31 @@ check_diskcheck_tmp_dedup() {
     ! grep -q 'RUNTIME_DIR="/run/user' "$VPN_DISKCHECK_SRC" 2>/dev/null
 }
 
+check_smtp_bypass_rule() {
+    local out; out=$(ip rule show)
+    grep -qE "ipproto tcp dport 587 lookup 202" <<<"$out"
+}
+
+check_smtp_bypass_route() {
+    local out; out=$(ip route show table 202 2>/dev/null)
+    grep -q "^default via ${LAN_GW}" <<<"$out"
+}
+
+# The functional one. Asserts BOTH halves of the 2026-09-23 fix: that port-587
+# traffic leaves via enp1s0, and that it carries the LAN source address. The
+# source half is not redundant — the first attempt at this bypass (mangle
+# OUTPUT MARK + fwmark rule) satisfied the interface half while still emitting
+# source 10.2.0.2, a martian that upstream silently dropped. A check that only
+# looked at the interface would have passed on a bypass that did not work.
+check_smtp_bypass_resolves() {
+    local out; out=$(ip route get 1.1.1.1 ipproto tcp dport 587 2>/dev/null)
+    grep -q "dev enp1s0" <<<"$out" && grep -q "src ${LAN_IP}" <<<"$out"
+}
+
+check_smtp_bypass_in_postup() {
+    [[ -f "$WG_UP_EXTRA" ]] && grep -q "ipproto tcp dport 587 lookup 202" "$WG_UP_EXTRA" 2>/dev/null
+}
+
 # ── Failure detail messages (only consulted when a check fails) ───────────
 
 detail_for() {
@@ -274,6 +308,10 @@ detail_for() {
         watchdog_latch_fix)    echo "The 2026-08-18 fix (clearing FAILED_OVER_THIS_INCIDENT independent of TUNNEL_FAIL_TYPE once the new endpoint proves healthy) is no longer present in the deployed wg-watchdog.sh. Without it, auto-failover can silently latch disabled for days after its first use -- exactly what happened 2026-08-13 through 2026-08-18." ;;
         mainroute_in_postup)   echo "wg0-up-extra.sh no longer restores the main-table default route. If this logic moved back into wg0.service's ExecStart, a bare wg-quick bounce (wg-watchdog.sh) would silently drop it again -- the exact 2026-07-02 incident." ;;
         diskcheck_tmp_dedup)   echo "vpn-diskcheck.sh's dedup flags are no longer pinned to /tmp (or have regressed to /run/user/\$(id -u)), which systemd-logind tears down on SSH logout -- the 2026-07-02/03 incident that produced 11 duplicate 'VPN route missing' emails and contributed to a Migadu daily-cap hit." ;;
+        smtp_bypass_rule)      echo "Missing: ip rule add ipproto tcp dport 587 lookup 202 priority 101 -- outbound SMTP falls back to the main table, i.e. through wg0. That is the 2026-09-23 failure: when the tunnel black-holes, every 'VPN DOWN' email dies with 'Connection timed out' and only the later 'recovered' email lands, so the mailbox shows a recovery for an outage it was never told about." ;;
+        smtp_bypass_route)     echo "table 202 has no 'default via ${LAN_GW}' route -- the port-587 ip rule resolves to an empty table and falls through to the main table (wg0), silently undoing the bypass." ;;
+        smtp_bypass_resolves)  echo "Port-587 traffic does not resolve out enp1s0 with source ${LAN_IP}. If it resolves out enp1s0 but with the wg0 source (10.2.0.2), the mangle-MARK + fwmark approach has been reintroduced: that reroutes the packet but cannot re-select a source address already chosen at connect() time, so SYNs leave as martians and are dropped upstream. Use a dport-matching ip rule (decided at the initial lookup) instead -- see the SMTP block in wg0-up-extra.sh." ;;
+        smtp_bypass_in_postup) echo "wg0-up-extra.sh no longer contains the SMTP bypass. Even if the live ip rule/route currently look correct, they are now unowned: the next wg0 bounce (or reboot) will not reassert them and alert email silently goes back to riding the tunnel it is trying to report on. Same live-fix-vs-persisted-source trap as 2026-08-21/08-30/09-16." ;;
         *) echo "Check failed." ;;
     esac
 }

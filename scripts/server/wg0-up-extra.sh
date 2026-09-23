@@ -115,6 +115,63 @@ ip rule add fwmark 0x200 lookup 200 priority 100
 ip rule del from 172.25.0.0/24 lookup 201 2>/dev/null || true
 ip route flush table 201 2>/dev/null || true
 
+# SMTP submission bypass (added 2026-09-23): outbound TCP 587 ALWAYS egresses
+# direct via the LAN gateway (table 202), never through wg0.
+#
+# Incident that produced this: 2026-09-23 06:38-06:52 the ProtonVPN primary
+# endpoint black-holed. msmtp follows the host default route, which is wg0
+# (metric 100, set above), so the two "VPN DOWN" alert emails died with
+# 'cannot connect to smtp.migadu.com, port 587: Connection timed out' and only
+# the 06:55 "recovered" email ever landed. Net effect: the mailbox showed an
+# unexplained recovery notice for an outage it was never told about. An email
+# alert about the VPN being down cannot ride the VPN — the outage is the thing
+# blocking its own alert.
+#
+# UNCONDITIONAL, not "bypass only while wg0 is down", because of how that
+# outage actually presented: the interface was UP the whole time (watchdog
+# rebuilt it three times; handshake age read -1s, i.e. never completed) so the
+# main-table "default dev wg0" route stayed perfectly valid and packets were
+# swallowed inside a live tunnel. Any conditional keyed on wg0's presence or
+# route state would have evaluated healthy and never fired.
+#
+# Implemented as a dport-matching ip rule, NOT the mangle-MARK + fwmark idiom
+# used for TS_EXIT_MARK above. That was tried first here and is subtly wrong
+# for locally-generated traffic: marking in mangle OUTPUT does reroute the
+# packet out enp1s0, but the source address was already selected during the
+# pre-mark route lookup (wg0 -> 10.2.0.2) and the post-mark reroute does not
+# re-select it. tcpdump confirmed SYNs leaving enp1s0 sourced 10.2.0.2, a
+# martian on the LAN, silently dropped upstream — the bypass looked installed
+# and still failed. A dport rule is evaluated at the *initial* lookup, so the
+# source comes out correctly as 192.168.50.34 with no MARK and no MASQUERADE.
+# Needs iproute2 with ipproto/dport selectors (6.15 here, kernel 6.12).
+#
+# PRIVACY SCOPE — deliberately narrower than the 2026-08-21 Pi-hole-upstream
+# call, and not a reversal of it. That one would have exposed the entire
+# household's DNS queries to Quad9/Cloudflare from the home IP. This exposes
+# exactly one authenticated SMTP session to Migadu, who already knows precisely
+# who we are (we log in as a named user on our own domain); message content
+# stays inside STARTTLS. What the ISP gains is "this host talks to Migadu".
+#
+# RESIDUAL, known and accepted: msmtp still RESOLVES smtp.migadu.com through
+# Pi-hole, whose own upstream rides wg0 by design (privacy call above). On a
+# cache miss during a tunnel outage a send can therefore still fail at
+# resolution rather than at connection. Not fixed here, because the only fix is
+# rerouting Pi-hole's upstream — the exact change reverted on 2026-08-21.
+#
+# Scope is "from all" rather than host-only. Source-based scoping is
+# structurally impossible here (the source address is the very thing the rule
+# exists to influence — see the 10.2.0.2 trap above), and uidrange was
+# considered and dropped: no container currently sends SMTP, and any that did
+# would want this same survivability. Exit-node traffic is unaffected — it is
+# marked 0x200 and matches rule priority 100 first, so it still leaves via wg0.
+#
+# Drain-then-add rather than a single del: wg0 bounces frequently (three times
+# in the incident above), and a single `ip rule del` only removes one match, so
+# any duplicate that ever appeared would survive and compound.
+while ip rule del ipproto tcp dport 587 lookup 202 2>/dev/null; do :; done
+ip route replace default via "$LAN_GW" dev enp1s0 table 202
+ip rule add ipproto tcp dport 587 lookup 202 priority 101
+
 iptables -D FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o br-pihole -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i br-pihole -o enp1s0 -j ACCEPT 2>/dev/null || true
