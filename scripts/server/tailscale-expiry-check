@@ -7,9 +7,20 @@
 # every peer in the tailnet (control-plane metadata, synced regardless of
 # whether that peer is currently online) — so this also covers devices like
 # quest that aren't reachable directly.
+#
+# Also checks tsdproxy's auth key. Tailscale doesn't expose auth-key expiry
+# without an API token, so expiry is inferred as authkey mtime + 90 days (the
+# Free-plan max). Rotate it at https://login.tailscale.com/admin/settings/keys
+# (reusable, non-ephemeral, untagged, 90d) and save it with nvim — that resets
+# the mtime. An expired key only blocks NEW tsdproxy hostnames; existing ones
+# keep working, which is why it once lapsed unnoticed (2026-09-28).
 
 WARN_DAYS=30
 URGENT_DAYS=7
+AUTHKEY=/home/matt/docker/tsdproxy/config/authkey
+AUTHKEY_LIFETIME_DAYS=90
+AUTHKEY_WARN_DAYS=14
+AUTHKEY_URGENT_DAYS=3
 
 REPORT=$(tailscale status --json | python3 -c "
 import json, sys
@@ -38,6 +49,19 @@ for node in nodes.values():
     elif days <= WARN_DAYS:
         warn.append(line)
 
+import os
+try:
+    exp_ts = os.stat('$AUTHKEY').st_mtime + $AUTHKEY_LIFETIME_DAYS * 86400
+    exp_dt = datetime.fromtimestamp(exp_ts, timezone.utc)
+    days = (exp_dt - now).total_seconds() / 86400
+    line = f'tsdproxy auth key: {days:.1f} days (~{exp_dt:%Y-%m-%d}) - rotate at https://login.tailscale.com/admin/settings/keys'
+    if days <= $AUTHKEY_URGENT_DAYS:
+        urgent.append(line)
+    elif days <= $AUTHKEY_WARN_DAYS:
+        warn.append(line)
+except OSError as e:
+    urgent.append(f'tsdproxy auth key: cannot stat $AUTHKEY ({e.strerror})')
+
 print('URGENT' if urgent else ('WARN' if warn else 'OK'))
 for l in urgent:
     print('urgent:' + l)
@@ -53,22 +77,22 @@ TIER=$(printf '%s\n' "$REPORT" | head -1)
 URGENT_LINES=$(printf '%s\n' "$REPORT" | grep '^urgent:' | sed 's/^urgent://')
 WARN_LINES=$(printf '%s\n' "$REPORT" | grep '^warn:' | sed 's/^warn://')
 
-BODY="Tailscale node key expiry check ($(date -Iseconds))"
+BODY="Tailscale key expiry check ($(date -Iseconds))"
 [ -n "$URGENT_LINES" ] && BODY="$BODY
 
-URGENT (<= ${URGENT_DAYS}d) — reauth these before they drop off the tailnet:
+URGENT — act on these now:
 $URGENT_LINES"
 [ -n "$WARN_LINES" ] && BODY="$BODY
 
-Heads up (<= ${WARN_DAYS}d):
+Heads up:
 $WARN_LINES"
 
 if [ "$TIER" = "URGENT" ]; then
-    SUBJECT="[Tailscale] URGENT: node key(s) expiring soon"
+    SUBJECT="[Tailscale] URGENT: key(s) expiring soon"
     NTFY_PRIORITY=high
     NTFY_TAGS=rotating_light
 else
-    SUBJECT="[Tailscale] node key expiry heads-up"
+    SUBJECT="[Tailscale] key expiry heads-up"
     NTFY_PRIORITY=default
     NTFY_TAGS=warning
 fi
