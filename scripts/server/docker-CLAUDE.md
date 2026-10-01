@@ -77,7 +77,7 @@ labels:
   tsdproxy.port.1: "443/https:6767/http"   # container-internal port, not the host-published port
 ```
 
-**Auth key:** `tsdproxy/config/tsdproxy.yaml` is committed (`authKeyFile: /config/authkey`); the key itself is `tsdproxy/config/authkey` (gitignored, 600) — reusable, non-ephemeral, untagged, 90-day expiry (only affects *new* node registrations). To rotate: generate a new key at `https://login.tailscale.com/admin/settings/keys`, overwrite the file, restart the container. Switching to OAuth is deliberately deferred (it would need the tailnet's first ACL/`tagOwners` policy).
+**Auth key:** `tsdproxy/config/tsdproxy.yaml` is committed (`authKeyFile: /config/authkey`); the key itself is `tsdproxy/config/authkey` (gitignored, 600) — reusable, non-ephemeral, untagged, 90-day expiry (only affects *new* node registrations). To rotate: generate a new key at `https://login.tailscale.com/admin/settings/keys`, overwrite the file, restart the container. An expired key only blocks *new* hostnames (it lapsed unnoticed 2026-09-28), so `tailscale-expiry-check` now warns at 14d/3d, inferring expiry from the file's mtime + 90d. Switching to OAuth is deliberately deferred (it would need the tailnet's first ACL/`tagOwners` policy).
 
 **Dashboard:** `https://tsdproxy.tailc9871d.ts.net`; also `127.0.0.1:8180` on loopback (not the default 8080 — qBittorrent owns that port).
 
