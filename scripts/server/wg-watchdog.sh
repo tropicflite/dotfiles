@@ -384,8 +384,19 @@ while true; do
         continue
     fi
 
-    # Check if Tailscale can reach the coordination server
-    if ! tailscale status 2>&1 | grep -q "coordination server" ; then
+    # Check if Tailscale can reach the coordination server. Two signals: the
+    # explicit "coordination server" health warning, and control's own view of
+    # this node (Self.Online). The second catches a failure the first misses,
+    # hit on the 2026-10-01 reboot: tailscaled's control connection was opened
+    # via enp1s0 before wg0 existed, wg0 then took the default route, and the
+    # stale map long-poll timed out every 2min forever — node offline to the
+    # tailnet (exit node dead) while Health stayed empty. Only judged while
+    # BackendState is Running, so a deliberate `tailscale down` isn't "fixed".
+    TS_JSON=$(tailscale status --json 2>/dev/null)
+    TS_BACKEND=$(jq -r '.BackendState // empty' <<<"$TS_JSON" 2>/dev/null)
+    TS_ONLINE=$(jq -r '.Self.Online // false' <<<"$TS_JSON" 2>/dev/null)
+    if ! tailscale status 2>&1 | grep -q "coordination server" \
+        && ! [[ "$TS_BACKEND" == "Running" && "$TS_ONLINE" != "true" ]]; then
         # No coordination server complaint, Tailscale is healthy
         TS_STRIKE_COUNT=0
         [[ "$TS_FAIL_TYPE" == "Tailscale coordination unreachable" ]] && \
