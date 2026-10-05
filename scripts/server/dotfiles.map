@@ -155,6 +155,7 @@ exclude  docker-repo  -  ntfy-compose.service
 exclude  docker-repo  -  pihole-compose.service
 exclude  docker-repo  -  qbittorrent-compose.service
 exclude  docker-repo  -  radicale-compose.service
+exclude  docker-repo  -  syncthing-compose.service
 exclude  docker-repo  -  tailscale-serve-drivetemps.service
 exclude  docker-repo  -  tailscale-serve-homepage.service
 exclude  docker-repo  -  tsdproxy-compose.service
