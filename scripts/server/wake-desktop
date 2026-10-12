@@ -1,0 +1,39 @@
+#!/bin/bash
+# Wake desktop from sleep via Wake-on-LAN magic packet, then wait until it answers.
+# Usage: wake-desktop            (from anywhere: ssh server wake-desktop)
+# Desktop NIC: Realtek GbE, wired on 192.168.50.0/24; Windows sleep timeout is on,
+# "Wake on pattern match" is off so only a magic packet wakes it.
+
+MAC="B4:2E:99:C9:12:C0"
+LAN_IP="192.168.50.10"
+BROADCAST="192.168.50.255"
+TIMEOUT=90
+
+python3 - "$MAC" "$BROADCAST" <<'EOF' || { echo "wake-desktop: failed to send magic packet" >&2; exit 1; }
+import socket, sys
+mac = bytes.fromhex(sys.argv[1].replace(":", ""))
+packet = b"\xff" * 6 + mac * 16
+with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    for port in (9, 7):
+        s.sendto(packet, (sys.argv[2], port))
+EOF
+echo "Magic packet sent to $MAC; waiting for desktop..."
+
+start=$SECONDS
+until ping -c1 -W1 "$LAN_IP" >/dev/null 2>&1; do
+    if (( SECONDS - start >= TIMEOUT )); then
+        echo "wake-desktop: no reply from $LAN_IP after ${TIMEOUT}s" >&2
+        exit 1
+    fi
+done
+echo "Desktop up on LAN after $((SECONDS - start))s"
+
+until tailscale ping --c=1 --timeout=2s desktop >/dev/null 2>&1; do
+    if (( SECONDS - start >= TIMEOUT )); then
+        echo "wake-desktop: LAN up but Tailscale not reachable after ${TIMEOUT}s" >&2
+        exit 1
+    fi
+    sleep 1
+done
+echo "Desktop reachable over Tailscale after $((SECONDS - start))s"
