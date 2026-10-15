@@ -6,13 +6,10 @@ alias cld='claude --dangerously-skip-permissions --remote-control'
 alias cdk='cd ~/docker'
 clipf() { cat "${1:--}" > /tmp/clip.txt && ssh -T phone "rm -f ~/storage/downloads/clip.txt && cat > ~/storage/downloads/clip.txt" < /tmp/clip.txt; rm -f /tmp/clip.txt; }
 # Tailscale (server-specific with hostname flag)
-alias rt='remind ~/.reminders'        # today
-alias rw='remind ~/.reminders "*7"'
 alias tson='sudo tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server'
 alias tsoff='sudo tailscale down'
 # Network
 alias netstatus="tsstatus; vpnstatus"
-alias vr='nvim ~/.reminders'
 vpnstatus() {
   local wg_out
   wg_out=$(sudo wg show wg0 2>/dev/null)
@@ -53,8 +50,3 @@ function docp {
   cd ~/
 }
 export GPG_TTY=$(tty)
-rr() {
-  tmux set status off 2>/dev/null
-  remint ~/.reminders
-  tmux set status on 2>/dev/null
-}
