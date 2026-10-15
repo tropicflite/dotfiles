@@ -11,7 +11,7 @@ docp "message"
 # equivalent to: git -C ~/docker add -A && git -C ~/docker commit -m "message" && git -C ~/docker push
 ```
 
-Runtime files (logs, databases, media covers) are gitignored. `homepage/config/services.yaml` is tracked but rewritten every minute by cron (see update-uptime.py under Non-obvious constraints), so a `docp` picks up whatever uptime value it currently holds.
+Runtime files (logs, databases, media covers) are gitignored. `homepage/config/services.yaml` is tracked but rewritten every minute by cron (see update-uptime.py under Non-obvious constraints); a `filter=uptime` clean filter (`.gitattributes` + `.git/config`) stores the uptime line as a placeholder so the churn never shows in `git status`.
 
 ### Deploying host-level config
 
@@ -188,7 +188,7 @@ Every other service uses a tsdproxy hostname; Radicale (:5232) has none and is r
 - **qBittorrent 5.x WebUI auth:** `WebUI\AuthSubnetWhitelistEnabled` (currently `172.20.0.0/16`) is required for the Homepage widget — CSRF protection 403s the login endpoint for non-whitelisted IPs. If the widget breaks after a network change, check Homepage's arrs IP is inside the whitelist CIDR.
 - **ntfy password files — two copies, keep in sync:** `~/.config/ntfy/password` (matt:matt 600, for matt/root scripts) and `/etc/nut/ntfy-password` (root:nut 640, for `upssched-cmd` as the nut user). On rotation: `echo 'newpass' > ~/.config/ntfy/password && sudo sh -c 'cat /home/matt/.config/ntfy/password > /etc/nut/ntfy-password'`.
 - **Router stats pipeline:** `router-stats.timer` (every minute) → `router-stats.service` runs `ssh router /jffs/scripts/router-stats.sh` into `~/router-stats/router-stats.json` → `router-stats-http.service` serves it via `python3 -m http.server 9797` → Homepage fetches `http://host.docker.internal:9797/router-stats.json`. If the router is unreachable the fetch silently no-ops and the previous JSON stays.
-- **update-uptime.py mutates services.yaml live:** cron (`* * * * *`) runs `~/bin/update-uptime.py`, patching the "Server Uptime" `description:` in `~/docker/homepage/config/services.yaml` every minute; Homepage picks it up without restart. Don't `git reset --hard` or `git checkout` the docker repo while the server is running — it reverts the uptime value.
+- **update-uptime.py mutates services.yaml live:** cron (`* * * * *`) runs `~/bin/update-uptime.py`, patching the "Server Uptime" `description:` in `~/docker/homepage/config/services.yaml` every minute; Homepage picks it up without restart. A `git checkout` of the file writes the placeholder `(set live by update-uptime.py)`, which the next cron run (≤1 min) replaces — harmless. The filter config is in `.git/config` (untracked); rebuild.md §6 has the commands.
 - **Monitoring scripts and email pipeline:** see `~/docker/monitoring.md` (health-monitor, temp-monitor, vpn-diskcheck, server-health, ups-charge-log, msmtp/Migadu, full cron schedule).
 
 ## Troubleshooting
