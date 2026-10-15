@@ -9,11 +9,9 @@ d, secs = divmod(secs, 86400)
 h, secs = divmod(secs, 3600)
 m = secs // 60
 
-parts = []
-if d: parts.append(f'{d}d')
-if h: parts.append(f'{h}h')
-parts.append(f'{m}m')
-uptime = ' '.join(parts)
+# Fixed width so the file size stays constant: git's uptime clean filter
+# (~/docker/.gitattributes) only keeps `git status` clean if size doesn't change
+uptime = f'{d}d {h:02d}h {m:02d}m'
 
 path = Path('/home/matt/docker/homepage/config/services.yaml')
 content = path.read_text()

@@ -11,7 +11,7 @@ docp "message"
 # equivalent to: git -C ~/docker add -A && git -C ~/docker commit -m "message" && git -C ~/docker push
 ```
 
-Runtime files (logs, databases, media covers) are gitignored. `homepage/config/services.yaml` is tracked but rewritten every minute by cron (see update-uptime.py under Non-obvious constraints); a `filter=uptime` clean filter (`.gitattributes` + `.git/config`) stores the uptime line as a placeholder so the churn never shows in `git status`.
+Runtime files (logs, databases, media covers) are gitignored. `homepage/config/services.yaml` is tracked but rewritten every minute by cron (see update-uptime.py under Non-obvious constraints); a `filter=uptime` clean filter (`.gitattributes` + `.git/config`) stores the uptime line as a placeholder so the churn never shows in `git status`. The script writes fixed-width uptime (`13d 03h 43m`) on purpose: git only re-checks filtered content when the file size is unchanged, so a length change shows a phantom `M` (empty diff) until the next `git add`.
 
 ### Deploying host-level config
 
