@@ -173,9 +173,35 @@ if [ -n "$INDEXER_LINES" ]; then
 fi
 
 # --- qBittorrent auth whitelist config drift (the one setting with no audit trail) ---
-WHITELIST=$(grep -oP '(?<=WebUI\\AuthSubnetWhitelist=).*' /home/matt/docker/qbittorrent/config/qBittorrent/qBittorrent.conf 2>/dev/null)
-if [ "$WHITELIST" != "172.20.0.0/16" ]; then
-    ALERTS="${ALERTS}qBittorrent AuthSubnetWhitelist has drifted from the documented 172.20.0.0/16 (currently: '${WHITELIST:-unset}') — Sonarr/Radarr will fail to authenticate and eventually get IP-banned.\n"
+# Read via the WebUI API, not by grepping qBittorrent.conf: v5.3.0 (2026-10-20)
+# moved WebUI keys from [Preferences] WebUI\AuthSubnetWhitelist= to a [WebUI]
+# section, which silently broke the old grep and paged a false "drift". The
+# API reports the live runtime value regardless of on-disk layout. This host
+# reaches the container via the arrs bridge gateway (inside 172.20.0.0/16), so
+# an unauthenticated 200 itself proves the bypass works; a 403 means it doesn't.
+QBIT_IP=$(get_ip qbittorrent)
+if [ -z "$QBIT_IP" ]; then
+    ALERTS="${ALERTS}qBittorrent container is not running or not reachable on the arrs network — whitelist check skipped.\n"
+else
+    QBIT_RESP=$(curl -s --max-time 15 -w '\n%{http_code}' "http://$QBIT_IP:8080/api/v2/app/preferences")
+    QBIT_CODE=$(echo "$QBIT_RESP" | tail -1)
+    if [ "$QBIT_CODE" = "403" ]; then
+        ALERTS="${ALERTS}qBittorrent rejected an unauthenticated API request from the arrs network (HTTP 403) — AuthSubnetWhitelist bypass is not active, so Sonarr/Radarr will fail to authenticate and eventually get IP-banned.\n"
+    elif [ "$QBIT_CODE" != "200" ]; then
+        ALERTS="${ALERTS}Couldn't read qBittorrent preferences to verify AuthSubnetWhitelist (HTTP ${QBIT_CODE:-none}).\n"
+    else
+        WHITELIST=$(echo "$QBIT_RESP" | sed '$d' | python3 -c "
+import json,sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+print(f\"{d.get('bypass_auth_subnet_whitelist_enabled')}|{d.get('bypass_auth_subnet_whitelist', '')}\")
+" 2>/dev/null)
+        if [ "$WHITELIST" != "True|172.20.0.0/16" ]; then
+            ALERTS="${ALERTS}qBittorrent AuthSubnetWhitelist has drifted from the documented enabled + 172.20.0.0/16 (currently: '${WHITELIST:-unparseable}', format enabled|subnets) — Sonarr/Radarr will fail to authenticate and eventually get IP-banned.\n"
+        fi
+    fi
 fi
 
 # --- Jellyfin: unidentified series/movies, episodes missing season/episode number ---
