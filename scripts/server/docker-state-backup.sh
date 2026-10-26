@@ -73,7 +73,7 @@ sync_path "$DOCKER/arrs/prowlarr/config"   prowlarr --exclude=Sentry
 sync_path "$DOCKER/arrs/sonarr/config"     sonarr   --exclude=Sentry
 sync_path "$DOCKER/arrs/radarr/config"     radarr   --exclude=Sentry
 sync_path "$DOCKER/arrs/bazarr/config"     bazarr
-sync_path "$DOCKER/arrs/jellyseerr/config" jellyseerr
+sync_path "$DOCKER/arrs/seerr/config"      seerr
 
 log "uptime-kuma..."
 sync_path "$DOCKER/uptime-kuma" uptime-kuma
