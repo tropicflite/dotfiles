@@ -17,3 +17,4 @@
 # same reasoning as settings.json above — tracking it would churn the repo and
 # `dotl`'s hard reset would fight Claude's own writes on every fleet sync.
 .claude/skills/synced/
+.claude/skills/.trash/
