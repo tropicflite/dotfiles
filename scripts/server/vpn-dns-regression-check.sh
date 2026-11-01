@@ -71,6 +71,9 @@ add_check() { CHECKS+=("$1"); LABEL["$1"]="$2"; }
 add_check exitnode_ks_forward   "Exit-node kill switch (FORWARD)"
 add_check exitnode_ks_tsforward "Exit-node kill switch (inside ts-forward)"
 add_check qbt_ks_forward        "qBittorrent kill switch (FORWARD)"
+add_check qbt_ks_dockeruser     "qBittorrent kill switch (DOCKER-USER)"
+add_check pihole_ks_dockeruser  "Pi-hole upstream kill switch (DOCKER-USER)"
+add_check dockeruser_order      "DOCKER-USER evaluated before DOCKER-FORWARD / any br-pihole ACCEPT"
 add_check ts_exit_mark_wired    "TS_EXIT_MARK chain wired from mangle PREROUTING"
 add_check ts_exit_mark_exempt   "TS_EXIT_MARK exempts Tailscale mesh/LAN traffic (not just exit-node)"
 add_check fwmark_ip_rule        "fwmark 0x200 -> table 200 ip rule"
@@ -110,6 +113,26 @@ check_exitnode_ks_tsforward() {
 
 check_qbt_ks_forward() {
     iptables -C FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP 2>/dev/null
+}
+
+check_qbt_ks_dockeruser() {
+    iptables -C DOCKER-USER -s 172.27.0.0/24 ! -o wg0 -j DROP 2>/dev/null
+}
+
+check_pihole_ks_dockeruser() {
+    iptables -C DOCKER-USER -s 172.25.0.0/24 ! -d 100.64.0.0/10 ! -o wg0 -m conntrack --ctstate NEW -j DROP 2>/dev/null
+}
+
+# Added 2026-11-01: the DOCKER-USER kill switches only work if FORWARD reaches
+# DOCKER-USER before DOCKER-FORWARD's blanket "-i br-pihole -j ACCEPT", and no
+# earlier FORWARD rule ACCEPTs br-pihole traffic leaving anywhere but wg0.
+check_dockeruser_order() {
+    local rules u f
+    rules=$(iptables -S FORWARD 2>/dev/null)
+    u=$(grep -n -m1 -- '-j DOCKER-USER$' <<<"$rules" | cut -d: -f1)
+    f=$(grep -n -m1 -- '-j DOCKER-FORWARD$' <<<"$rules" | cut -d: -f1)
+    [[ -n "$u" && -n "$f" ]] && (( u < f )) || return 1
+    ! head -n "$u" <<<"$rules" | grep -- '-i br-pihole' | grep -v -- '-o wg0' | grep -q -- '-j ACCEPT'
 }
 
 check_ts_exit_mark_wired() {
@@ -286,6 +309,9 @@ detail_for() {
         exitnode_ks_forward)   echo "Missing: iptables -I FORWARD 1 -m mark --mark 0x200 ! -o wg0 -j DROP -- exit-node traffic would leak out the real ISP interface if wg0 disappears." ;;
         exitnode_ks_tsforward) echo "Missing: iptables -I ts-forward 1 -m mark --mark 0x200 ! -o wg0 -j DROP -- ts-forward's own MARK/ACCEPT (0x40000) terminates traversal before the FORWARD-chain copy is ever reached, so THIS copy is the one that actually matters whenever a packet's input interface is tailscale0. A 'tailscale down; tailscale up' (wg-watchdog's coordination-restart path included) recreates ts-forward from scratch and wipes this; only a wg0-triggered PostUp (wg0-up-extra.sh) re-inserts it." ;;
         qbt_ks_forward)        echo "Missing: iptables -I FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP -- qBittorrent traffic could leak if wg0 is down." ;;
+        qbt_ks_dockeruser)     echo "Missing: iptables -I DOCKER-USER 1 -s 172.27.0.0/24 ! -o wg0 -j DROP -- the FORWARD copy can be shadowed by DOCKER-FORWARD's blanket bridge ACCEPT after a dockerd restart; this copy is the one that survives it. Re-run wg0-up-extra.sh." ;;
+        pihole_ks_dockeruser)  echo "Missing: iptables -I DOCKER-USER 1 -s 172.25.0.0/24 ! -d 100.64.0.0/10 ! -o wg0 -m conntrack --ctstate NEW -j DROP -- Pi-hole's plain-DNS upstream (1.1.1.1) is not marked 0x200, so if wg0 disappears it fails over to enp1s0 and Tailscale clients' DNS leaves from the home IP. Re-run wg0-up-extra.sh." ;;
+        dockeruser_order)      echo "FORWARD no longer reaches DOCKER-USER before DOCKER-FORWARD, or an earlier FORWARD rule ACCEPTs br-pihole traffic not leaving via wg0 -- the DOCKER-USER kill switches are shadowed. Inspect: iptables -S FORWARD" ;;
         ts_exit_mark_wired)    echo "mangle PREROUTING is not jumping tailscale0 traffic into TS_EXIT_MARK -- exit-node traffic won't get marked 0x200 at all, silently defeating the whole policy-routing setup." ;;
         ts_exit_mark_exempt)   echo "TS_EXIT_MARK is missing one or more of its RETURN exemptions (100.64.0.0/10, 192.168.50.0/24, 10.0.0.0/24). Without them, ALL tailscale0-origin traffic gets marked 0x200 and forced via wg0 -- not just exit-node traffic -- breaking Tailscale mesh/peer connectivity and the server's own replies to peers." ;;
         fwmark_ip_rule)        echo "ip rule 'fwmark 0x200 lookup 200' is missing -- marked packets fall through to the main table instead of being forced via wg0." ;;

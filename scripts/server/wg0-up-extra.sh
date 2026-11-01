@@ -229,6 +229,36 @@ conntrack -D -m 0x200 2>/dev/null || true
 iptables -D FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP 2>/dev/null || true
 iptables -I FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP
 
+# Bridge kill switches in DOCKER-USER (added 2026-11-01). dockerd re-inserts
+# its DOCKER-USER/DOCKER-FORWARD jumps at the top of FORWARD when it starts,
+# and DOCKER-FORWARD has a blanket "-i br-<net> -j ACCEPT" for every bridge,
+# so a FORWARD-position copy can end up behind it until this script re-runs
+# (docker.service's ExecStartPost fires before the bridges exist, see
+# docker-override.conf). DOCKER-USER is always jumped to ahead of
+# DOCKER-FORWARD and dockerd never flushes it, so a copy here keeps working
+# across daemon restarts. -N so this also works at boot before dockerd has
+# created the chain; dockerd adopts an existing DOCKER-USER rather than
+# replacing it. Neither copy is removed on wg0 down (fail-closed).
+#
+# qBittorrent keeps its FORWARD copy above as well: ts-forward also sits ahead
+# of DOCKER-USER and ACCEPTs anything "-o tailscale0", so a DOCKER-USER-only
+# copy would let qBittorrent reach tailnet peers.
+#
+# Pi-hole (172.25.0.0/24, the only container on pihole_pihole_net) upstream
+# DNS is plain port 53 to 1.1.1.1 and is never marked 0x200 (the phone's
+# query terminates at docker-proxy; Pi-hole opens a new flow), so the
+# exit-node kill switch above doesn't cover it. Without this, losing wg0
+# fails it over to the enp1s0 default route, MASQUERADEd to the home IP.
+# NEW only: Pi-hole's replies to DNAT'd LAN clients go br-pihole -> enp1s0.
+# 100.64.0.0/10 exempt: the ts.net forward to 100.100.100.100 leaves via
+# tailscale0. LAN clients fall back to the router (DNS2) while wg0 is down;
+# Tailscale clients fail closed.
+iptables -N DOCKER-USER 2>/dev/null || true
+iptables -D DOCKER-USER -s 172.27.0.0/24 ! -o wg0 -j DROP 2>/dev/null || true
+iptables -I DOCKER-USER 1 -s 172.27.0.0/24 ! -o wg0 -j DROP
+iptables -D DOCKER-USER -s 172.25.0.0/24 ! -d 100.64.0.0/10 ! -o wg0 -m conntrack --ctstate NEW -j DROP 2>/dev/null || true
+iptables -I DOCKER-USER 1 -s 172.25.0.0/24 ! -d 100.64.0.0/10 ! -o wg0 -m conntrack --ctstate NEW -j DROP
+
 # qBittorrent NAT-PMP inbound port forward (added 2026-07-05): ProtonVPN's NAT-PMP
 # gateway (10.2.0.1) forwards a dynamically-assigned public port to whatever fixed
 # "private port" qbt-natpmp-renew.sh requests (always 6881, matching qBittorrent's
