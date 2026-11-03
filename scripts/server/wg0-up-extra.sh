@@ -172,6 +172,39 @@ while ip rule del ipproto tcp dport 587 lookup 202 2>/dev/null; do :; done
 ip route replace default via "$LAN_GW" dev enp1s0 table 202
 ip rule add ipproto tcp dport 587 lookup 202 priority 101
 
+# Tailscale control/DERP/peer-UDP bypass (added 2026-11-03): tailscaled's OWN
+# sockets egress direct via the ISP, never through wg0.
+#
+# Why: tailscaled sets SO_MARK 0x80000/0xff0000 on every socket it opens
+# (control-plane long-poll, DERP relays, magicsock WireGuard UDP). Its own
+# rule 5210 sends that mark to the main table, whose default is wg0 (set
+# above) -- so all of Tailscale's own connectivity rode ProtonVPN. Evidence:
+# 17 wg-watchdog "coordination unreachable" restarts 2026-09-12..11-03 (all
+# but one since 10-06), ~1 per 2-3 days, vs only 4 actual tunnel failures in
+# the same window; journal shows "map response long-poll timed out" with
+# tailscaled's control conns sourced 10.2.0.2 -- the long idle TCP a VPN
+# exit's NAT drops silently. Riding Proton's NAT also hampers direct peer
+# connections (desktop seen on DERP relay "tor").
+#
+# Why SO_MARK works here but mangle-OUTPUT MARK didn't for SMTP (see above /
+# reference_mangle_mark_source_selection): SO_MARK is on the socket BEFORE
+# connect()'s route lookup, so the fwmark rule picks the route AND the source
+# (192.168.50.34) together. Verified with `ip route get ... mark 0x80000`.
+#
+# Two rules, priority 102/103 -- both ahead of tailscaled's 5210:
+#   102: main table with suppress_prefixlength 0 -- keeps every SPECIFIC main
+#        route (LAN /24, docker bridges, Proton endpoint pin) and ignores only
+#        main's default routes, so LAN peers / Pi-hole are unaffected.
+#   103: anything left (internet) -> table 202 (default via LAN gateway).
+# Exit-node traffic is unaffected: forwarded packets aren't marked 0x80000
+# (ts-forward uses 0x40000; TS_EXIT_MARK uses 0x200 at priority 100).
+# Privacy scope: the ISP sees "this host talks to Tailscale"; peer traffic is
+# end-to-end WireGuard. Rollback: delete these lines + the two rules.
+while ip rule del fwmark 0x80000/0xff0000 lookup main suppress_prefixlength 0 2>/dev/null; do :; done
+while ip rule del fwmark 0x80000/0xff0000 lookup 202 2>/dev/null; do :; done
+ip rule add fwmark 0x80000/0xff0000 lookup main suppress_prefixlength 0 priority 102
+ip rule add fwmark 0x80000/0xff0000 lookup 202 priority 103
+
 iptables -D FORWARD -i br-pihole -o wg0 -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i wg0 -o br-pihole -j ACCEPT 2>/dev/null || true
 iptables -D FORWARD -i br-pihole -o enp1s0 -j ACCEPT 2>/dev/null || true

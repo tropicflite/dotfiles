@@ -100,6 +100,10 @@ add_check smtp_bypass_rule      "SMTP bypass: ip rule (tcp dport 587 -> table 20
 add_check smtp_bypass_route     "SMTP bypass: table 202 default via LAN gateway"
 add_check smtp_bypass_resolves  "SMTP bypass: port-587 route resolves out enp1s0 with the LAN source IP"
 add_check smtp_bypass_in_postup "wg0-up-extra.sh: SMTP bypass (2026-09-23 fix) present in source"
+add_check ts_bypass_rules       "Tailscale bypass: fwmark 0x80000 rules (main suppress_prefixlength 0 + table 202)"
+add_check ts_bypass_resolves    "Tailscale bypass: 0x80000-marked internet route resolves out enp1s0 with the LAN source IP"
+add_check ts_bypass_lan_intact  "Tailscale bypass: 0x80000-marked LAN route still on-link (not via gateway)"
+add_check ts_bypass_in_postup   "wg0-up-extra.sh: Tailscale bypass (2026-11-03) present in source"
 
 # ── Individual checks ─────────────────────────────────────────────────────
 
@@ -302,6 +306,28 @@ check_smtp_bypass_in_postup() {
     [[ -f "$WG_UP_EXTRA" ]] && grep -q "ipproto tcp dport 587 lookup 202" "$WG_UP_EXTRA" 2>/dev/null
 }
 
+# Tailscale bypass (2026-11-03): tailscaled's own SO_MARK 0x80000 sockets
+# egress via the ISP so its control long-poll / DERP / peer UDP don't ride wg0.
+check_ts_bypass_rules() {
+    local out; out=$(ip rule show)
+    grep -q "^102:.*fwmark 0x80000/0xff0000 lookup main suppress_prefixlength 0" <<<"$out" && \
+    grep -q "^103:.*fwmark 0x80000/0xff0000 lookup 202" <<<"$out"
+}
+
+check_ts_bypass_resolves() {
+    local out; out=$(ip route get 1.1.1.1 mark 0x80000 2>/dev/null)
+    grep -q "dev enp1s0" <<<"$out" && grep -q "src ${LAN_IP}" <<<"$out"
+}
+
+check_ts_bypass_lan_intact() {
+    local out; out=$(ip route get "${LAN_GW%.*}.90" mark 0x80000 2>/dev/null)
+    grep -q "dev enp1s0" <<<"$out" && ! grep -q " via " <<<"$out"
+}
+
+check_ts_bypass_in_postup() {
+    [[ -f "$WG_UP_EXTRA" ]] && grep -q "fwmark 0x80000/0xff0000 lookup 202" "$WG_UP_EXTRA" 2>/dev/null
+}
+
 # ── Failure detail messages (only consulted when a check fails) ───────────
 
 detail_for() {
@@ -337,6 +363,10 @@ detail_for() {
         smtp_bypass_rule)      echo "Missing: ip rule add ipproto tcp dport 587 lookup 202 priority 101 -- outbound SMTP falls back to the main table, i.e. through wg0. That is the 2026-09-23 failure: when the tunnel black-holes, every 'VPN DOWN' email dies with 'Connection timed out' and only the later 'recovered' email lands, so the mailbox shows a recovery for an outage it was never told about." ;;
         smtp_bypass_route)     echo "table 202 has no 'default via ${LAN_GW}' route -- the port-587 ip rule resolves to an empty table and falls through to the main table (wg0), silently undoing the bypass." ;;
         smtp_bypass_resolves)  echo "Port-587 traffic does not resolve out enp1s0 with source ${LAN_IP}. If it resolves out enp1s0 but with the wg0 source (10.2.0.2), the mangle-MARK + fwmark approach has been reintroduced: that reroutes the packet but cannot re-select a source address already chosen at connect() time, so SYNs leave as martians and are dropped upstream. Use a dport-matching ip rule (decided at the initial lookup) instead -- see the SMTP block in wg0-up-extra.sh." ;;
+        ts_bypass_rules)       echo "ip rules 102 (fwmark 0x80000 -> main suppress_prefixlength 0) and/or 103 (fwmark 0x80000 -> table 202) missing -- tailscaled's own control/DERP/peer traffic is back to riding wg0 (expect coordination-unreachable restarts). Re-run wg0-up-extra.sh." ;;
+        ts_bypass_resolves)    echo "0x80000-marked internet traffic doesn't resolve out enp1s0 with src ${LAN_IP} -- Tailscale bypass ineffective (check table 202 default route and rule order)." ;;
+        ts_bypass_lan_intact)  echo "0x80000-marked LAN traffic is routed via the gateway instead of on-link -- rule 102 (main suppress_prefixlength 0) is missing or out of order, so Tailscale LAN peers hairpin through the router." ;;
+        ts_bypass_in_postup)   echo "wg0-up-extra.sh no longer contains the Tailscale bypass. Live rules are now unowned: the next wg0 bounce/reboot won't reassert them." ;;
         smtp_bypass_in_postup) echo "wg0-up-extra.sh no longer contains the SMTP bypass. Even if the live ip rule/route currently look correct, they are now unowned: the next wg0 bounce (or reboot) will not reassert them and alert email silently goes back to riding the tunnel it is trying to report on. Same live-fix-vs-persisted-source trap as 2026-08-21/08-30/09-16." ;;
         *) echo "Check failed." ;;
     esac
