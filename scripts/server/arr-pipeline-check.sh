@@ -34,7 +34,7 @@
 # identification) still pages as before.
 
 LOG=/var/log/arr-pipeline-check.log
-TO="nichols_matt@pm.me"
+TO="alerts@wayoffcourse.ca"
 HOST=$(hostname)
 ALERTS=""
 INFO=""

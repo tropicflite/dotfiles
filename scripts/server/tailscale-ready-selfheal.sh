@@ -32,5 +32,5 @@ systemctl start tailscale-ready.service
 systemctl start ntfy-compose.service radicale-compose.service
 
 BODY="Self-healed on $(hostname) at $(date): ${STRANDED[*]} were stranded in 'failed' by a transient tailscaled restart. Tailscale has an IP again, so they were reset and restarted."
-printf "Subject: [server] Self-healed stranded services\nTo: nichols_matt@pm.me\nFrom: nichols_matt@pm.me\n\n%s\n" "$BODY" | \
+printf "Subject: [server] Self-healed stranded services\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\n%s\n" "$BODY" | \
     NTFY_PRIORITY=default NTFY_TAGS=recycle NTFY_BODY="$BODY" /usr/local/bin/send-mail

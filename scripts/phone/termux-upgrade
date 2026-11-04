@@ -37,7 +37,7 @@ $FAILED_PKGS"
 $FETCH_ERRORS"
 
 {
-    printf "To: nichols_matt@pm.me\r\n"
+    printf "To: alerts@wayoffcourse.ca\r\n"
     printf "From: matt@wayoffcourse.ca\r\n"
     printf "Subject: [%s] Termux: upgrade FAILED\r\n" "$MACHINE"
     printf "\r\n"

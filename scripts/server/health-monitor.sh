@@ -10,7 +10,7 @@ MEM_THRESHOLD=10
 LOAD_THRESHOLD=4.0
 RESTART_STATE="$HOME/.local/share/health-monitor/restarts"
 mkdir -p "$(dirname "$RESTART_STATE")"
-TO="nichols_matt@pm.me"
+TO="alerts@wayoffcourse.ca"
 HOSTNAME=$(hostname)
 
 ALERTS=""

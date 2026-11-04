@@ -5,7 +5,7 @@ set -euo pipefail
 # Checks VPN connectivity and disk space, sends email alerts
 # Cron: */5 * * * * /home/matt/dotfiles/scripts/server/vpn-diskcheck.sh
 
-ALERT_EMAIL="nichols_matt@pm.me"
+ALERT_EMAIL="alerts@wayoffcourse.ca"
 # Still used by the routing check further down (`ip route get`), which asks
 # which interface traffic to this address would actually use. The VPN-up test
 # no longer pings it — see vpn_up().

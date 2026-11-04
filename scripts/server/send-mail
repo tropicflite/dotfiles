@@ -17,9 +17,9 @@ MAIL=$(cat)
 SUBJECT=$(printf '%s' "$MAIL" | grep -i '^Subject:' | head -1 | sed 's/^[Ss]ubject: *//' | tr -d '\r')
 
 if [ -n "${BYPASS_DIGEST:-}" ]; then
-    printf '%s' "$MAIL" | /usr/bin/msmtp nichols_matt@pm.me
+    printf '%s' "$MAIL" | /usr/bin/msmtp alerts@wayoffcourse.ca
 else
-    printf '%s' "$MAIL" | msmtp nichols_matt@pm.me
+    printf '%s' "$MAIL" | msmtp alerts@wayoffcourse.ca
 fi
 
 PRIORITY="${NTFY_PRIORITY:-default}"

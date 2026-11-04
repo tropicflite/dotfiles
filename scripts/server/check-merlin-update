@@ -3,7 +3,7 @@
 # Run via cron: 0 10 * * 0 /home/matt/bin/check-merlin-update >> /var/log/merlin-update.log 2>&1
 
 ROUTER_MODEL="RT-AX86U_PRO"
-EMAIL="nichols_matt@pm.me"
+EMAIL="alerts@wayoffcourse.ca"
 STATE_DIR="$HOME/.local/share/merlin-update"
 STATE_FILE="$STATE_DIR/last_notified"
 GITHUB_API="https://api.github.com/repos/RMerl/asuswrt-merlin.ng/tags"

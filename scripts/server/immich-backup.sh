@@ -10,7 +10,7 @@ USB_PHOTO_DEST="$USB_MOUNT/immich-library"
 USB_DB_DEST="$USB_MOUNT/postgres"
 DB_CONTAINER="immich_postgres"
 DB_USER="postgres"
-TO="nichols_matt@pm.me"
+TO="alerts@wayoffcourse.ca"
 HOSTNAME=$(hostname)
 
 # ---------------------- FUNCTIONS --------------------------------------------

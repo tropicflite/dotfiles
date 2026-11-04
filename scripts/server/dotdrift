@@ -170,7 +170,7 @@ ${DRIFT}${UNMAPPED}"
 (known/pending, not counted above:)
 ${PENDING}"
 
-printf 'Subject: [server] dotdrift found drift\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$BODY" | \
+printf 'Subject: [server] dotdrift found drift\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$BODY" | \
     NTFY_PRIORITY=default \
     NTFY_TAGS=warning \
     NTFY_BODY="dotdrift: ${COUNT} issue(s) found on $(hostname) — see email" \

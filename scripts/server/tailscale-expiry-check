@@ -97,7 +97,7 @@ else
     NTFY_TAGS=warning
 fi
 
-printf 'Subject: %s\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$SUBJECT" "$BODY" | \
+printf 'Subject: %s\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$SUBJECT" "$BODY" | \
     NTFY_PRIORITY="$NTFY_PRIORITY" \
     NTFY_TAGS="$NTFY_TAGS" \
     NTFY_BODY="$BODY" \

@@ -11,7 +11,7 @@
 # and the same container gets a fresh alert again once the cooldown expires
 # if it's still/again unhealthy -- this only suppresses rapid re-flapping.
 
-EMAIL="nichols_matt@pm.me"
+EMAIL="alerts@wayoffcourse.ca"
 COOLDOWN_SECONDS=1800
 STATE_DIR="/var/tmp/docker-health-monitor"
 mkdir -p "$STATE_DIR"

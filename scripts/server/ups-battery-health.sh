@@ -6,7 +6,7 @@
 UPS_NAME="apc1000"
 BASELINE_DIR="/var/lib/ups-battery-health"
 BASELINE_FILE="$BASELINE_DIR/baseline-wh"
-ALERT_EMAIL="nichols_matt@pm.me"
+ALERT_EMAIL="alerts@wayoffcourse.ca"
 MIN_RUNTIME_S=900    # 15 minutes — flag as critical regardless of baseline
 DEGRADE_PCT=25       # percent Wh drop from baseline before alerting
 

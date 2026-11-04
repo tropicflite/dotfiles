@@ -135,6 +135,6 @@ printf '%s' "$OUT" | grep -q '^Reboot required: yes' && SUBJECT="$SUBJECT, reboo
     printf "Subject: %s\r\n" "$SUBJECT"
     printf "\r\n"
     printf '%s' "$OUT"
-} | /usr/bin/msmtp nichols_matt@pm.me
+} | /usr/bin/msmtp alerts@wayoffcourse.ca
 
 /usr/local/bin/send-alert "$SUBJECT" "See email for the full fleet update digest." high rotating_light

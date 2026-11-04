@@ -21,7 +21,7 @@ if [[ -f "$ONBATT_MARKER" && "$status" != *OB* ]]; then
     rm -f "$ONBATT_MARKER"
     logger -t ups-charge-log "backstop: online-notify never fired, sending power-restored alert after ${duration} on battery"
     ntfy_body="UPS apc1000 restored to mains power. Time on battery: ${duration}. (Sent by ups-charge-log backstop -- primary handler did not fire.)"
-    printf "Subject: UPS power restored (backstop alert)\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power (detected via ups-charge-log backstop -- the primary upssched online-notify handler did not fire).\nTime on battery: ${duration}.\n" | \
+    printf "Subject: UPS power restored (backstop alert)\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power (detected via ups-charge-log backstop -- the primary upssched online-notify handler did not fire).\nTime on battery: ${duration}.\n" | \
         NTFY_TAGS=white_check_mark NTFY_BODY="$ntfy_body" \
         /usr/local/bin/send-mail
 fi

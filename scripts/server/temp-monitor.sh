@@ -12,7 +12,7 @@ THRESHOLD_HDD=55
 # gets wiped on SSH logout, defeats the cooldown)
 COOLDOWN_FILE="/tmp/temp-monitor-cooldown"
 COOLDOWN_MINUTES=30
-TO="nichols_matt@pm.me"
+TO="alerts@wayoffcourse.ca"
 HOSTNAME=$(hostname)
 
 # Check cooldown

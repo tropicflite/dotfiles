@@ -2,7 +2,7 @@
 # Daily recyclarr sync with failure alerting.
 # Run via cron: 0 3 * * * /home/matt/bin/recyclarr-sync.sh >> /var/log/recyclarr.log 2>&1
 
-EMAIL="nichols_matt@pm.me"
+EMAIL="alerts@wayoffcourse.ca"
 LOG_TAG="recyclarr-sync"
 
 output=$(docker exec recyclarr recyclarr sync 2>&1)

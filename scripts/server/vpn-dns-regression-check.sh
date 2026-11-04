@@ -431,7 +431,7 @@ recovered=(); for id in "${prev_failing[@]:-}"; do [[ -z "$id" ]] && continue; p
 # gate already caps worst-case volume well under the 20/day Migadu limit.
 send_regression_alert() {
     local subject="$1" body="$2" priority="$3" tags="$4"
-    printf 'Subject: %s\nTo: nichols_matt@pm.me\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$subject" "$body" | \
+    printf 'Subject: %s\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\n%s\n' "$subject" "$body" | \
         NTFY_PRIORITY="$priority" NTFY_TAGS="$tags" NTFY_BODY="$body" BYPASS_DIGEST=1 /usr/local/bin/send-mail
 }
 
