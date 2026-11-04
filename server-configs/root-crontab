@@ -3,3 +3,7 @@
 # m h  dom mon dow   command
 0 4 1 * * /usr/local/bin/secrets-backup >> /var/log/secrets-backup.log 2>&1
 0 1 * * * /usr/local/bin/docker-state-backup.sh >> /var/log/docker-state-backup.log 2>&1
+# restic-b2: encrypted off-site backup to Backblaze B2 (after the 03:00 Immich USB backup)
+30 3 * * * /usr/local/bin/restic-b2 backup >> /var/log/restic-b2.log 2>&1
+0 12 * * * /usr/local/bin/restic-b2 check-stale >> /var/log/restic-b2.log 2>&1
+0 5 8 * * /usr/local/bin/restic-b2 verify >> /var/log/restic-b2.log 2>&1

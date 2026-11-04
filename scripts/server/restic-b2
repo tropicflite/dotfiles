@@ -1,0 +1,236 @@
+#!/bin/bash
+# restic-b2 — encrypted off-site backup of the server to Backblaze B2.
+#
+# Repo:   s3:https://s3.us-east-005.backblazeb2.com/woc-server-backup-hpty
+#         (restic, client-side encrypted; S3 API on purpose, see below)
+# Creds:  /etc/restic/b2.env (root 0600, NOT in git): AWS_ACCESS_KEY_ID,
+#         AWS_SECRET_ACCESS_KEY (bucket-restricted B2 app key "server-restic"),
+#         RESTIC_PASSWORD, RESTIC_REPOSITORY. Bitwarden: "Backblaze B2 –
+#         server-restic key" + "restic repository password (B2)"; repo password
+#         also on paper in the safe.
+#
+# Modes (run as root; cron in server-configs/root-crontab):
+#   backup       nightly 03:30 — Immich DB dump + files snapshot, forget,
+#                weekly (Sun) prune + structural check
+#   verify       monthly — read back 1/12 of all pack data (rotating by month,
+#                so the whole repo is re-read every year) + restore sample
+#                files and compare against live, + sanity-check the DB dump
+#   check-stale  daily 12:00 — alert if the last good backup/verify is too old
+#   run ARGS     any restic command with the env loaded, e.g.
+#                `sudo restic-b2 run snapshots`
+#
+# Dark cockpit: silent on success; email+ntfy only on failure or staleness.
+#
+# Object Lock (bucket default: 30 days, Compliance): nothing uploaded can be
+# deleted for 30 days by anyone. restic only ever adds files and deletes them
+# (never rewrites), and over the S3 API a delete on a locked bucket becomes a
+# "hide" marker instead of failing — so lock files, forget and prune all work.
+# The bucket lifecycle rule ("keep prior versions 31 days") purges hidden
+# versions once their lock has expired. Don't switch to the native b2: backend:
+# it deletes versions outright, which fails under the lock.
+set -euo pipefail
+
+ENV_FILE=/etc/restic/b2.env
+STATE_DIR=/var/lib/restic-b2
+LOCKFILE=/run/restic-b2.lock
+export RESTIC_CACHE_DIR=/var/cache/restic-b2
+HOSTNAME_SHORT=$(hostname)
+
+STALE_BACKUP_HOURS=30      # nightly job; >30h means at least one night missed
+STALE_VERIFY_DAYS=35       # monthly job
+
+INCLUDE=(
+    /mnt/data/immich/library          # photos/videos (+ thumbs/encoded-video: cheap, faster restore)
+    "/mnt/data/my stuff"              # Syncthing: Aegis/Seedvault/Bitwarden backups, taxes, docs
+    /mnt/data/radicale                # CalDAV/CardDAV collections
+    /mnt/data/filebrowser             # FileBrowser db/config
+    /home/matt                        # ~/docker (compose, .env, container configs), dotfiles, ~/.claude, ~/.ssh, ~/.config
+    /opt/docker/jellyfin/config       # Jellyfin config/db
+    /etc                              # wg0, NUT, msmtp, systemd units, fstab ...
+    /var/spool/cron                   # live crontabs
+)
+EXCLUDE=(
+    /home/matt/.cache
+    /home/matt/.local/share/claude    # Claude Code binaries, re-downloadable
+    "/home/matt/*.pkgtb"              # router firmware images
+    /home/matt/docker/pihole/pihole/etc-pihole/gravity.db
+    /home/matt/docker/pihole/pihole/etc-pihole/gravity_old.db
+    /home/matt/docker/pihole/pihole/etc-pihole/gravity_backups
+    /home/matt/docker/pihole/pihole/etc-pihole/listsCache
+    /home/matt/docker/syncthing/config/index-v2   # live sqlite, rebuildable
+    /home/matt/docker/syncthing/config/syncthing.lock
+    "/home/matt/docker/arrs/*/config/Sentry"
+)
+# Not backed up on purpose: /mnt/data/media + /mnt/data/torrents (replaceable),
+# /var/lib/immich/postgres (live DB files — captured as a pg_dumpall instead).
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+send_alert() {
+    local subject="$1" body="$2"
+    printf "Subject: [%s] %s\n\n%s\n" "$HOSTNAME_SHORT" "$subject" "$body" | \
+        BYPASS_DIGEST=1 NTFY_PRIORITY=high NTFY_TAGS=rotating_light NTFY_BODY="$body" \
+        /usr/local/bin/send-mail || log "WARNING: send-mail failed"
+}
+
+fail() {
+    log "ERROR: $1"
+    send_alert "B2 backup FAILED ($MODE)" "restic-b2 $MODE failed on $(date).
+
+Error: $1
+
+Log: /var/log/restic-b2.log"
+    exit 1
+}
+
+load_env() {
+    [[ $EUID -eq 0 ]] || { echo "restic-b2: must run as root" >&2; exit 1; }
+    [[ -r $ENV_FILE ]] || fail "$ENV_FILE missing"
+    set -a; . "$ENV_FILE"; set +a
+    grep -q PASTE_ "$ENV_FILE" && fail "$ENV_FILE still has placeholders"
+    mkdir -p "$STATE_DIR" "$RESTIC_CACHE_DIR"
+    chmod 755 "$STATE_DIR"
+}
+
+take_lock() {
+    exec 9>"$LOCKFILE"
+    if ! flock -n 9; then
+        log "Another restic-b2 run is in progress; skipping this $MODE."
+        exit 0      # a run that never finishes is caught by check-stale
+    fi
+}
+
+# restic exit 3 = snapshot written but some files unreadable (vanished/locked
+# mid-backup). Treat as success but log it; anything else non-zero is a failure.
+restic_backup() {
+    local rc=0
+    restic backup "$@" || rc=$?
+    if [[ $rc -eq 3 ]]; then
+        log "WARNING: some source files could not be read (restic exit 3) - snapshot still created"
+        return 0
+    fi
+    return $rc
+}
+
+do_backup() {
+    log "========== B2 backup started =========="
+    restic unlock >/dev/null 2>&1 || true          # clears only stale locks
+
+    log "Immich DB (pg_dumpall streamed into restic)..."
+    restic_backup --tag immich-db --host "$HOSTNAME_SHORT" \
+        --stdin-from-command --stdin-filename immich-pg_dumpall.sql -- \
+        docker exec immich_postgres pg_dumpall --clean --if-exists -U postgres \
+        || fail "Immich DB snapshot failed"
+
+    log "Files..."
+    local ex=()
+    for e in "${EXCLUDE[@]}"; do ex+=(--exclude "$e"); done
+    restic_backup --tag files --host "$HOSTNAME_SHORT" \
+        --exclude-caches --one-file-system "${ex[@]}" "${INCLUDE[@]}" \
+        || fail "files snapshot failed"
+
+    log "Forget (7 daily / 4 weekly / 6 monthly per tag)..."
+    restic forget --host "$HOSTNAME_SHORT" --group-by host,tags \
+        --keep-daily 7 --keep-weekly 4 --keep-monthly 6 \
+        || fail "forget failed"
+
+    if [[ $(date +%u) -eq 7 ]]; then
+        log "Sunday: prune + structural check..."
+        restic prune --max-unused 10% || fail "prune failed"
+        restic check || fail "check (structure) failed"
+    fi
+
+    date +%s > "$STATE_DIR/last-backup-ok"
+    log "========== B2 backup complete =========="
+}
+
+do_verify() {
+    log "========== B2 verify started =========="
+    restic unlock >/dev/null 2>&1 || true
+    local part
+    part="$(date +%-m)/12"
+    log "Reading back pack data subset $part..."
+    restic check --read-data-subset="$part" || fail "check --read-data-subset=$part failed"
+
+    log "Restore test: sample files from latest files snapshot vs live..."
+    VERIFY_TMP=$(mktemp -d /var/tmp/restic-verify.XXXXXX)
+    trap 'rm -rf "$VERIFY_TMP"' EXIT
+    local tmp=$VERIFY_TMP
+    local snap_time
+    snap_time=$(date -d "$(restic snapshots --tag files --host "$HOSTNAME_SHORT" --latest 1 --json \
+        | jq -r '.[-1].time')" +%s) || fail "could not read latest snapshot time"
+    # Pick files that existed and were unchanged before the snapshot, from the
+    # two places that matter most: photo originals and "my stuff". Filter on
+    # ctime, NOT mtime: Syncthing and Immich both preserve original mtimes, so
+    # a file that arrived after the snapshot can carry an old mtime and would
+    # be reported as a false "mismatch"; ctime can't be backdated. Syncthing
+    # temp/version dirs are skipped (they churn), as are names with glob
+    # characters (restic --include treats them as patterns).
+    local sample=()
+    mapfile -t sample < <(
+        { find /mnt/data/immich/library/upload -type f ! -newerct "@$snap_time" 2>/dev/null | shuf -n 15
+          find "/mnt/data/my stuff" \( -name .stversions -o -name .stfolder \) -prune -o \
+               -type f ! -name '.syncthing.*' ! -newerct "@$snap_time" -print 2>/dev/null | shuf -n 15; } \
+        | grep -v '[][*?\\]' || true )
+    [[ ${#sample[@]} -gt 0 ]] || fail "restore test: no sample files found"
+    local inc=()
+    for f in "${sample[@]}"; do inc+=(--include "$f"); done
+    restic restore latest --tag files --host "$HOSTNAME_SHORT" --target "$tmp" "${inc[@]}" \
+        >/dev/null || fail "restore of sample files failed"
+    local bad=0
+    for f in "${sample[@]}"; do
+        if ! cmp -s "$f" "$tmp$f"; then bad=$((bad+1)); log "  MISMATCH: $f"; fi
+    done
+    [[ $bad -eq 0 ]] || fail "restore test: $bad of ${#sample[@]} sample files did not match live"
+    log "  ${#sample[@]} sample files restored and byte-identical"
+
+    log "DB dump sanity check..."
+    # Capture first, then grep: `... | grep -q` under pipefail can SIGPIPE the
+    # upstream and report a false failure.
+    local tail_out
+    tail_out=$(restic dump latest --tag immich-db --host "$HOSTNAME_SHORT" /immich-pg_dumpall.sql \
+        | tail -c 4096) || fail "could not read latest Immich DB dump from B2"
+    grep -q "PostgreSQL database cluster dump complete" <<<"$tail_out" \
+        || fail "latest Immich DB dump is truncated (no completion marker)"
+    log "  DB dump complete"
+
+    date +%s > "$STATE_DIR/last-verify-ok"
+    log "========== B2 verify complete =========="
+}
+
+do_check_stale() {
+    local now; now=$(date +%s)
+    local lb lv
+    lb=$(cat "$STATE_DIR/last-backup-ok" 2>/dev/null || echo 0)
+    lv=$(cat "$STATE_DIR/last-verify-ok" 2>/dev/null || echo 0)
+    local msg=""
+    if (( now - lb > STALE_BACKUP_HOURS*3600 )); then
+        msg+="Last successful B2 backup: $( ((lb)) && date -d "@$lb" '+%F %R' || echo never) (limit ${STALE_BACKUP_HOURS}h).
+"
+    fi
+    # Only nag about verify once the repo is old enough to have had one.
+    if (( lb > 0 )) && [[ -f $STATE_DIR/first-backup ]] && \
+       (( now - $(cat "$STATE_DIR/first-backup") > STALE_VERIFY_DAYS*86400 )) && \
+       (( now - lv > STALE_VERIFY_DAYS*86400 )); then
+        msg+="Last successful B2 restore test: $( ((lv)) && date -d "@$lv" '+%F %R' || echo never) (limit ${STALE_VERIFY_DAYS}d).
+"
+    fi
+    if [[ -n $msg ]]; then
+        log "STALE: ${msg//$'\n'/ }"
+        send_alert "B2 backup STALE" "${msg}
+Check /var/log/restic-b2.log and: sudo restic-b2 run snapshots"
+        exit 1
+    fi
+}
+
+MODE="${1:-}"
+case "$MODE" in
+    backup)
+        load_env; take_lock
+        [[ -f $STATE_DIR/first-backup ]] || date +%s > "$STATE_DIR/first-backup"
+        do_backup ;;
+    verify)      load_env; take_lock; do_verify ;;
+    check-stale) mkdir -p "$STATE_DIR"; do_check_stale ;;
+    run)         shift; load_env; exec restic "$@" ;;
+    *) echo "usage: restic-b2 {backup|verify|check-stale|run RESTIC-ARGS...}" >&2; exit 2 ;;
+esac

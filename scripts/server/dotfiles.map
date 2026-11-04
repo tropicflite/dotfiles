@@ -42,6 +42,7 @@ symlink  dotfiles  scripts/server/alert-digest-flush          /usr/local/bin/ale
 symlink  dotfiles  scripts/server/arr-pipeline-check.sh        /usr/local/bin/arr-pipeline-check.sh
 symlink  dotfiles  scripts/server/docker-health-monitor.sh   /usr/local/bin/docker-health-monitor.sh
 symlink  dotfiles  scripts/server/docker-state-backup.sh     /usr/local/bin/docker-state-backup.sh
+symlink  dotfiles  scripts/server/restic-b2                 /usr/local/bin/restic-b2
 symlink  dotfiles  scripts/server/health-monitor.sh          /usr/local/bin/health-monitor.sh
 symlink  dotfiles  scripts/server/ntfy-reboot-required       /usr/local/bin/ntfy-reboot-required
 symlink  dotfiles  scripts/server/nut-apt-hook                /usr/local/bin/nut-apt-hook

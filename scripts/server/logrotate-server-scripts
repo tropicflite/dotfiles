@@ -98,3 +98,13 @@
     notifempty
     create 644 matt matt
 }
+
+/var/log/restic-b2.log {
+    monthly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 root root
+}

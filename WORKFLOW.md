@@ -229,7 +229,4 @@ c && sudo ss -tlnp | grep <port>
 - Stops Immich containers but leaves Postgres running during restore
 - Restores both DB dump and photo library from USB
 
-**Long-term considerations:**
-- Current setup is local USB only — single point of failure
-- Future: evaluate Backblaze B2 or a second rotating USB for offsite coverage
-- Proton Drive backup abandoned (rate-limiting issues, rclone flag incompatibilities)
+**Off-site:** `restic-b2` (added 2026-11-03) backs up the library, a fresh DB dump, "my stuff", configs and /etc nightly to Backblaze B2 — see `~/docker/monitoring.md` ("restic-b2"). Proton Drive via rclone was tried and abandoned in 2026-04 (rate limiting, Proton blocking VPN IPs, rclone flag incompatibilities).
