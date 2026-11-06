@@ -67,7 +67,6 @@ These are not tracked by apt and must be handled separately in the init script:
 - **Kitty** (laptop/mini) — downloaded from GitHub releases
 - **rofimoji** (laptop/mini) — `pip3 install rofimoji`; emoji picker bound to `$mod+period` in i3
 - **NVM** (desktop only) — `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/HEAD/install.sh | bash`; loaded via `.zshrc.local.desktop`
-- **immich-go** (server only, added 2026-11-04 for the Proton Photos import) — `immich-go_Linux_x86_64.tar.gz` from github.com/simulot/immich-go releases, verified against the release `checksums.txt`, installed to `~/.local/bin/immich-go`. One-off migration tool, not needed for a rebuild; delete it once the import is done. Its API key is `~/.config/immich-go/api-key` (600), an Immich key named "immich-go Proton import 2026-11-04 (delete after)" that should also be revoked in Immich → Account Settings → API Keys at that point
 
 ## Tailscale Serve Rules
 

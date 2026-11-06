@@ -1,0 +1,84 @@
+#!/bin/bash
+# Daily check that the phone's Seedvault backups are still reaching the server.
+# Source: ~/dotfiles/scripts/server/phone-backup-check
+# Cron: 30 12 * * * /home/matt/dotfiles/scripts/server/phone-backup-check >> /var/log/phone-backup-check.log 2>&1
+#
+# Chain: Seedvault writes a backup on the phone nightly (~21:30) into
+# /storage/emulated/0/.SeedVaultAndroidBackup -> Syncthing-Fork (send-only)
+# -> server "my stuff/seedvault-backups" (receive-only) -> restic-b2 nightly.
+# Any break in the first two links fails silently: on 2026-11-04 the phone's
+# Syncthing app got closed and nothing synced for 2 days until it was noticed
+# by hand. restic-b2 check-stale doesn't catch this — restic happily backs up
+# the same stale files every night.
+#
+# Signal: mtime of the newest *.snapshot file on the server. Syncthing carries
+# the phone's mtime over, so this is when Seedvault made the backup, not when
+# it arrived. Aegis isn't checked: it only writes a backup when the vault
+# changes, so an old file there is normal.
+#
+# Dark cockpit: silent while fresh. When stale, alerts once, then reminds every
+# REMIND_DAYS while it stays stale. The state clears itself on recovery.
+
+STALE_DAYS=7
+REMIND_DAYS=3
+DIR="/mnt/data/my stuff/seedvault-backups"
+SYNCTHING_CONFIG=/home/matt/docker/syncthing/config/config.xml
+PHONE_ID_PREFIX=Z7HVQKA
+STATE=/home/matt/.local/state/phone-backup-check/last-alert
+
+log() { echo "[$(date -Iseconds)] $*"; }
+
+now=$(date +%s)
+newest=$(find "$DIR" -name '*.snapshot' -not -path '*/.stversions/*' -printf '%T@\n' 2>/dev/null | sort -n | tail -1)
+newest=${newest%.*}
+
+if [ -z "$newest" ]; then
+    age_days=999
+    newest_human="none found"
+else
+    age_days=$(( (now - newest) / 86400 ))
+    newest_human=$(date -d "@$newest" '+%Y-%m-%d %H:%M')
+fi
+
+if [ "$age_days" -lt "$STALE_DAYS" ]; then
+    log "OK - newest Seedvault snapshot $newest_human (${age_days}d old)"
+    rm -f "$STATE"
+    exit 0
+fi
+
+# Stale. Rate-limit repeat alerts.
+if [ -f "$STATE" ]; then
+    last=$(cat "$STATE" 2>/dev/null || echo 0)
+    if [ $(( (now - last) / 86400 )) -lt "$REMIND_DAYS" ]; then
+        log "STALE (${age_days}d) - already alerted $(date -d "@$last" '+%Y-%m-%d'), not repeating yet"
+        exit 0
+    fi
+fi
+
+# Diagnostic: when did the server last hear from the phone's Syncthing?
+last_seen="unknown"
+key=$(grep -oP '(?<=<apikey>)[^<]+' "$SYNCTHING_CONFIG" 2>/dev/null)
+ip=$(docker inspect syncthing --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null | awk '{print $1}')
+if [ -n "$key" ] && [ -n "$ip" ]; then
+    seen=$(curl -s --max-time 10 -H "X-API-Key: $key" "http://$ip:8384/rest/stats/device" | \
+        jq -r --arg p "$PHONE_ID_PREFIX" 'to_entries[] | select(.key | startswith($p)) | .value.lastSeen' 2>/dev/null)
+    [ -n "$seen" ] && last_seen=$(date -d "$seen" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$seen")
+fi
+
+BODY="The newest Seedvault backup on the server is from $newest_human (${age_days} days ago).
+Phone Syncthing last connected to the server: $last_seen
+
+If the phone connected recently, Seedvault itself has stopped: check
+Settings > System > Backup on the phone.
+If not, open Syncthing-Fork on the phone. If it was closed, opening it
+restarts it (Status tab should say \"Syncthing is running\").
+
+Server folder: $DIR"
+
+log "STALE (${age_days}d) - alerting; phone last seen $last_seen"
+
+printf 'Subject: %s\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\n%s\n' \
+    "[Phone] Seedvault backups not reaching server (${age_days}d)" "$BODY" | \
+    NTFY_PRIORITY=default NTFY_TAGS=iphone NTFY_BODY="$BODY" /usr/local/bin/send-mail \
+    && { mkdir -p "$(dirname "$STATE")"; echo "$now" > "$STATE"; } \
+    || log "WARNING: send-mail failed"

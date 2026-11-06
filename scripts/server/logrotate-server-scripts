@@ -108,3 +108,13 @@
     notifempty
     create 644 root root
 }
+
+/var/log/phone-backup-check.log {
+    monthly
+    rotate 6
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 matt matt
+}
