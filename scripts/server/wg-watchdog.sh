@@ -42,6 +42,33 @@ FORCE_DATAPLANE=0
 # and coordination checks can be tuned apart if one proves noisier.
 TS_STRIKES=3
 TS_STRIKE_COUNT=0
+# Longer grace when the ONLY signal is Self.Online=false (no health warning).
+# In tailscaled 1.104 Self.Online = health.GetInPollNetMap(), i.e. the client's
+# own map long-poll is down. After the 2026-11-03 bypass fix these drops kept
+# happening (~1/day) with nothing in tailscaled's log, and 2 of 5 cleared on
+# their own before strike 3 — so 3 strikes (~80s) restarted tailscaled for
+# blips that may well self-heal. The failure this signal was added for (10-01
+# boot race) is permanent, so 5 minutes still catches it. A health warning
+# keeps the original 3-strike rule.
+TS_POLL_GRACE_SECS=300
+TS_FIRST_STRIKE_AT=0
+
+# One-line snapshot of tailscaled's own TCP sockets (control long-poll, DERP):
+# queue depths and ms since last send/receive. A stalled control connection
+# shows as sq>0 and/or a large lastrcv — the evidence that cracked 2026-11-03.
+ts_conn_diag() {
+    ss -tnpiH state established 2>/dev/null | awk '
+        /users:\(\("tailscaled"/ {
+            rq = $1; sq = $2; peer = $4; getline
+            ls = lr = "?"
+            for (i = 1; i <= NF; i++) {
+                if ($i ~ /^lastsnd:/) ls = substr($i, 9)
+                if ($i ~ /^lastrcv:/) lr = substr($i, 9)
+            }
+            printf "%s%s sq=%s rq=%s lastsnd=%sms lastrcv=%sms", sep, peer, sq, rq, ls, lr
+            sep = "; "
+        }' | cut -c1-700
+}
 # Probes address hard-coded IPs, never hostnames: Pi-hole itself egresses via
 # wg0, so a DNS-based probe could fail for reasons unrelated to the tunnel.
 # HTTPS rather than plain HTTP because only 1.1.1.1 serves port 80 — all three
@@ -409,6 +436,8 @@ while true; do
     [[ -n "$TS_HEALTH" ]] && TS_DIAG="$TS_DIAG health=\"$TS_HEALTH\""
     if (( ${#TS_SIGNALS[@]} == 0 )); then
         # No coordination server complaint, Tailscale is healthy
+        (( TS_STRIKE_COUNT > 0 )) && logger -t "$LOG_TAG" \
+            "Tailscale coordination OK again after ${TS_STRIKE_COUNT} strike(s) / $(( $(date +%s) - TS_FIRST_STRIKE_AT ))s, no restart needed"
         TS_STRIKE_COUNT=0
         [[ "$TS_FAIL_TYPE" == "Tailscale coordination unreachable" ]] && \
             { record_recovery TS "[server] Tailscale coordination back"; CUR_BACKOFF=$BASE_SLEEP; }
@@ -424,13 +453,23 @@ while true; do
     # produced a knock-on spurious qBittorrent NAT-PMP down/recovered pair —
     # the blip itself would have self-healed with no intervention at all.
     TS_STRIKE_COUNT=$(( TS_STRIKE_COUNT + 1 ))
-    if (( TS_STRIKE_COUNT < TS_STRIKES )); then
-        logger -t "$LOG_TAG" "Tailscale coordination unreachable (strike ${TS_STRIKE_COUNT}/${TS_STRIKES}), re-checking [$TS_DIAG]"
+    (( TS_STRIKE_COUNT == 1 )) && TS_FIRST_STRIKE_AT=$(date +%s)
+    TS_ELAPSED=$(( $(date +%s) - TS_FIRST_STRIKE_AT ))
+    TS_DIAG="$TS_DIAG ctl=\"$(ts_conn_diag)\""
+    if [[ " ${TS_SIGNALS[*]} " == *" health-warning "* ]]; then
+        TS_NEED="${TS_STRIKES} strikes"
+        TS_READY=$(( TS_STRIKE_COUNT >= TS_STRIKES ))
+    else
+        TS_NEED="${TS_POLL_GRACE_SECS}s"
+        TS_READY=$(( TS_STRIKE_COUNT >= TS_STRIKES && TS_ELAPSED >= TS_POLL_GRACE_SECS ))
+    fi
+    if (( ! TS_READY )); then
+        logger -t "$LOG_TAG" "Tailscale coordination unreachable (strike ${TS_STRIKE_COUNT}, ${TS_ELAPSED}s, restart at ${TS_NEED}), re-checking [$TS_DIAG]"
         sleep "$STRIKE_SLEEP"
         continue
     fi
 
-    logger -t "$LOG_TAG" "Tailscale coordination unreachable after ${TS_STRIKES} consecutive checks, restarting tailscaled [$TS_DIAG]"
+    logger -t "$LOG_TAG" "Tailscale coordination unreachable after ${TS_STRIKE_COUNT} consecutive checks / ${TS_ELAPSED}s, restarting tailscaled [$TS_DIAG]"
     tailscale down
     tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server --advertise-exit-node
     # Close the race documented above: `tailscale up` just recreated ts-forward
@@ -443,7 +482,8 @@ while true; do
     # reinsert it. Found live via vpn-dns-regression-check.sh, 2026-08-30.
     # Idempotent and safe with wg0 already up (see that script's own header).
     /usr/local/bin/wg0-up-extra.sh
+    TS_STRIKE_COUNT_AT_RESTART=$TS_STRIKE_COUNT
     TS_STRIKE_COUNT=0
-    record_failure TS "Tailscale coordination unreachable" "[server] Tailscale coordination unreachable — restarted" "Tailscale coordination server was unreachable for ${TS_STRIKES} consecutive checks; tailscaled bounced at $(date)."
+    record_failure TS "Tailscale coordination unreachable" "[server] Tailscale coordination unreachable — restarted" "Tailscale coordination server was unreachable for ${TS_STRIKE_COUNT_AT_RESTART:-?} consecutive checks / ${TS_ELAPSED}s [${TS_DIAG}]; tailscaled bounced at $(date)."
     CUR_BACKOFF=$TS_BACKOFF
 done
