@@ -395,8 +395,19 @@ while true; do
     TS_JSON=$(tailscale status --json 2>/dev/null)
     TS_BACKEND=$(jq -r '.BackendState // empty' <<<"$TS_JSON" 2>/dev/null)
     TS_ONLINE=$(jq -r '.Self.Online // false' <<<"$TS_JSON" 2>/dev/null)
-    if ! tailscale status 2>&1 | grep -q "coordination server" \
-        && ! [[ "$TS_BACKEND" == "Running" && "$TS_ONLINE" != "true" ]]; then
+    TS_TEXT=$(tailscale status 2>&1)
+    # Record WHICH signal tripped, plus tailscaled's health text, in every
+    # strike/restart log line. Added 2026-11-06: two restarts after the 11-03
+    # SO_MARK bypass fix showed no control errors in tailscaled's own log, and
+    # without this there's no way to tell a real outage from a transient
+    # Self.Online=false or a passing health warning.
+    TS_SIGNALS=()
+    grep -q "coordination server" <<<"$TS_TEXT" && TS_SIGNALS+=("health-warning")
+    [[ "$TS_BACKEND" == "Running" && "$TS_ONLINE" != "true" ]] && TS_SIGNALS+=("Self.Online=$TS_ONLINE")
+    TS_DIAG="signal=$(IFS=+; echo "${TS_SIGNALS[*]:-none}") backend=${TS_BACKEND:-?}"
+    TS_HEALTH=$(grep '^#' <<<"$TS_TEXT" | sed 's/^#[[:space:]]*//; /^Health check:$/d; s/^- //' | paste -sd'|' | cut -c1-300)
+    [[ -n "$TS_HEALTH" ]] && TS_DIAG="$TS_DIAG health=\"$TS_HEALTH\""
+    if (( ${#TS_SIGNALS[@]} == 0 )); then
         # No coordination server complaint, Tailscale is healthy
         TS_STRIKE_COUNT=0
         [[ "$TS_FAIL_TYPE" == "Tailscale coordination unreachable" ]] && \
@@ -414,12 +425,12 @@ while true; do
     # the blip itself would have self-healed with no intervention at all.
     TS_STRIKE_COUNT=$(( TS_STRIKE_COUNT + 1 ))
     if (( TS_STRIKE_COUNT < TS_STRIKES )); then
-        logger -t "$LOG_TAG" "Tailscale coordination unreachable (strike ${TS_STRIKE_COUNT}/${TS_STRIKES}), re-checking"
+        logger -t "$LOG_TAG" "Tailscale coordination unreachable (strike ${TS_STRIKE_COUNT}/${TS_STRIKES}), re-checking [$TS_DIAG]"
         sleep "$STRIKE_SLEEP"
         continue
     fi
 
-    logger -t "$LOG_TAG" "Tailscale coordination unreachable after ${TS_STRIKES} consecutive checks, restarting tailscaled"
+    logger -t "$LOG_TAG" "Tailscale coordination unreachable after ${TS_STRIKES} consecutive checks, restarting tailscaled [$TS_DIAG]"
     tailscale down
     tailscale up --accept-dns=false --operator=matt --advertise-routes=10.0.0.0/24,192.168.50.0/24 --hostname=server --advertise-exit-node
     # Close the race documented above: `tailscale up` just recreated ts-forward
