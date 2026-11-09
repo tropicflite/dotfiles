@@ -44,9 +44,21 @@ fbstatus() {
   tailscale serve status | grep -E "Funnel|ts.net \("
 }
 function docp {
-  cd ~/docker && git add -A && git commit -m "${1:-update docker}" && git push
-  # Note: git push is intentionally outside the && chain.
-  # A silent push failure after a failed commit is worse than a redundant push.
+  # Same secret speed bump as dotp (shared scanner, pointed at ~/docker).
+  # `docp --force "msg"` bypasses it for confirmed false positives.
+  local force=0
+  if [[ "$1" == "--force" ]]; then
+    force=1
+    shift
+  fi
+  cd ~/docker && git add -A || { cd ~/; return 1; }
+  if [[ "$force" -eq 0 ]] && ! ~/dotfiles/scripts/fleet/dotp-secret-scan ~/docker; then
+    echo "⚠ docp: aborting — possible secret(s) in staged changes (above)."
+    echo "  If these are false positives, run: docp --force \"message\""
+    cd ~/
+    return 1
+  fi
+  git commit -m "${1:-update docker}" && git push
   cd ~/
 }
 export GPG_TTY=$(tty)
