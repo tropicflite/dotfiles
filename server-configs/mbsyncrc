@@ -1,0 +1,36 @@
+# mbsync config for mail-mirror (scripts/server/mail-mirror): one-way, append-only
+# copy of the Migadu mailbox. Used via `mbsync -c`, not installed as ~/.mbsyncrc.
+# The password comes from the migadu account in ~/.msmtprc, so no secret lives here.
+
+IMAPAccount migadu
+Host imap.migadu.com
+Port 993
+User matt@wayoffcourse.ca
+PassCmd "awk '/^account +migadu/{f=1} f&&/^password/{print $2; exit}' /home/matt/.msmtprc"
+TLSType IMAPS
+CertificateFile /etc/ssl/certs/ca-certificates.crt
+
+IMAPStore migadu-remote
+Account migadu
+
+MaildirStore migadu-local
+Path "/mnt/data/my stuff/Mail archive/Migadu mirror/"
+Inbox "/mnt/data/my stuff/Mail archive/Migadu mirror/INBOX"
+SubFolders Verbatim
+
+# The safety properties of the mirror are all in this block:
+#   Sync PullNew  copy new messages server -> mirror and nothing else: no deletes
+#                 or flag changes in either direction, nothing is pushed to Migadu
+#   Create Near   new server folders appear in the mirror
+#   Remove None   a folder deleted on the server stays in the mirror
+#   Expunge None  never expunge on either side
+Channel migadu
+Far :migadu-remote:
+Near :migadu-local:
+Patterns *
+Sync PullNew
+Create Near
+Remove None
+Expunge None
+CopyArrivalDate yes
+SyncState *

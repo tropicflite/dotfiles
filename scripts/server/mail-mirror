@@ -1,0 +1,85 @@
+#!/bin/bash
+# Nightly one-way mirror of the Migadu mailbox, so Migadu isn't the only copy of
+# new mail. restic-b2 picks the mirror up from "my stuff" at 03:30.
+# Source: ~/dotfiles/scripts/server/mail-mirror
+# Config: ~/dotfiles/server-configs/mbsyncrc (append-only rules are explained there)
+# Cron:   15 3 * * * /home/matt/dotfiles/scripts/server/mail-mirror >> /var/log/mail-mirror.log 2>&1
+# Mirror: /mnt/data/my stuff/Mail archive/Migadu mirror/ (Maildir, not on Syncthing)
+#
+# Mail deleted on Migadu stays in the mirror, so it only ever grows.
+#
+# Deleting a whole folder on Migadu makes mbsync exit 1 every night ("far side
+# box X cannot be opened anymore"), though other folders still sync. To clear it,
+# move X out of "Migadu mirror" to anywhere else under "Mail archive", which keeps
+# the messages.
+#
+# Dark cockpit: a single failed night is silent, because IMAP goes out through
+# wg0 and VPN or provider blips are normal. Alerts once the last good sync is
+# older than STALE_HOURS (the second missed night), then every REMIND_DAYS.
+# The alert state clears itself on recovery.
+
+STALE_HOURS=36
+REMIND_DAYS=3
+CONFIG=/home/matt/dotfiles/server-configs/mbsyncrc
+MIRROR="/mnt/data/my stuff/Mail archive/Migadu mirror"
+STATE_DIR=/home/matt/.local/state/mail-mirror
+LOCK="$STATE_DIR/lock"
+
+log() { echo "[$(date -Iseconds)] $*"; }
+
+mkdir -p "$STATE_DIR" "$MIRROR" || { log "ERROR: can't create state or mirror directory"; }
+
+exec 9>"$LOCK"
+if ! flock -n 9; then
+    log "another run is in progress, skipping"
+    exit 0
+fi
+
+now=$(date +%s)
+
+output=$(mbsync -c "$CONFIG" -q migadu 2>&1)
+rc=$?
+
+if [ "$rc" -eq 0 ]; then
+    count=$(find "$MIRROR" -type f \( -path '*/cur/*' -o -path '*/new/*' \) | wc -l)
+    log "OK - mirror holds $count messages"
+    echo "$now" > "$STATE_DIR/last-ok"
+    rm -f "$STATE_DIR/last-alert"
+    exit 0
+fi
+
+log "FAILED (exit $rc): $output"
+
+# No good sync on record yet: start the clock now rather than alerting at once.
+[ -f "$STATE_DIR/last-ok" ] || echo "$now" > "$STATE_DIR/last-ok"
+last_ok=$(cat "$STATE_DIR/last-ok" 2>/dev/null || echo "$now")
+age_hours=$(( (now - last_ok) / 3600 ))
+
+if [ "$age_hours" -lt "$STALE_HOURS" ]; then
+    log "last good sync ${age_hours}h ago, under ${STALE_HOURS}h: not alerting yet"
+    exit 1
+fi
+
+if [ -f "$STATE_DIR/last-alert" ]; then
+    last_alert=$(cat "$STATE_DIR/last-alert" 2>/dev/null || echo 0)
+    if [ $(( (now - last_alert) / 86400 )) -lt "$REMIND_DAYS" ]; then
+        log "already alerted $(date -d "@$last_alert" '+%Y-%m-%d'), not repeating yet"
+        exit 1
+    fi
+fi
+
+BODY="The nightly Migadu mailbox mirror hasn't succeeded for ${age_hours} hours, so new mail exists only on Migadu.
+
+Last error:
+$output
+
+Mirror: $MIRROR
+Log: /var/log/mail-mirror.log
+Retry by hand: mail-mirror"
+
+printf 'Subject: %s\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\n%s\n' \
+    "[Mail] Migadu mirror failing (${age_hours}h)" "$BODY" | \
+    NTFY_PRIORITY=default NTFY_TAGS=email NTFY_BODY="$BODY" /usr/local/bin/send-mail \
+    && echo "$now" > "$STATE_DIR/last-alert" \
+    || log "WARNING: send-mail failed"
+exit 1

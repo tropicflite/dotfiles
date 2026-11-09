@@ -5,6 +5,7 @@ MAILTO=""
 */5 * * * * /usr/local/bin/temp-monitor.sh
 0 2 * * * /usr/local/bin/health-monitor.sh
 0 3 * * * /home/matt/dotfiles/scripts/server/immich-backup.sh >> /var/log/immich-backup.log 2>&1
+15 3 * * * /home/matt/dotfiles/scripts/server/mail-mirror >> /var/log/mail-mirror.log 2>&1
 */5 * * * * /home/matt/dotfiles/scripts/server/vpn-diskcheck.sh
 * * * * * /home/matt/bin/update-uptime.py
 0 3 * * * /home/matt/bin/recyclarr-sync.sh >> /var/log/recyclarr.log 2>&1
