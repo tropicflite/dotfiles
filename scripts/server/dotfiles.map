@@ -153,6 +153,7 @@ exclude  docker-repo  -  homepage-compose.service
 exclude  docker-repo  -  immich-compose.service
 exclude  docker-repo  -  jellyfin-compose.service
 exclude  docker-repo  -  ntfy-compose.service
+exclude  docker-repo  -  paperless-compose.service
 exclude  docker-repo  -  pihole-compose.service
 exclude  docker-repo  -  qbittorrent-compose.service
 exclude  docker-repo  -  radicale-compose.service

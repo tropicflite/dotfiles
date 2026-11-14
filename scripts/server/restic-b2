@@ -122,6 +122,21 @@ do_backup() {
         docker exec immich_postgres pg_dumpall --clean --if-exists -U postgres \
         || fail "Immich DB snapshot failed"
 
+    # Paperless-ngx SQLite: consistent SQL dump via the container's Python (the
+    # image has no sqlite3 CLI). Non-fatal on purpose — a stopped Paperless must
+    # not cost the night's whole off-site backup; it alerts and carries on.
+    log "Paperless DB (sqlite iterdump streamed into restic)..."
+    if ! restic_backup --tag paperless-db --host "$HOSTNAME_SHORT" \
+        --stdin-from-command --stdin-filename paperless-db.sql -- \
+        docker exec paperless python3 -c 'import sqlite3,sys
+c=sqlite3.connect("file:/usr/src/paperless/data/db.sqlite3?mode=ro",uri=True)
+for l in c.iterdump(): sys.stdout.write(l+"\n")'; then
+        log "WARNING: Paperless DB snapshot failed - continuing with files"
+        send_alert "B2 backup: Paperless DB dump failed" "restic-b2 could not dump the Paperless SQLite DB on $(date) (container down?). The files snapshot still ran; media/ is covered, the DB dump is not.
+
+Log: /var/log/restic-b2.log"
+    fi
+
     log "Files..."
     local ex=()
     for e in "${EXCLUDE[@]}"; do ex+=(--exclude "$e"); done
