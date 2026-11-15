@@ -277,9 +277,11 @@ iptables -I FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP
 # of DOCKER-USER and ACCEPTs anything "-o tailscale0", so a DOCKER-USER-only
 # copy would let qBittorrent reach tailnet peers.
 #
-# Pi-hole (172.25.0.0/24, the only container on pihole_pihole_net) upstream
-# DNS is plain port 53 to 1.1.1.1 and is never marked 0x200 (the phone's
-# query terminates at docker-proxy; Pi-hole opens a new flow), so the
+# Pi-hole bridge (172.25.0.0/24: pihole .2 + unbound .3). Since 2026-11-14
+# Pi-hole's only upstream is unbound, which forwards over DoT (:853) to
+# Cloudflare + Quad9 — this /24 rule is what kill-switches unbound too, so
+# unbound must keep an IP inside it. That traffic is never marked 0x200 (the
+# phone's query terminates at docker-proxy; Pi-hole opens a new flow), so the
 # exit-node kill switch above doesn't cover it. Without this, losing wg0
 # fails it over to the enp1s0 default route, MASQUERADEd to the home IP.
 # NEW only: Pi-hole's replies to DNAT'd LAN clients go br-pihole -> enp1s0.

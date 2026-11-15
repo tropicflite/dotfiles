@@ -73,6 +73,11 @@ add_check exitnode_ks_tsforward "Exit-node kill switch (inside ts-forward)"
 add_check qbt_ks_forward        "qBittorrent kill switch (FORWARD)"
 add_check qbt_ks_dockeruser     "qBittorrent kill switch (DOCKER-USER)"
 add_check pihole_ks_dockeruser  "Pi-hole upstream kill switch (DOCKER-USER)"
+add_check pihole_upstream_unbound "Pi-hole's only upstream is the unbound DoT forwarder (172.25.0.3#53)"
+add_check unbound_in_ks_subnet  "unbound container running at 172.25.0.3 (inside the kill-switched /24)"
+add_check unbound_tls_only      "unbound.conf: TLS-only forwarders, no recursion fallback"
+add_check pihole_dot_e2e        "DoT upstream answers end-to-end (uncached name via unbound)"
+add_check pihole_no_plain_upstream "no plaintext :53 flows from the Pi-hole bridge to the internet"
 add_check dockeruser_order      "DOCKER-USER evaluated before DOCKER-FORWARD / any br-pihole ACCEPT"
 add_check ts_exit_mark_wired    "TS_EXIT_MARK chain wired from mangle PREROUTING"
 add_check ts_exit_mark_exempt   "TS_EXIT_MARK exempts Tailscale mesh/LAN traffic (not just exit-node)"
@@ -125,6 +130,62 @@ check_qbt_ks_dockeruser() {
 
 check_pihole_ks_dockeruser() {
     iptables -C DOCKER-USER -s 172.25.0.0/24 ! -d 100.64.0.0/10 ! -o wg0 -m conntrack --ctstate NEW -j DROP 2>/dev/null
+}
+
+# DoT upstream (2026-11-14): Pi-hole -> unbound (172.25.0.3) -> DoT :853 to
+# Cloudflare + Quad9 via wg0. Five checks, because each covers a different
+# way of silently sliding back to plaintext: Pi-hole config (UI/env drift),
+# container placement (an IP outside 172.25.0.0/24 escapes the DOCKER-USER
+# kill switch and the -o wg0 MASQUERADE), unbound's own config (a dropped
+# forward-tls-upstream or forward-first: yes falls back to plaintext
+# recursion), real reachability, and — the backstop that doesn't care which
+# config caused it — live conntrack for any plaintext flow off the bridge.
+UNBOUND_CONF="/home/matt/docker/pihole/unbound/unbound.conf"
+UNBOUND_IP="172.25.0.3"
+
+check_pihole_upstream_unbound() {
+    local out; out=$(docker exec pihole pihole-FTL --config dns.upstreams 2>/dev/null)
+    [[ "$(tr -d '[:space:]' <<<"$out")" == "[${UNBOUND_IP}#53]" ]]
+}
+
+check_unbound_in_ks_subnet() {
+    local out
+    out=$(docker inspect unbound --format '{{.State.Running}} {{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null)
+    [[ "$out" == "true ${UNBOUND_IP} " ]]
+}
+
+check_unbound_tls_only() {
+    [[ -f "$UNBOUND_CONF" ]] || return 1
+    local conf; conf=$(grep -vE '^\s*(#|$)' "$UNBOUND_CONF")
+    grep -qE '^\s*forward-tls-upstream:\s*yes' <<<"$conf" || return 1
+    grep -qE '^\s*forward-first:\s*no' <<<"$conf" || return 1
+    grep -qE '^\s*forward-addr:' <<<"$conf" || return 1
+    # Every forward-addr must be @853 with a TLS auth name (#host).
+    ! grep -E '^\s*forward-addr:' <<<"$conf" | grep -qvE '@853#[A-Za-z0-9.-]+\s*$'
+}
+
+# Uncached random name, so serve-expired can't answer from cache: a real
+# upstream round trip. NXDOMAIN counts as success (upstream answered);
+# SERVFAIL/timeout = no working DoT path. Uses BIND dig on the host (the
+# container's "dig" is ldns drill with different syntax).
+check_pihole_dot_e2e() {
+    command -v dig >/dev/null 2>&1 || return 0
+    local out; out=$(dig +time=5 +tries=2 "@${UNBOUND_IP}" "regcheck-${RANDOM}${RANDOM}.example.com" 2>/dev/null)
+    grep -qE 'status: (NOERROR|NXDOMAIN)' <<<"$out"
+}
+
+# Any :53 flow from the Pi-hole bridge to somewhere other than the bridge
+# itself or the ts.net forward (100.100.100.100 via tailscale0) means a
+# plaintext upstream crept back in — whatever the configs above say.
+check_pihole_no_plain_upstream() {
+    local out
+    out=$(conntrack -L -s 172.25.0.0/24 2>/dev/null)
+    ! awk '{ s=""; d=""; dp="";
+             for (i=1;i<=NF;i++) {
+               if ($i ~ /^dst=/ && d=="")   d=substr($i,5);
+               if ($i ~ /^dport=/ && dp=="") dp=substr($i,7);
+             }
+             if (dp=="53" && d !~ /^172\.25\.0\./ && d != "100.100.100.100") print }' <<<"$out" | grep -q .
 }
 
 # Added 2026-11-01: the DOCKER-USER kill switches only work if FORWARD reaches
@@ -336,7 +397,12 @@ detail_for() {
         exitnode_ks_tsforward) echo "Missing: iptables -I ts-forward 1 -m mark --mark 0x200 ! -o wg0 -j DROP -- ts-forward's own MARK/ACCEPT (0x40000) terminates traversal before the FORWARD-chain copy is ever reached, so THIS copy is the one that actually matters whenever a packet's input interface is tailscale0. A 'tailscale down; tailscale up' (wg-watchdog's coordination-restart path included) recreates ts-forward from scratch and wipes this; only a wg0-triggered PostUp (wg0-up-extra.sh) re-inserts it." ;;
         qbt_ks_forward)        echo "Missing: iptables -I FORWARD -s 172.27.0.0/24 ! -o wg0 -j DROP -- qBittorrent traffic could leak if wg0 is down." ;;
         qbt_ks_dockeruser)     echo "Missing: iptables -I DOCKER-USER 1 -s 172.27.0.0/24 ! -o wg0 -j DROP -- the FORWARD copy can be shadowed by DOCKER-FORWARD's blanket bridge ACCEPT after a dockerd restart; this copy is the one that survives it. Re-run wg0-up-extra.sh." ;;
-        pihole_ks_dockeruser)  echo "Missing: iptables -I DOCKER-USER 1 -s 172.25.0.0/24 ! -d 100.64.0.0/10 ! -o wg0 -m conntrack --ctstate NEW -j DROP -- Pi-hole's plain-DNS upstream (1.1.1.1) is not marked 0x200, so if wg0 disappears it fails over to enp1s0 and Tailscale clients' DNS leaves from the home IP. Re-run wg0-up-extra.sh." ;;
+        pihole_ks_dockeruser)  echo "Missing: iptables -I DOCKER-USER 1 -s 172.25.0.0/24 ! -d 100.64.0.0/10 ! -o wg0 -m conntrack --ctstate NEW -j DROP -- Pi-hole/unbound's upstream (DoT to Cloudflare/Quad9) is not marked 0x200, so if wg0 disappears it fails over to enp1s0 and the household's DNS leaves from the home IP. Re-run wg0-up-extra.sh." ;;
+        pihole_upstream_unbound) echo "Pi-hole's dns.upstreams is no longer exactly [${UNBOUND_IP}#53] -- a plaintext upstream may be back (e.g. added in the web UI, or FTLCONF_dns_upstreams dropped from ~/docker/pihole/docker-compose.yml). Check: docker exec pihole pihole-FTL --config dns.upstreams" ;;
+        unbound_in_ks_subnet)  echo "The unbound container is not running, or not at ${UNBOUND_IP}. If stopped, ALL household DNS is down (fail-closed by design) -- docker compose -f ~/docker/pihole/docker-compose.yml up -d unbound. If it's on a different IP outside 172.25.0.0/24, it escapes the DOCKER-USER kill switch and the -o wg0 MASQUERADE." ;;
+        unbound_tls_only)      echo "${UNBOUND_CONF} lost forward-tls-upstream: yes / forward-first: no, or has a forward-addr without @853#<tls-name> -- unbound may be resolving in plaintext (forward-first: yes falls back to plain recursion to the roots)." ;;
+        pihole_dot_e2e)        echo "An uncached query to unbound (${UNBOUND_IP}) got SERVFAIL or no answer -- no working DoT path to Cloudflare/Quad9. Cached names still answer (serve-expired, up to 1h), so the household may not notice yet. Check: wg0 up? docker logs unbound; port 853 reachable through the tunnel?" ;;
+        pihole_no_plain_upstream) echo "conntrack shows a plaintext port-53 flow from 172.25.0.0/24 to a non-bridge, non-ts.net destination -- something on the Pi-hole bridge is querying an upstream unencrypted. Inspect: conntrack -L -s 172.25.0.0/24 | grep 'dport=53'" ;;
         dockeruser_order)      echo "FORWARD no longer reaches DOCKER-USER before DOCKER-FORWARD, or an earlier FORWARD rule ACCEPTs br-pihole traffic not leaving via wg0 -- the DOCKER-USER kill switches are shadowed. Inspect: iptables -S FORWARD" ;;
         ts_exit_mark_wired)    echo "mangle PREROUTING is not jumping tailscale0 traffic into TS_EXIT_MARK -- exit-node traffic won't get marked 0x200 at all, silently defeating the whole policy-routing setup." ;;
         ts_exit_mark_exempt)   echo "TS_EXIT_MARK is missing one or more of its RETURN exemptions (100.64.0.0/10, 192.168.50.0/24, 10.0.0.0/24). Without them, ALL tailscale0-origin traffic gets marked 0x200 and forced via wg0 -- not just exit-node traffic -- breaking Tailscale mesh/peer connectivity and the server's own replies to peers." ;;
