@@ -16,14 +16,20 @@
 # it arrived. Aegis isn't checked: it only writes a backup when the vault
 # changes, so an old file there is normal.
 #
+# 2026-11-15: switched from the Pixel 6 (Z7HVQKA, "seedvault-backups") to the
+# Pixel 10 Pro Fold (UA4B5S4, "seedvault-backups-fold"). The Fold's folder starts
+# empty, so until its first snapshot arrives the age counts from MONITOR_START
+# (alerts if nothing has arrived 7 days after the switch).
+#
 # Dark cockpit: silent while fresh. When stale, alerts once, then reminds every
 # REMIND_DAYS while it stays stale. The state clears itself on recovery.
 
 STALE_DAYS=7
 REMIND_DAYS=3
-DIR="/mnt/data/my stuff/seedvault-backups"
+DIR="/mnt/data/my stuff/seedvault-backups-fold"
 SYNCTHING_CONFIG=/home/matt/docker/syncthing/config/config.xml
-PHONE_ID_PREFIX=Z7HVQKA
+PHONE_ID_PREFIX=UA4B5S4
+MONITOR_START=$(date -d "2026-11-15 23:00" +%s)
 STATE=/home/matt/.local/state/phone-backup-check/last-alert
 
 log() { echo "[$(date -Iseconds)] $*"; }
@@ -33,8 +39,8 @@ newest=$(find "$DIR" -name '*.snapshot' -not -path '*/.stversions/*' -printf '%T
 newest=${newest%.*}
 
 if [ -z "$newest" ]; then
-    age_days=999
-    newest_human="none found"
+    age_days=$(( (now - MONITOR_START) / 86400 ))
+    newest_human="none yet (monitoring this folder since $(date -d "@$MONITOR_START" '+%Y-%m-%d %H:%M'))"
 else
     age_days=$(( (now - newest) / 86400 ))
     newest_human=$(date -d "@$newest" '+%Y-%m-%d %H:%M')
