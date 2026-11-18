@@ -1,0 +1,9 @@
+[Unit]
+Description=Re-sync Tailscale-only IPv6 every 5 minutes (prefix changes, reboots)
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

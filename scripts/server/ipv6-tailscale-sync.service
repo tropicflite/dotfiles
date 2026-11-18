@@ -1,0 +1,8 @@
+[Unit]
+Description=Tailscale-only IPv6: sync server address with router's delegated prefix + egress guard
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ipv6-tailscale-sync.sh

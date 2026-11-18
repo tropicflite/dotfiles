@@ -394,5 +394,12 @@ ip6tables -I ts-forward 1 -i tailscale0 ! -o tailscale0 -j REJECT
 # its LAN IP (192.168.50.34) directly, not through enp1s0 NAT. DERP relay uses
 # TCP, not UDP 41641. Do NOT remove this rule or restore the router port forward
 # without first verifying the Android bug is fixed in the installed Tailscale version.
+#
+# 2026-11-18: this block is IPv4-only, and it stays that way. Direct IPv6 to the
+# phone IS allowed now (ipv6-tailscale-sync.sh), and the Android loop did NOT
+# reproduce over it (Pixel 10 Pro Fold on Telus 5G, exit node on, server tailscale
+# 1.104.7; 33 Mbps direct vs 16 relayed). If the phone ever loses internet only
+# while it's direct over v6 with the exit node on, the bug is back: stop
+# ipv6-tailscale-sync.timer and remove the server's global v6 address.
 iptables -D OUTPUT -o enp1s0 -p udp --sport 41641 ! -d 192.168.50.0/24 -j DROP 2>/dev/null || true
 iptables -I OUTPUT -o enp1s0 -p udp --sport 41641 ! -d 192.168.50.0/24 -j DROP

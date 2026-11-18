@@ -109,6 +109,10 @@ add_check ts_bypass_rules       "Tailscale bypass: fwmark 0x80000 rules (main su
 add_check ts_bypass_resolves    "Tailscale bypass: 0x80000-marked internet route resolves out enp1s0 with the LAN source IP"
 add_check ts_bypass_lan_intact  "Tailscale bypass: 0x80000-marked LAN route still on-link (not via gateway)"
 add_check ts_bypass_in_postup   "wg0-up-extra.sh: Tailscale bypass (2026-11-03) present in source"
+add_check v6_egress_guard       "IPv6: enp1s0 egress guard (V6TS-OUT: only tailscaled-marked traffic leaves)"
+add_check v6_ingress_guard      "IPv6: enp1s0 ingress guard (V6TS-IN: only established/ICMPv6/link-local/UDP 41641)"
+add_check v6_no_main_default    "IPv6: no default route in the main table (only table 202, mark 0x80000)"
+add_check v6_accept_ra_off      "IPv6: accept_ra=0 on enp1s0 (a stray RA would plant a main-table default)"
 
 # ── Individual checks ─────────────────────────────────────────────────────
 
@@ -389,6 +393,25 @@ check_ts_bypass_in_postup() {
     [[ -f "$WG_UP_EXTRA" ]] && grep -q "fwmark 0x80000/0xff0000 lookup 202" "$WG_UP_EXTRA" 2>/dev/null
 }
 
+check_v6_egress_guard() {
+    ip6tables -C OUTPUT -o enp1s0 -j V6TS-OUT 2>/dev/null && \
+    ip6tables -S V6TS-OUT 2>/dev/null | tail -1 | grep -q -- "-j REJECT" && \
+    ip6tables -S V6TS-OUT 2>/dev/null | grep -q -- "--mark 0x80000/0xff0000 -j ACCEPT"
+}
+
+check_v6_ingress_guard() {
+    ip6tables -C INPUT -i enp1s0 -j V6TS-IN 2>/dev/null && \
+    ip6tables -S V6TS-IN 2>/dev/null | tail -1 | grep -q -- "-j DROP"
+}
+
+check_v6_no_main_default() {
+    [[ -z "$(ip -6 route show default 2>/dev/null)" ]]
+}
+
+check_v6_accept_ra_off() {
+    [[ "$(cat /proc/sys/net/ipv6/conf/enp1s0/accept_ra 2>/dev/null)" == "0" ]]
+}
+
 # ── Failure detail messages (only consulted when a check fails) ───────────
 
 detail_for() {
@@ -434,6 +457,10 @@ detail_for() {
         ts_bypass_lan_intact)  echo "0x80000-marked LAN traffic is routed via the gateway instead of on-link -- rule 102 (main suppress_prefixlength 0) is missing or out of order, so Tailscale LAN peers hairpin through the router." ;;
         ts_bypass_in_postup)   echo "wg0-up-extra.sh no longer contains the Tailscale bypass. Live rules are now unowned: the next wg0 bounce/reboot won't reassert them." ;;
         smtp_bypass_in_postup) echo "wg0-up-extra.sh no longer contains the SMTP bypass. Even if the live ip rule/route currently look correct, they are now unowned: the next wg0 bounce (or reboot) will not reassert them and alert email silently goes back to riding the tunnel it is trying to report on. Same live-fix-vs-persisted-source trap as 2026-08-21/08-30/09-16." ;;
+        v6_egress_guard)       echo "ip6tables V6TS-OUT chain missing, unhooked from OUTPUT -o enp1s0, or no longer ends in REJECT -- if the server has a global IPv6 address, non-Tailscale traffic could leave over IPv6 straight out Rogers, bypassing ProtonVPN. Run: sudo ipv6-tailscale-sync.sh (it rebuilds the chain idempotently)." ;;
+        v6_ingress_guard)      echo "ip6tables V6TS-IN chain missing/unhooked or no longer ends in DROP -- every service listening on [::] would be reachable from the IPv6 internet if the router's v6 firewall ever opened. Run: sudo ipv6-tailscale-sync.sh." ;;
+        v6_no_main_default)    echo "An IPv6 default route exists in the MAIN table -- every process can now reach the internet over IPv6 via Rogers, bypassing ProtonVPN (V6TS-OUT is the only thing still stopping it). Likely cause: accept_ra flipped on, or someone enabled router adverts on the LAN (nvram ipv6_radvd). ipv6-tailscale-sync.sh deletes it on its next run." ;;
+        v6_accept_ra_off)      echo "accept_ra on enp1s0 is no longer 0 -- if the router ever sends RAs (nvram ipv6_radvd=1) the kernel will install a main-table IPv6 default = VPN bypass. ipv6-tailscale-sync.sh resets it; find what changed it (sysctl.d / ifupdown)." ;;
         *) echo "Check failed." ;;
     esac
 }
