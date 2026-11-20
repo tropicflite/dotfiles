@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# qshot-clear — delete Quest screenshots sent with `qshot` (server:~/qshots/).
+# Run by hand (or `qshot clear` on the Quest); also run by the Claude Code
+# SessionEnd hook (dotfiles/.claude/hooks/session-end.sh) with --quiet.
+set -euo pipefail
+
+dir="$HOME/qshots"
+quiet=false
+[[ "${1:-}" == "--quiet" ]] && quiet=true
+
+[[ -d "$dir" ]] || { $quiet || echo "qshots: nothing to clear"; exit 0; }
+
+count=$(find "$dir" -mindepth 1 -maxdepth 1 | wc -l)
+find "$dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+$quiet || echo "qshots: cleared $count file(s)"

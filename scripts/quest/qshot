@@ -1,0 +1,40 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# qshot — send the newest Quest screenshot(s) to the server so Claude can read
+# them directly (no browser upload). Lands in server:~/qshots/.
+#
+#   qshot        send the newest screenshot
+#   qshot 3      send the newest 3
+#   qshot clear  delete everything in server:~/qshots/
+#   qshot ls     list what's on the server
+#
+# server:~/qshots/ is also wiped automatically at the end of every Claude Code
+# session on the server (dotfiles/.claude/hooks/session-end.sh).
+set -euo pipefail
+
+SRC=/sdcard/Oculus/Screenshots
+DEST=server   # ssh alias from dotfiles ssh/config
+
+case "${1:-1}" in
+  clear) exec ssh "$DEST" 'bin/qshot-clear' ;;
+  ls)    exec ssh "$DEST" 'ls -lt ~/qshots 2>/dev/null || echo "(empty)"' ;;
+  ''|*[!0-9]*) echo "usage: qshot [N|clear|ls]" >&2; exit 2 ;;
+esac
+n=${1:-1}
+
+if ! ls "$SRC" >/dev/null 2>&1; then
+  echo "Can't read $SRC — run termux-setup-storage once and allow access." >&2
+  exit 1
+fi
+
+mapfile -t files < <(ls -t "$SRC" | grep -iE '\.(jpe?g|png)$' | head -n "$n")
+if (( ${#files[@]} == 0 )); then
+  echo "No screenshots in $SRC" >&2
+  exit 1
+fi
+
+# One SSH round-trip (we're often on a relayed link): tar over the pipe.
+tar -cf - -C "$SRC" "${files[@]}" |
+  ssh "$DEST" 'mkdir -p ~/qshots && chmod 700 ~/qshots && tar -xf - -C ~/qshots'
+
+printf 'sent → server:~/qshots/\n'
+printf '  %s\n' "${files[@]}"
