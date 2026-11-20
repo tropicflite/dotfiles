@@ -53,6 +53,14 @@
 # are longer than the confirmed-disassociation ladder's on purpose — this
 # path must still tolerate brief real ICMP noise without bouncing, per the
 # original 07-27 fix's reasoning; it just can no longer go silent forever.
+#
+# 2026-11-20 UPDATE: hysteresis on the soft-fail counter. The 08-01 fix reset
+# SOFT_STATE_FILE on ONE successful gateway ping, so a flapping link (e.g. 20
+# fails -> 1 lucky ping -> fails again, seen during 2.4 GHz saturation bursts
+# like 10-29..11-01) kept restarting the ladder and never got past the soft
+# reconnects. Now the counter only clears after SOFT_CLEAR_AFTER consecutive
+# healthy checks; a single good ping in the middle of a bad stretch just
+# pauses the count. Healthy checks while soft_fails is 0 cost nothing.
 
 LOG_TAG="wifi-watchdog"
 WIFI_CONN="NachoWiFi"
@@ -62,6 +70,8 @@ PING_TIMEOUT=5
 GW_STATE_FILE="/var/tmp/wifi-watchdog.gwfails"
 SOFT_STATE_FILE="/var/tmp/wifi-watchdog.softfails"
 TS_STATE_FILE="/var/tmp/wifi-watchdog.tsfails"
+SOFT_OK_FILE="/var/tmp/wifi-watchdog.softok"  # consecutive healthy checks while soft_fails > 0
+SOFT_CLEAR_AFTER=3                            # x 2 min cron = 6 min clean before the soft ladder resets
 
 LOCK="/var/tmp/wifi-watchdog.lock"
 exec 9>"$LOCK"
@@ -85,8 +95,16 @@ if $gw_ok; then
     echo 0 > "$GW_STATE_FILE"
 
     soft_fails=$(read_count "$SOFT_STATE_FILE")
-    [ "$soft_fails" -gt 0 ] && logger -t "$LOG_TAG" "Transient-ICMP-loss state cleared after ${soft_fails} check(s)"
-    echo 0 > "$SOFT_STATE_FILE"
+    if [ "$soft_fails" -gt 0 ]; then
+        soft_ok=$(($(read_count "$SOFT_OK_FILE") + 1))
+        if [ "$soft_ok" -ge "$SOFT_CLEAR_AFTER" ]; then
+            logger -t "$LOG_TAG" "Transient-ICMP-loss state cleared after ${soft_fails} failed check(s), ${soft_ok} consecutive OK"
+            echo 0 > "$SOFT_STATE_FILE"
+            echo 0 > "$SOFT_OK_FILE"
+        else
+            echo "$soft_ok" > "$SOFT_OK_FILE"
+        fi
+    fi
 
     ts_ok=false
     ping -c2 -W "$PING_TIMEOUT" "$TS_PEER" &>/dev/null && ts_ok=true
@@ -120,6 +138,7 @@ if assoc_ok; then
     # separately and remedy gently; never escalate to a radio bounce or
     # NetworkManager restart off this signal alone.
     echo 0 > "$GW_STATE_FILE"
+    echo 0 > "$SOFT_OK_FILE"
     soft_fails=$(($(read_count "$SOFT_STATE_FILE") + 1))
     echo "$soft_fails" > "$SOFT_STATE_FILE"
     logger -t "$LOG_TAG" "Gateway ping failed but wlan0 still connected, likely transient ICMP loss (${soft_fails})"
@@ -144,6 +163,7 @@ fi
 # wlan0 is not connected at all per NetworkManager -- this is a real WiFi
 # problem, escalate as before.
 echo 0 > "$SOFT_STATE_FILE"
+echo 0 > "$SOFT_OK_FILE"
 gw_fails=$(($(read_count "$GW_STATE_FILE") + 1))
 echo "$gw_fails" > "$GW_STATE_FILE"
 logger -t "$LOG_TAG" "wlan0 not connected, no default gateway reachable (${gw_fails})"
