@@ -220,7 +220,7 @@ fdotl() {
       echo "⚠️  $host: dotl failed (exit $exit)"
     fi
   }
-  for host in mini server laptop desktop phone quest; do
+  for host in mini server laptop desktop phone fold quest; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
       ~/dotfiles/scripts/fleet/dotl
@@ -247,7 +247,7 @@ fpapl() {
       echo "⚠️  $host: packages-pull failed (exit $exit)"
     fi
   }
-  for host in mini server laptop desktop phone quest; do
+  for host in mini server laptop desktop phone fold quest; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
       zsh -i -c packages-pull
