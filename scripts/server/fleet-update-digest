@@ -1,6 +1,6 @@
 #!/bin/bash
 # fleet-update-digest — checks OS updates across the whole fleet (server,
-# mini, laptop, desktop, phone, quest) once daily, instead of each machine
+# mini, laptop, desktop, phone, fold, quest) once daily, instead of each machine
 # notifying independently. Silent on a clean run; only sends (email+ntfy)
 # when a machine doesn't upgrade as expected -- see the PROBLEM check below.
 #
@@ -10,7 +10,7 @@
 #   - server: Unattended-Upgrade::MailReport set to only-on-error
 #   - mini/laptop/desktop: their built-in Mail already can't send (no local
 #     MTA) so nothing to suppress there
-#   - phone/quest: termux-upgrade only emails on failure, always logs
+#   - phone/fold/quest: termux-upgrade only emails on failure, always logs
 # Reboot-required nudges (reboot-check-notify / systemd drop-in) are left
 # alone — those are low-frequency and actionable, not routine noise.
 
@@ -79,8 +79,10 @@ done
 desktop_body=$(ssh "${SSH_OPTS[@]}" desktop "wsl bash -s" <<<"$APT_REMOTE_SCRIPT" 2>/dev/null)
 OUT+="$(fmt_section "DESKTOP" "$desktop_body")"$'\n'
 
-# --- phone / quest (Termux, port 8022, separate log format) ---
-for host in phone quest; do
+# --- phone / fold / quest (Termux, port 8022, separate log format) ---
+# fold = Pixel 10 Pro Fold, added 2026-11-20 alongside phone (Pixel 6), which
+# stays until Matt decides on the switch.
+for host in phone fold quest; do
     body=$(ssh "${SSH_OPTS[@]}" -p 8022 "$host" bash -s <<<"$TERMUX_REMOTE_SCRIPT" 2>/dev/null)
     OUT+="$(fmt_termux_section "${host^^}" "$body")"$'\n'
 done
