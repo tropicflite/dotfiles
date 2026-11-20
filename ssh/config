@@ -13,15 +13,15 @@ Host mini
   User matt
   ForwardAgent yes
 
+# Pixel 10 Pro Fold (since 2026-11-20; bridge until a GrapheneOS Pixel 11).
 Host phone
-  HostName 100.82.1.81
+  HostName 100.112.131.99
   User matt
   Port 8022
 
-# Pixel 10 Pro Fold (bridge phone, 2026-11). Separate alias on purpose:
-# `phone` stays on the Pixel 6 until Matt decides whether the move is permanent.
-Host fold
-  HostName 100.112.131.99
+# Old Pixel 6, to be wiped into a burner (GrapheneOS + Tailscale + Termux).
+Host burner
+  HostName 100.82.1.81
   User matt
   Port 8022
 
