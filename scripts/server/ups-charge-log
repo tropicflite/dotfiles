@@ -14,7 +14,12 @@ echo "$(date -Iseconds) charge=${charge} status=${status} runtime=${runtime}s vo
 # upssched-cmd's online-notify handler never runs and no "power restored"
 # alert goes out. If the onbatt marker is still present but we're no longer
 # on battery, send the alert ourselves and clean up the marker.
-if [[ -f "$ONBATT_MARKER" && "$status" != *OB* ]]; then
+# "On battery" = OB *or* DISCHRG: with onlinedischarge_calibration=yes this
+# Back-UPS reports "CAL DISCHRG" (no OB) during real transfers, which made the
+# backstop fire 1s into the 2026-11-22 dip and eat the marker. Also require the
+# marker to be >=60s old so we never race upssched's own online-notify.
+if [[ -f "$ONBATT_MARKER" && "$status" != *OB* && "$status" != *DISCHRG* ]] \
+   && (( $(date +%s) - $(cat "$ONBATT_MARKER") >= 60 )); then
     start=$(cat "$ONBATT_MARKER")
     elapsed=$(( $(date +%s) - start ))
     duration="$(( elapsed / 60 ))m $(( elapsed % 60 ))s"

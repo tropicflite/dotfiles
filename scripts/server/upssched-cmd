@@ -40,7 +40,8 @@ case $1 in
         ;;
     onbatt-shutdown)
         status=$(upsc apc1000 ups.status 2>/dev/null)
-        if echo "$status" | grep -q "OB"; then
+        # DISCHRG too: this UPS can report "CAL DISCHRG" instead of OB while on battery.
+        if echo "$status" | grep -qE "OB|DISCHRG"; then
             logger -t upssched-cmd "UPS on battery for 15 minutes (status=$status) - initiating FSD"
             send_ntfy "[server] UPS shutting down — sustained outage" "max" "rotating_light" "UPS apc1000 on battery for 15+ minutes (status=$status) on $(hostname). Initiating safe shutdown now."
             sudo /usr/sbin/upsmon -c fsd
