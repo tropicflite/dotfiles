@@ -7,7 +7,14 @@ status=$(echo "$data" | awk -F': ' '/^ups\.status:/{print $2}' | tr ' ' '_')
 runtime=$(echo "$data" | awk -F': ' '/^battery\.runtime:/{print $2}')
 voltage=$(echo "$data" | awk -F': ' '/^input\.voltage:/{print $2}')
 load=$(echo "$data" | awk -F': ' '/^ups\.load:/{print $2}')
-echo "$(date -Iseconds) charge=${charge} status=${status} runtime=${runtime}s voltage=${voltage}V load=${load}%" >> "$LOGFILE"
+# Brother HL-2270DW page count + panel state (2026-11-22): correlate UPS
+# transfers with laser-fuser warmups. Network printer, so jobs from other
+# devices never touch server CUPS — the page counter is the only record.
+# Not on battery-backed power, so "-" during an outage is expected.
+PRINTER=192.168.50.150
+pages=$(curl -s -m3 "http://$PRINTER/printer/maininfo.html" | grep -oE 'Page&#32;Count</DD></TD><TD>[0-9]+' | grep -oE '[0-9]+$')
+pstate=$(curl -s -m3 "http://$PRINTER/printer/main.html" | grep -oE '<tt>(&nbsp;)*[A-Z][A-Za-z ]*[A-Za-z]' | head -1 | sed 's/<tt>//; s/&nbsp;//g; s/ /_/g')
+echo "$(date -Iseconds) charge=${charge} status=${status} runtime=${runtime}s voltage=${voltage}V load=${load}% pages=${pages:--} printer=${pstate:--}" >> "$LOGFILE"
 
 # Backstop: upssched's pipe-based IPC has been observed (2026-07-02) to
 # silently drop the ONLINE event under rapid ONBATT->ONLINE transitions, so
