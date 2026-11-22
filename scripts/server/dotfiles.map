@@ -51,6 +51,7 @@ symlink  dotfiles  scripts/server/send-mail                   /usr/local/bin/sen
 symlink  dotfiles  scripts/server/ssh-watchdog.sh              /usr/local/bin/ssh-watchdog.sh
 symlink  dotfiles  scripts/server/temp-monitor.sh              /usr/local/bin/temp-monitor.sh
 symlink  dotfiles  scripts/server/ups-battery-health.sh        /usr/local/bin/ups-battery-health.sh
+symlink  dotfiles  scripts/server/ups-selftest.sh              /usr/local/bin/ups-selftest.sh
 symlink  dotfiles  scripts/server/wait-for-tailscale.sh        /usr/local/bin/wait-for-tailscale.sh
 symlink  dotfiles  scripts/server/wg0-down-extra.sh            /usr/local/bin/wg0-down-extra.sh
 symlink  dotfiles  scripts/server/wg0-prestart.sh              /usr/local/bin/wg0-prestart.sh
@@ -66,7 +67,7 @@ symlink  dotfiles  scripts/server/nut-tailscale-listen.sh        /usr/local/bin/
 symlink  dotfiles  scripts/server/tailscale-ready-selfheal.sh    /usr/local/bin/tailscale-ready-selfheal.sh
 
 # --- scripts that must stay a copy: reached by the unprivileged `nut` user ---
-copy     dotfiles  scripts/server/upssched-cmd                 /usr/bin/upssched-cmd
+copy     dotfiles  scripts/server/upssched-cmd                 /usr/local/bin/upssched-cmd
 copy     dotfiles  scripts/server/send-alert                    /usr/local/bin/send-alert
 copy     dotfiles  scripts/server/msmtp-alert-queue              /usr/local/bin/msmtp
 

@@ -1,5 +1,9 @@
 #!/bin/sh
-# Install: sudo cp ~/dotfiles/scripts/server/upssched-cmd /usr/bin/upssched-cmd && sudo chmod +x /usr/bin/upssched-cmd
+# Install: sudo cp ~/dotfiles/scripts/server/upssched-cmd /usr/local/bin/upssched-cmd && sudo chmod +x /usr/local/bin/upssched-cmd
+# Lives in /usr/local/bin, NOT /usr/bin: /usr/bin/upssched-cmd is a non-conffile
+# owned by nut-client, so every nut upgrade overwrites it with the stock example
+# (happened 2026-11-21 via unattended-upgrades, silently killing all power alerts
+# and the 15-min FSD). upssched.conf CMDSCRIPT points here.
 # Requires: /etc/nut/ntfy-password (root:nut 640) — copy from ~/.config/ntfy/password
 # ntfy sends go through /usr/local/bin/send-alert (a real file, not the
 # send-mail symlink — /home/matt is 700 and the nut user can't traverse a
@@ -48,6 +52,18 @@ case $1 in
         logger -t upssched-cmd "UPS battery critical - initiating FSD"
         send_ntfy "[server] UPS battery critical — shutting down" "max" "rotating_light" "UPS battery critical on $(hostname). Initiating safe shutdown now."
         sudo /usr/sbin/upsmon -c fsd
+        ;;
+    replbatt-notify)
+        # upsmon re-raises REPLBATT every RBWARNTIME (12h); alert at most once/24h.
+        # Marker in /run/nut so a reboot re-arms it.
+        marker=/run/nut/replbatt-last
+        now=$(date +%s); last=$(cat "$marker" 2>/dev/null || echo 0)
+        logger -t upssched-cmd "UPS reports battery needs replacement (RB)"
+        if [ $(( now - last )) -ge 86400 ]; then
+            echo "$now" > "$marker"
+            printf "Subject: UPS battery needs replacement\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 is reporting Replace Battery (RB) as of $(date).\nBattery mfr date: $(upsc apc1000 battery.mfr.date 2>/dev/null)\nLast self-test: $(upsc apc1000 ups.test.result 2>/dev/null)\nRuntime now: $(upsc apc1000 battery.runtime 2>/dev/null)s at $(upsc apc1000 ups.load 2>/dev/null)% load\n\nOrder a replacement battery cartridge (APC battery selector for Back-UPS RS 1000MS).\n" | msmtp alerts@wayoffcourse.ca
+            send_ntfy "[server] UPS battery needs replacement" "high" "warning,battery" "UPS apc1000 reports Replace Battery (RB). Order a replacement cartridge."
+        fi
         ;;
     *)
         logger -t upssched-cmd "Unrecognized command: $1"

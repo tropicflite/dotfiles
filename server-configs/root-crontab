@@ -7,3 +7,4 @@
 30 3 * * * /usr/local/bin/restic-b2 backup >> /var/log/restic-b2.log 2>&1
 0 12 * * * /usr/local/bin/restic-b2 check-stale >> /var/log/restic-b2.log 2>&1
 0 5 8 * * /usr/local/bin/restic-b2 verify >> /var/log/restic-b2.log 2>&1
+0 10 15 * * /usr/local/bin/ups-selftest.sh >> /var/log/ups-selftest.log 2>&1
