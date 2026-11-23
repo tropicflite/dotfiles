@@ -1,6 +1,6 @@
 #!/bin/bash
 # Wake desktop from sleep via Wake-on-LAN magic packet, then wait until it answers.
-# Usage: wake-desktop            (from anywhere: ssh server wake-desktop)
+# Usage: wake-desktop   (on any machine — scripts/fleet/wake-desktop wraps this over ssh)
 # Desktop NIC: Realtek GbE, wired on 192.168.50.0/24; Windows sleep timeout is on,
 # "Wake on pattern match" is off so only a magic packet wakes it.
 

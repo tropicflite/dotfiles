@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Fleet wrapper: wake the desktop from any machine by running the real
+# wake-desktop on the server (the only always-on box on the desktop's LAN
+# that can broadcast the WoL magic packet).
+# On the server itself, scripts/server/wake-desktop shadows this file
+# (scripts-link links the machine dir after fleet/), so no recursion.
+
+machine=$("$(dirname "$(readlink -f "$0")")/machine-name" 2>/dev/null)
+if [ "$machine" = "desktop" ]; then
+    echo "wake-desktop: you're on the desktop — it's already awake."
+    exit 0
+fi
+
+exec ssh -o ConnectTimeout=10 server '~/bin/wake-desktop'
