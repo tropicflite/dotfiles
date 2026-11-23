@@ -107,7 +107,7 @@ sync_path /mnt/data/radicale/collections radicale-collections
 
 log "syncthing config (device key - losing it means re-pairing every peer; index-v2 db is rebuildable, skipped as it's live sqlite) + synced data (added 2026-10-01)..."
 sync_path "$DOCKER/syncthing/config" syncthing-config --exclude=index-v2/ --exclude=syncthing.lock
-# All Syncthing folders live in "my stuff" since 2026-10-27 (was /mnt/data/syncthing -> syncthing-data, now stale in the backup)
+# All Syncthing folders live in "my stuff" since 2026-10-27 (was /mnt/data/syncthing -> syncthing-data, old backup dir removed 2026-11-22)
 sync_path "/mnt/data/my stuff" my-stuff
 
 log "cleaning up .deleted-* dirs older than 30 days..."
