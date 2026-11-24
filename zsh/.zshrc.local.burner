@@ -1,0 +1,15 @@
+# Burner-specific config (old Pixel 6, wiped 2026-11-24)
+# Minimal Termux device: no accounts, termux-upgrade cron + sshd only.
+# Termux reports u0_a193@localhost — override agnoster's context segment
+prompt_context() { prompt_segment black default "matt@burner"; }
+echo burner > $PREFIX/etc/machine-name
+
+# Package management (Termux)
+alias pks="pkg search"
+alias pki="pkg install"
+alias pku="pkg upgrade"
+# Tailscale (Termux — no tailscale command in PATH)
+alias tsstatus='echo "Tailscale: check Android app (Settings → Tailscale)"'
+
+# Auto-start sshd
+sshd 2>/dev/null

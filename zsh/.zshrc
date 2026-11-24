@@ -120,6 +120,7 @@ desktop() {
 alias laptop='TERM=xterm-256color ssh matt@laptop'
 alias mini='TERM=xterm-256color ssh matt@mini'
 alias phone='ssh -p 8022 matt@phone'
+alias burner='ssh -p 8022 matt@burner'
 alias quest='TERM=xterm-256color ssh matt@quest'
 alias router='ssh admin@router'
 alias server='TERM=xterm-256color ssh -p 28901 matt@server'
@@ -220,7 +221,7 @@ fdotl() {
       echo "⚠️  $host: dotl failed (exit $exit)"
     fi
   }
-  for host in mini server laptop desktop phone quest; do
+  for host in mini server laptop desktop phone quest burner; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"
       ~/dotfiles/scripts/fleet/dotl
@@ -247,6 +248,8 @@ fpapl() {
       echo "⚠️  $host: packages-pull failed (exit $exit)"
     fi
   }
+  # burner deliberately excluded: it keeps a minimal package set, and
+  # packages-pull would install the full shared packages.txt on it.
   for host in mini server laptop desktop phone quest; do
     if [[ "$host" == "$me" ]]; then
       echo "==> $host (self, running locally)"

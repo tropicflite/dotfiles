@@ -19,7 +19,7 @@ Host phone
   User matt
   Port 8022
 
-# Old Pixel 6, to be wiped into a burner (GrapheneOS + Tailscale + Termux).
+# Old Pixel 6, wiped 2026-11-24 into a burner (GrapheneOS + Tailscale + Termux, no accounts).
 Host burner
   HostName 100.82.1.81
   User matt

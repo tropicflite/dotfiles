@@ -5,7 +5,7 @@
 #
 # Chain: Seedvault writes a backup on the phone nightly (~21:30) into
 # /storage/emulated/0/.SeedVaultAndroidBackup -> Syncthing-Fork (send-only)
-# -> server "my stuff/seedvault-backups" (receive-only) -> restic-b2 nightly.
+# -> server "my stuff/seedvault-backups-fold" (receive-only) -> restic-b2 nightly.
 # Any break in the first two links fails silently: on 2026-11-04 the phone's
 # Syncthing app got closed and nothing synced for 2 days until it was noticed
 # by hand. restic-b2 check-stale doesn't catch this — restic happily backs up

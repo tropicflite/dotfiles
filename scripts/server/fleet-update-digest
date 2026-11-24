@@ -79,10 +79,10 @@ done
 desktop_body=$(ssh "${SSH_OPTS[@]}" desktop "wsl bash -s" <<<"$APT_REMOTE_SCRIPT" 2>/dev/null)
 OUT+="$(fmt_section "DESKTOP" "$desktop_body")"$'\n'
 
-# --- phone / quest (Termux, port 8022, separate log format) ---
-# phone = Pixel 10 Pro Fold since 2026-11-20 (the old Pixel 6 is `burner`,
-# not checked here until it's rebuilt).
-for host in phone quest; do
+# --- phone / quest / burner (Termux, port 8022, separate log format) ---
+# phone = Pixel 10 Pro Fold since 2026-11-20; burner = the old Pixel 6,
+# rebuilt 2026-11-24.
+for host in phone quest burner; do
     body=$(ssh "${SSH_OPTS[@]}" -p 8022 "$host" bash -s <<<"$TERMUX_REMOTE_SCRIPT" 2>/dev/null)
     OUT+="$(fmt_termux_section "${host^^}" "$body")"$'\n'
 done

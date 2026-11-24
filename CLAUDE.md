@@ -45,7 +45,7 @@ held          # show held packages
 
 **Stale `~/bin` links:** `scripts-link` prunes broken symlinks that point back into `scripts/` before relinking, so renaming or deleting a script no longer leaves a dangling link behind.
 
-**Machine detection:** Scripts use `${HOST%%.*}` lowercased as the machine name. Termux devices (phone, quest) are detected via `$PREFIX`; the logical name is read from `$PREFIX/etc/machine-name` (falls back to `phone` if missing).
+**Machine detection:** Scripts use `${HOST%%.*}` lowercased as the machine name. Termux devices (phone, quest, burner) are detected via `$PREFIX`; the logical name is read from `$PREFIX/etc/machine-name` (falls back to `phone` if missing).
 
 **Machine-specific config:** Each machine has `zsh/.zshrc.local.<machine>` for overrides (prompt name, Tailscale aliases, etc.) and `scripts/<machine>/` for machine-specific scripts. Any shell config that only applies to one machine (e.g. NVM on desktop) belongs in the local file, not `.zshrc`.
 
@@ -63,7 +63,7 @@ OS/port table is in the global `~/.claude/CLAUDE.md`. Dotfiles-specific notes:
 
 - **desktop** — `fdotl` reaches it via `wsl zsh ~/dotfiles/scripts/fleet/dotl`; connects as `simin` (Windows-side account), not `matt`
 - **server** — excluded from package sync
-- **phone / quest** — full `fdotl` members; detected via `$PREFIX` + machine-name file (see Machine detection above)
+- **phone / quest / burner** — full `fdotl` members (burner is excluded from `fpapl` to keep its package set minimal); detected via `$PREFIX` + machine-name file (see Machine detection above)
 
 ## Scripts Directory
 
@@ -78,7 +78,7 @@ scripts/phone/      # Termux baseline (shared by all Termux devices)
 scripts/quest/      # quest-only overrides, layered on top of phone/
 ```
 
-All scripts are symlinked into `~/bin` by `scripts-link`. Run it after adding a new script. On non-phone Termux devices (quest), `scripts-link` links `scripts/phone/` first as the shared baseline, then the device's own dir — so a same-named script in `scripts/quest/` overrides the phone version while everything else is shared.
+All scripts are symlinked into `~/bin` by `scripts-link`. Run it after adding a new script. On non-phone Termux devices (quest, burner), `scripts-link` links `scripts/phone/` first as the shared baseline, then the device's own dir — so a same-named script in `scripts/quest/` overrides the phone version while everything else is shared.
 
 ## Adding a New Program Config
 
