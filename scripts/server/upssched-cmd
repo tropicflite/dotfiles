@@ -16,10 +16,11 @@ send_ntfy() {
 
 case $1 in
     onbatt-notify)
-        logger -t upssched-cmd "UPS on battery - sending notification email"
+        # No alert here: brief utility blips (APC reports them as exactly 5s)
+        # happen ~3x/month. Just record the start; onbatt-warn alerts at 30s.
+        logger -t upssched-cmd "UPS on battery - alert deferred until 30s (debounce)"
         date +%s > /run/nut/onbatt-time
-        printf "Subject: UPS on battery\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 switched to battery power at $(date).\n" | msmtp alerts@wayoffcourse.ca
-        send_ntfy "[server] UPS on battery" "high" "warning,battery" "UPS apc1000 switched to battery power at $(date)."
+        rm -f /run/nut/onbatt-alerted
         ;;
     online-notify)
         if [ -f /run/nut/onbatt-time ]; then
@@ -30,13 +31,31 @@ case $1 in
         else
             duration="unknown"
         fi
-        logger -t upssched-cmd "UPS power restored after ${duration} on battery"
-        printf "Subject: UPS power restored\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power at $(date).\nTime on battery: ${duration}.\n" | msmtp alerts@wayoffcourse.ca
-        send_ntfy "[server] UPS power restored" "default" "white_check_mark" "UPS apc1000 restored to mains power at $(date). Time on battery: ${duration}."
+        if [ -f /run/nut/onbatt-alerted ]; then
+            rm -f /run/nut/onbatt-alerted
+            logger -t upssched-cmd "UPS power restored after ${duration} on battery"
+            printf "Subject: UPS power restored\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power at $(date).\nTime on battery: ${duration}.\n" | msmtp alerts@wayoffcourse.ca
+            send_ntfy "[server] UPS power restored" "default" "white_check_mark" "UPS apc1000 restored to mains power at $(date). Time on battery: ${duration}."
+        else
+            logger -t upssched-cmd "UPS power restored after ${duration} on battery (blip under 30s - no alert sent)"
+        fi
         ;;
     onbatt-warn)
-        logger -t upssched-cmd "UPS on battery for 30s"
-        wall "UPS WARNING: Server running on battery - power may be out"
+        # 30s debounce timer (cancelled by ONLINE). Re-check status anyway as
+        # defense-in-depth: if an ONLINE event is ever missed (it was on
+        # 2026-07-02, from a missing NOTIFYFLAG EXEC), a 5s blip must not
+        # become a false alert here.
+        # DISCHRG too: this UPS can report "CAL DISCHRG" instead of OB while on battery.
+        status=$(upsc apc1000 ups.status 2>/dev/null)
+        if echo "$status" | grep -qE "OB|DISCHRG"; then
+            logger -t upssched-cmd "UPS on battery for 30s (status=$status) - sending notification"
+            touch /run/nut/onbatt-alerted
+            wall "UPS WARNING: Server running on battery - power may be out"
+            printf "Subject: UPS on battery\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 has been on battery power for 30+ seconds as of $(date).\nAutomatic safe shutdown after 15 minutes on battery.\n" | msmtp alerts@wayoffcourse.ca
+            send_ntfy "[server] UPS on battery" "high" "warning,battery" "UPS apc1000 on battery for 30+ seconds as of $(date). Safe shutdown after 15 min."
+        else
+            logger -t upssched-cmd "30s timer fired but UPS is back online (status=$status) - no alert"
+        fi
         ;;
     onbatt-shutdown)
         status=$(upsc apc1000 ups.status 2>/dev/null)

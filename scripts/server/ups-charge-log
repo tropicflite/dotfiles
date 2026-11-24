@@ -31,9 +31,15 @@ if [[ -f "$ONBATT_MARKER" && "$status" != *OB* && "$status" != *DISCHRG* ]] \
     elapsed=$(( $(date +%s) - start ))
     duration="$(( elapsed / 60 ))m $(( elapsed % 60 ))s"
     rm -f "$ONBATT_MARKER"
-    logger -t ups-charge-log "backstop: online-notify never fired, sending power-restored alert after ${duration} on battery"
-    ntfy_body="UPS apc1000 restored to mains power. Time on battery: ${duration}. (Sent by ups-charge-log backstop -- primary handler did not fire.)"
-    printf "Subject: UPS power restored (backstop alert)\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power (detected via ups-charge-log backstop -- the primary upssched online-notify handler did not fire).\nTime on battery: ${duration}.\n" | \
-        NTFY_TAGS=white_check_mark NTFY_BODY="$ntfy_body" \
-        /usr/local/bin/send-mail
+    if [[ -f /run/nut/onbatt-alerted ]]; then
+        rm -f /run/nut/onbatt-alerted
+        logger -t ups-charge-log "backstop: online-notify never fired, sending power-restored alert after ${duration} on battery"
+        ntfy_body="UPS apc1000 restored to mains power. Time on battery: ${duration}. (Sent by ups-charge-log backstop -- primary handler did not fire.)"
+        printf "Subject: UPS power restored (backstop alert)\nTo: alerts@wayoffcourse.ca\nFrom: matt@wayoffcourse.ca\n\nUPS apc1000 restored to mains power (detected via ups-charge-log backstop -- the primary upssched online-notify handler did not fire).\nTime on battery: ${duration}.\n" | \
+            NTFY_TAGS=white_check_mark NTFY_BODY="$ntfy_body" \
+            /usr/local/bin/send-mail
+    else
+        # No "on battery" alert went out (blip under the 30s debounce), so no restored alert either.
+        logger -t ups-charge-log "backstop: online-notify never fired; blip under 30s, cleaned up marker (no alert)"
+    fi
 fi
